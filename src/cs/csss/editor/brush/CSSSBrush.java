@@ -1,6 +1,6 @@
 package cs.csss.editor.brush;
 
-import static cs.csss.utils.UIUtils.toolTipLength;
+import static cs.csss.utils.UIUtils.textLength;
 
 import static cs.core.ui.CSUIConstants.HOVERING;
 import static cs.core.ui.CSUIConstants.MOUSE_PRESSED;
@@ -11,9 +11,9 @@ import java.util.LinkedList;
 
 import org.lwjgl.nuklear.NkTextWidthCallbackI;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSElement;
-import cs.csss.artboard.Artboard;
 import cs.csss.editor.Editor;
 import cs.csss.editor.events.CSSSEvent;
+import cs.csss.project.Artboard;
 
 /**
  * Base class for all brushes. Brushes are representations of tools used by artists to modify and introspect on the artboard. Brushes have
@@ -84,7 +84,7 @@ public abstract class CSSSBrush {
 	 */
 	public void setupToolTip(CSElement thisBrushsElement , final NkTextWidthCallbackI widthCalc) {
 		
-		thisBrushsElement.initializeToolTip(HOVERING|MOUSE_PRESSED, MOUSE_RIGHT , 0 , toolTipLength(widthCalc , toolTip));
+		thisBrushsElement.initializeToolTip(HOVERING|MOUSE_PRESSED, MOUSE_RIGHT , 0 , textLength(widthCalc , toolTip));
 		thisBrushsElement.toolTip.new CSDynamicRow(20).new CSText(toolTip);
 		
 	}

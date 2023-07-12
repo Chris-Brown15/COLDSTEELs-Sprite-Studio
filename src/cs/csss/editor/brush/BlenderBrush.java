@@ -1,11 +1,11 @@
 package cs.csss.editor.brush;
 
-import cs.csss.artboard.Artboard;
-import cs.csss.artboard.ArtboardPalette.PalettePixel;
-import cs.csss.artboard.ArtboardTexture.IndexPixel;
 import cs.csss.editor.Editor;
 import cs.csss.editor.events.BlendPixelsEvent;
 import cs.csss.editor.events.CSSSEvent;
+import cs.csss.project.Artboard;
+import cs.csss.project.ArtboardPalette.PalettePixel;
+import cs.csss.project.ArtboardTexture.IndexPixel;
 
 public class BlenderBrush extends CSSSModifyingBrush {
 
@@ -19,9 +19,9 @@ public class BlenderBrush extends CSSSModifyingBrush {
 
 		if(radius == 0) return new BlendPixelsEvent(artboard , editor.selectedColors(artboard) , xIndex , yIndex , 1 , 1);
 		
-		int[] region = centerAroundRadius(xIndex, yIndex);
+		int[] region = centerAroundRadius(xIndex, yIndex , artboard.width() , artboard.height());
 		
-		return new BlendPixelsEvent(artboard , editor.selectedColors(artboard) , region[0] , region[1] , region[2] , region[2]);
+		return new BlendPixelsEvent(artboard , editor.selectedColors(artboard) , region[0] , region[1] , region[2] , region[3]);
 		
 	}
 	
@@ -40,22 +40,17 @@ public class BlenderBrush extends CSSSModifyingBrush {
 			
 		}
 
-		int[] values = centerAroundRadius(xIndex, yIndex);
+		int[] values = centerAroundRadius(xIndex, yIndex , artboard.width() , artboard.height());
+				
+		IndexPixel[][] region = artboard.getRegionOfIndexPixels(values[0] , values[1] , values[2] , values[3]);
 		
-		int 
-			sizeX = values[2] ,
-			sizeY = values[2]
-		; 
-		
-		if(values[0] + sizeX > artboard.width()) values[0] -= (artboard.width() - values[0]) + 1;		
-		if(values[1] + sizeY > artboard.height()) values[1] -= (artboard.height() - values[1]) + 1;
-		
-		IndexPixel[][] region = artboard.getRegionOfIndexPixels(values[0] , values[1] , sizeX , sizeY);
-		
-		for(int row = 0 ; row < sizeY ; row++) for(int col = 0 ; col < sizeX ; col++) { 
+		for(int row = 0 ; row < values[3] ; row++) for(int col = 0 ; col < values[2] ; col++) { 
 		
 			IndexPixel currentIndexPixel = region[row][col];
-			PalettePixel currentIndexPixelColor = artboard.getColorFromIndicesOfPalette(currentIndexPixel.xIndex , currentIndexPixel.yIndex);
+			PalettePixel currentIndexPixelColor = artboard.getColorFromIndicesOfPalette(
+				currentIndexPixel.xIndex , 
+				currentIndexPixel.yIndex
+			);
 			
 			if(selected.compareTo(currentIndexPixelColor) != 0) return true;
 			

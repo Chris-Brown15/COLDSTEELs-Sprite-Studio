@@ -64,8 +64,7 @@ public class Logging {
 	public static void sysDebug(Object... x) {
 		
 		if(Engine.isDebug()) syserr(x);
-		else sysout(x);
-		
+				
 	}
 	
 	private static void sysoutInternal(Consumer<Object> printer , Object... x) {

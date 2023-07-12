@@ -1,10 +1,10 @@
 package cs.csss.editor.events;
 
-import cs.csss.artboard.Artboard;
-import cs.csss.artboard.ArtboardPalette.PalettePixel;
-import cs.csss.artboard.ArtboardTexture.IndexPixel;
-import cs.csss.artboard.Layer;
-import cs.csss.artboard.LayerPixel;
+import cs.csss.project.Artboard;
+import cs.csss.project.Layer;
+import cs.csss.project.LayerPixel;
+import cs.csss.project.ArtboardPalette.PalettePixel;
+import cs.csss.project.ArtboardTexture.IndexPixel;
 
 /**
  * Generic event for modifying an artboard index texture layers. This event will write to the index texture conditionally based on layer 
@@ -32,11 +32,22 @@ public class ModifyArtboardImageEvent extends CSSSEvent {
 
 		super(true);
 
-		if(xIndex < 0) xIndex = 0;
-		if(yIndex < 0) yIndex = 0;		
+		if(xIndex < 0) { 
+			
+			//shave off the extra
+			width += xIndex;
+			xIndex = 0;
+			
+		} 
+		if(yIndex < 0) { 
+			
+			height +=  yIndex;
+			yIndex = 0;
+			
+		}
 
-		if(xIndex + width > artboard.width()) xIndex -= (artboard.width() - xIndex) + 1;		
-		if(yIndex + height > artboard.height()) yIndex -= (artboard.height() - yIndex) + 1;
+		if(xIndex + width > artboard.width()) width = xIndex + width - artboard.width() + 1;		
+		if(yIndex + height > artboard.height()) height = yIndex + height - artboard.height() + 1;
 		
 		this.artboard = artboard;
 		this.xIndex = xIndex;

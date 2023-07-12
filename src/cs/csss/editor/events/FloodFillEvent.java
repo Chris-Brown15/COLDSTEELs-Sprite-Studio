@@ -10,9 +10,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Stack;
-import cs.csss.artboard.Artboard;
-import cs.csss.artboard.ArtboardPalette.PalettePixel;
+
 import cs.csss.core.Engine;
+import cs.csss.project.Artboard;
+import cs.csss.project.ArtboardPalette.PalettePixel;
 
 /**
  * Flood fill fills a region of the artboard with the selected color. 

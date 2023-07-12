@@ -1,9 +1,9 @@
 package cs.csss.editor.events;
 
-import cs.csss.artboard.Artboard;
-import cs.csss.artboard.ArtboardPalette.PalettePixel;
-import cs.csss.artboard.LayerPixel;
-import cs.csss.artboard.VisualLayer;
+import cs.csss.project.Artboard;
+import cs.csss.project.LayerPixel;
+import cs.csss.project.VisualLayer;
+import cs.csss.project.ArtboardPalette.PalettePixel;
 
 /**
  * Event used for when a visual layer's rank is changed. This class make the assumptions that the current layer is a visual layer, since

@@ -18,7 +18,7 @@ public class NotificationBox {
 		
 		ui.options = UI_BORDERED|UI_TITLED;
 		
-		int length = UIUtils.toolTipLength(nuklear.font().width(), message);
+		int length = UIUtils.textLength(nuklear.font().width(), message);
 				
 		int realHeight = height;
 		

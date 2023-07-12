@@ -31,30 +31,50 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Optional;
+import java.util.function.Consumer;
 
 import org.lwjgl.system.Configuration;
 
 import cs.core.CSDisplay;
 import cs.core.graphics.CSStandardRenderer;
 import cs.core.ui.CSNuklear;
+import cs.core.ui.CSNuklear.CSNuklearRender;
 import cs.core.ui.prefabs.InputBox;
 import cs.core.utils.LocalTemporal;
 import cs.core.utils.ShutDown;
+import cs.core.utils.Timer;
 import cs.core.utils.threads.Await;
 import cs.core.utils.threads.CSThreads;
 import cs.coreext.python.CSJEP;
-import cs.csss.artboard.Artboard;
-import cs.csss.artboard.ArtboardTexture;
-import cs.csss.artboard.NonVisualLayer;
-import cs.csss.artboard.NonVisualLayerPrototype;
-import cs.csss.artboard.VisualLayer;
-import cs.csss.artboard.VisualLayerPrototype;
 import cs.csss.editor.Editor;
-import cs.csss.editor.GrayscaleShadeMenu;
+import cs.csss.editor.events.MoveLayerRankEvent;
 import cs.csss.misc.files.CSFile;
 import cs.csss.misc.files.Directory;
 import cs.csss.misc.files.FileComposition;
 import cs.csss.misc.files.FileComposition.FileEntry;
+import cs.csss.project.Animation;
+import cs.csss.project.Artboard;
+import cs.csss.project.ArtboardTexture;
+import cs.csss.project.CSSSProject;
+import cs.csss.project.NonVisualLayer;
+import cs.csss.project.NonVisualLayerPrototype;
+import cs.csss.project.ProjectMeta;
+import cs.csss.project.VisualLayer;
+import cs.csss.project.VisualLayerPrototype;
+import cs.csss.ui.menus.LoadProjectMenu;
+import cs.csss.ui.menus.ModifyControlsMenu;
+import cs.csss.ui.menus.NewAnimationMenu;
+import cs.csss.ui.menus.NewArtboardMenu;
+import cs.csss.ui.menus.NewNonVisualLayerMenu;
+import cs.csss.ui.menus.NewProjectMenu;
+import cs.csss.ui.menus.NewVisualLayerMenu;
+import cs.csss.ui.menus.SelectScriptMenu;
+import cs.csss.ui.menus.SetAnimationFrameSwapTypeMenu;
+import cs.csss.ui.menus.TransparentBackgroundSettingsMenu;
+import cs.csss.ui.prefabs.DetailedInputBox;
+import cs.csss.utils.FloatReference;
 
 /**
  * Engine is the driver of the application. It contains initialization, the main loop, and handles some program level behavior such as 
@@ -78,6 +98,22 @@ public final class Engine implements ShutDown {
 	private static boolean isDebug = false;
 	
 	static FileComposition USER_SETTINGS = new FileComposition(FileComposition.MODE_READ_WRITE);
+
+	private static int realtimeTargetFPS = 60;
+	private static double realtimeFrameTime = 1000 / realtimeTargetFPS;
+
+	private static void setRealtimeTargetFPS(int newTarget) {
+		
+		realtimeTargetFPS = newTarget;
+		realtimeFrameTime = 1000 / realtimeTargetFPS;
+		
+	}
+	
+	public static double realtimeFrameTime() {
+		
+		return realtimeFrameTime;
+		
+	}
 	
 	static void preinitialize(final String[] programArgs) {
 			
@@ -91,7 +127,7 @@ public final class Engine implements ShutDown {
 			
 		}
 		
-		ArrayList<String> args = new ArrayList<>();
+		List<String> args = new ArrayList<>();
 		for(String x : programArgs) args.add(x);
 		
 		if(args.contains("-d")) { 
@@ -116,7 +152,7 @@ public final class Engine implements ShutDown {
 			});
 			
 		}
-				
+	
 		THE_THREADS.async(Engine::loadSettingsFromDisk);
 		
 		CSJEP.initialize();
@@ -264,19 +300,28 @@ public final class Engine implements ShutDown {
 		
 	}
 	
-	private int cameraMoveSpeed = 1;
-	
-	private boolean 
-		isFullScreen = false ,
-		//used to track when the mouse was pressed over a UI element
-		wasMousePressedOverUI = false
-	;
-	
 	private final CSDisplay display;
 	private final Editor editor;
-	private CSSSProject currentProject;
-	
+	private final CSSSCamera camera;
 	private Await renderScene;
+	
+	private CSSSProject currentProject;
+
+	private int cameraMoveSpeed = 1;
+
+	private boolean 
+		isFullScreen = false ,
+		/**
+		 * Used to track when the mouse was pressed over a UI element
+		 */
+		wasMousePressedOverUI = false ,
+		/**
+		 * Used to track whether we should be in real time mode or event driven mode.
+		 */
+		realtimeMode = false
+	;
+		
+ 	private Timer frameTimer = new Timer();
 	
 	private final Directory
 		assetsRoot = Directory.establishRoot("assets") ,
@@ -297,6 +342,12 @@ public final class Engine implements ShutDown {
 		});
 		
 		display = new CSDisplay(true , "COLDSTEEL Sprite Studio" , 18 , "assets/fonts/FiraSansBold.ttf");
+		
+		CSNuklearRender.BUFFER_INITIAL_SIZE(8 * 1024);
+		
+		int[] windowSize = display.window.size();
+		camera = new CSSSCamera(windowSize[0] , windowSize[1]);		
+		display.window.onFramebufferResize(camera::resetProjection);
 		
 		//sets a callback to invoke for controls to determine whether they are pressed or not.
 		Control.checkPressedCallback((keyCode , isKeyboard) -> isKeyboard ? 
@@ -320,12 +371,20 @@ public final class Engine implements ShutDown {
 			glEnable(GL_BLEND);
 			glBlendEquation(GL_FUNC_ADD);
 			glBlendFunc(GL_SRC_ALPHA , GL_ONE_MINUS_SRC_ALPHA);
-			
+
 		}).await();
 
 		display.window.onScroll((xOffset , yOffset) -> {
 			
-			if(!isCursorHoveringUI()) display.camera.zoom(yOffset < 0);
+			if(!isCursorHoveringUI()) camera.zoom(yOffset < 0);
+			else if (editor.isAnimationPanelShowing() && currentProject.currentAnimation() != null) { 
+				
+				int[] cursorScreenCoords = getCursorScreenCoords();
+				int windowHeight = display.window.size()[1]; 
+				boolean hovering = editor.cursorHoveringAnimationFramePanel(cursorScreenCoords[0], cursorScreenCoords[1] , windowHeight);
+				if(hovering) editor.animationPanel().zoom(yOffset < 0);
+				
+			}
 			
 		});
 		
@@ -355,7 +414,7 @@ public final class Engine implements ShutDown {
 
 		while(display.persist()) {
 			
-			display.waitInputs();
+			getInputs();
 			
 			controlEvents();
 			
@@ -364,7 +423,9 @@ public final class Engine implements ShutDown {
 			THE_TEMPORAL.updateAllEvents();
 			
 			renderScene();
-						
+			
+			realtimeFrameLockup();
+			
 		}
 
 	}
@@ -388,20 +449,84 @@ public final class Engine implements ShutDown {
 			if(currentProject != null) {
 
 				Artboard.theArtboardShader().updatePassVariables(
-					display.camera , 	
-					currentProject.getChannelsPerPixelOfCurrentLayer() , 
-					currentProject.grayscaleShade()
-				); 
+					camera.projection() , 
+					camera.viewTranslation() , 
+					currentProject.getChannelsPerPixelOfCurrentLayer()
+				);
 				
-				currentProject.renderAllArtboards(display.camera);
+				currentProject.renderAllArtboards();
 			
 			}
 			
+			//render UI
 			display.nuklear.render();
+			
+			/*
+			 * Here is where we render the current frame of the active animation within the animation editor menu. To do this, I rerender
+			 * the artboard that is the current frame, applying a translation to it so it sits on top of the UI element, hence why this is
+			 * done after the UI is rendered. 
+			 */
+			if(currentProject != null) {
+				
+				Animation current = currentProject.currentAnimation();
+				if(current != null && editor.isAnimationPanelShowing()) {
+
+					current.renderCurrentFrame(
+						camera , 
+						editor.animationPanel() ,
+						display.window.size()[1] ,
+						currentProject.getChannelsPerPixelOfCurrentLayer()
+					);
+					
+				}
+				
+			}
 			
 			display.window.swapBuffers();
 			
 		});
+		
+	}
+	
+	/**
+	 * Gets inputs to the program based on the state of {@link Engine#realtimeMode realtimeMode}.
+	 */
+	private void getInputs() {
+
+		if(realtimeMode) { 
+			
+			display.pollInputs();
+			frameTimer.start();
+			
+		} else display.waitInputs();
+			
+	}
+	
+	/**
+	 * Locks the application at the framerate given by {@link Engine#realtimeTargetFPS} by making the main thread wait an appropriate
+	 * amount of time.
+	 */
+	private void realtimeFrameLockup() {
+
+		if(realtimeMode) {
+			
+			long waitFor = (long) (realtimeFrameTime - frameTimer.getElapsedTimeMillis());
+			//this will be true if the frame took longer than the ideal frame time, REALTIME_FRAME_TIME, which is no big deal, just dont
+			//make the thread wait.
+			if(waitFor <= 0) return;
+			
+			Thread current = Thread.currentThread();
+			synchronized(current) {
+				
+				try {
+					
+					current.wait(waitFor);
+					
+				} catch (InterruptedException e) {}
+				
+			}
+			
+		}
 		
 	}
 	
@@ -414,11 +539,20 @@ public final class Engine implements ShutDown {
 		
 		if(!isCursorHoveringUI()) {
 			
-			if(Control.CAMERA_UP.struck()) display.camera.translate(0 , cameraMoveSpeed , 0);
-			if(Control.CAMERA_DOWN.struck()) display.camera.translate(0 , -cameraMoveSpeed , 0);
-			if(Control.CAMERA_LEFT.struck()) display.camera.translate(-cameraMoveSpeed , 0, 0);
-			if(Control.CAMERA_RIGHT.struck()) display.camera.translate(cameraMoveSpeed , 0 , 0);
+			if(Control.CAMERA_UP.struck()) camera.translate(0 , cameraMoveSpeed , 0);
+			if(Control.CAMERA_DOWN.struck()) camera.translate(0 , -cameraMoveSpeed , 0);
+			if(Control.CAMERA_LEFT.struck()) camera.translate(-cameraMoveSpeed , 0, 0);
+			if(Control.CAMERA_RIGHT.struck()) camera.translate(cameraMoveSpeed , 0 , 0);
 
+		} 
+		//try to move the animation panel view of the current frame
+		else if(currentProject != null && editor.isAnimationPanelShowing() && currentProject.currentAnimation() != null ) {
+			
+			if(Control.CAMERA_UP.struck()) editor.animationPanel().translate(0 , cameraMoveSpeed); 		
+			if(Control.CAMERA_DOWN.struck()) editor.animationPanel().translate(0 , -cameraMoveSpeed);
+			if(Control.CAMERA_LEFT.struck()) editor.animationPanel().translate(-cameraMoveSpeed , 0);
+			if(Control.CAMERA_RIGHT.struck()) editor.animationPanel().translate(cameraMoveSpeed , 0);
+					
 		}
 		
 		if(Control.TOGGLE_FULLSCREEN_HOTKEY.struck()) toggleFullScreen();
@@ -447,8 +581,8 @@ public final class Engine implements ShutDown {
 	public float[] getCursorWorldCoords(float[] screenCoords) {
 		
 		return new float[] {
-			display.camera.XscreenCoordinateToWorldCoordinate(screenCoords[0]) ,
-			display.camera.YscreenCoordinateToWorldCoordinate(screenCoords[1])				
+			camera.XscreenCoordinateToWorldCoordinate(screenCoords[0]) ,
+			camera.YscreenCoordinateToWorldCoordinate(screenCoords[1])				
 		};
 		
 	}
@@ -537,12 +671,10 @@ public final class Engine implements ShutDown {
 				
 			}
 						
-			CSSSProject project = new CSSSProject(projectMeta);
+			CSSSProject project = new CSSSProject(this , projectMeta);
 			
-			renderer().post(project::initialize).await();			
+			renderer().post(project::initialize).await();
 			
-			renderer().post(() -> project.loadArtboards(projectPath));
-						
 			project.forEachArtboard(artboard -> renderer().addRender(artboard.render()));
 			
 			currentProject = project;
@@ -557,6 +689,13 @@ public final class Engine implements ShutDown {
 		
 	}
 
+	public Animation currentAnimation() {
+		
+		if(currentProject == null || currentProject.currentAnimation() == null) return null;
+		return currentProject.currentAnimation();
+		
+	}
+	
 	public void currentProject(CSSSProject project) {
 		
 		currentProject = project;
@@ -586,6 +725,7 @@ public final class Engine implements ShutDown {
 			currentProject = display.renderer.make(() -> {
 				
 				CSSSProject project = new CSSSProject(
+					this ,
 					newProjectMenu.get() , 
 					newProjectMenu.channelsPerPixel() , 
 					newProjectMenu.paletted() , 
@@ -610,7 +750,7 @@ public final class Engine implements ShutDown {
 			
 			String result = newAnimationMenu.get();
 			if(result == null) return;
-			currentProject.addAnimation(new Animation(result , currentProject));
+			currentProject.addAnimation(new Animation(result));
 			
 		});
 		
@@ -627,7 +767,7 @@ public final class Engine implements ShutDown {
 			VisualLayerPrototype newLayerPrototype = newLayerMenu.get();
 			if(newLayerPrototype == null) return;
 			currentProject.addVisualLayerPrototype(newLayerPrototype);
-			currentProject.forEachArtboard(artboard -> {
+			currentProject.forEachNonShallowCopiedArtboard(artboard -> {
 				
 				VisualLayer visualLayer = new VisualLayer(artboard , currentProject.palette() , newLayerPrototype);
 				artboard.addVisualLayer(visualLayer);
@@ -647,8 +787,8 @@ public final class Engine implements ShutDown {
 			
 			NonVisualLayerPrototype newNonVisualLayer = newLayerMenu.get();
 			if(newNonVisualLayer == null) return;
-			currentProject.addNonVisualLayerPrototype(newNonVisualLayer);
-			currentProject.forEachArtboard(artboard -> {
+			currentProject.addNonVisualLayerPrototype(newNonVisualLayer);			
+			currentProject.forEachNonShallowCopiedArtboard(artboard -> {
 				
 				NonVisualLayer layer = new NonVisualLayer(
 					artboard , 
@@ -673,9 +813,18 @@ public final class Engine implements ShutDown {
 			
 			if(!newArtboardMenu.finishedValidly()) return;
 			
-			Artboard artboard = display.renderer.make(
-				() -> new Artboard(newArtboardMenu.width() , newArtboardMenu.height())
-			).get();
+			Artboard artboard = display.renderer.make(() -> {
+				
+				Artboard newArtboard = new Artboard(
+					String.valueOf(currentProject.numberArtboards()) , 
+					newArtboardMenu.width() , 
+					newArtboardMenu.height()
+				);
+				 
+				currentProject.addArtboard(newArtboard);
+				return newArtboard;
+				
+			}).get();
 			
 			currentProject.forEachVisualLayerPrototype(vlP -> {
 			
@@ -691,9 +840,7 @@ public final class Engine implements ShutDown {
 			
 			});
 			
-			display.renderer.addRender(artboard.render());
-			
-			display.renderer.post(() -> currentProject.addArtboard(artboard));
+			display.renderer.addRender(artboard.render());			
 			if(currentProject.currentArtboard() == null) currentProject.currentArtboard(artboard);
 			
 		});
@@ -712,26 +859,11 @@ public final class Engine implements ShutDown {
 		
 	}
 	
-	public void startNewSetGrayscaleShadeMenu() {
+	public void startSelectScriptMenu(String scriptSubdirectory , Consumer<CSFile> onComplete) {
 		
 		if(currentProject == null) return;
 		
-		GrayscaleShadeMenu grayscaleShadeMenu = new GrayscaleShadeMenu(display.nuklear);
-		
-		THE_TEMPORAL.onTrue(grayscaleShadeMenu::readyToFinish, () -> {
-			
-			if(grayscaleShadeMenu.option == GrayscaleShadeMenu.NO_OP) return;
-			currentProject.grayscaleShade(grayscaleShadeMenu.option);			
-			
-		});
-		
-	}
-	
-	public void startSelectScriptMenu() {
-		
-		if(currentProject == null) return;
-		
-		SelectScriptMenu script = new SelectScriptMenu(display.nuklear);
+		SelectScriptMenu script = new SelectScriptMenu(display.nuklear , scriptSubdirectory);
 		
 		THE_TEMPORAL.onTrue(script::readyToFinish , () -> {
 			
@@ -739,9 +871,105 @@ public final class Engine implements ShutDown {
 			
 			if((selected = script.selectedScript()) == null) return;
 			
-			editor.runScriptEvent(selected);
+			onComplete.accept(selected);
 			
 		});
+		
+	}
+	
+	public void startAnimationFrameCustomTimeInput(int animationFrameIndex) {
+		
+		String title = "Frame " + animationFrameIndex + " custom speed (millis)";
+		
+		new InputBox(display.nuklear , title , .4f , .4f , 10 , CSNuklear.DECIMAL_FILTER , result -> {
+			
+			if(result.equals("")) return;
+			currentProject.currentAnimation().getFrame(animationFrameIndex).time(new FloatReference(Float.parseFloat(result)));
+				
+		});
+		
+	}
+	
+	public void startSetSimulationFrameRate() {
+		
+		new DetailedInputBox(
+			display.nuklear , 
+			"Set Simulation Frame Rate" ,
+			"Currently " + realtimeTargetFPS + ". This is used for viewing animations. Set this value to the number of frames per "
+			+ "second your application is targeting." ,
+			.5f - (.15f / 2f) ,
+			.5f - (.15f / 2f), 
+			.15f ,
+			.15f ,
+			CSNuklear.DECIMAL_FILTER ,
+			5 ,
+			result -> {
+			
+				try {
+					
+					Integer asInt = Integer.parseInt(result);
+					setRealtimeTargetFPS(asInt);
+
+				} catch(NumberFormatException e) {
+					
+					sysDebug(e);
+					
+				}
+								
+			}
+			
+		);	
+		
+	}
+	
+	public void startMoveLayerRank(VisualLayer layer) {
+		
+		int rank = currentProject.currentArtboard().getLayerRank(layer);
+		
+		new InputBox(display.nuklear , "Input New Rank for Layer " + rank , 0.4f , 0.4f , 4 , CSNuklear.DECIMAL_FILTER , result -> {
+			
+			if(result.equals("")) return;
+			Artboard current = currentProject.currentArtboard();
+			int res = Integer.parseInt(result);
+			if(res >= current.numberVisualLayers()) res = current.numberVisualLayers();
+			if(res < 0) res = 0;
+			
+			editor.eventPush(new MoveLayerRankEvent(current , res));
+	
+		});
+			
+	}
+	
+	public void startSetAnimationFrameSwapType(int frameIndex) {
+		
+		SetAnimationFrameSwapTypeMenu animationFrameSwapTypeMenu = new SetAnimationFrameSwapTypeMenu(display.nuklear , frameIndex);
+		
+		THE_TEMPORAL.onTrue(animationFrameSwapTypeMenu::finished , () -> {
+			
+			if(animationFrameSwapTypeMenu.swapType() == null) return;
+			currentAnimation().setFrameSwapType(frameIndex, animationFrameSwapTypeMenu.swapType());
+			
+		});
+		
+	}
+	
+	public void startScriptArgumentInput(String scriptName , Optional<String> popupMessage , Consumer<String> onFinish) {
+	
+		String description = "Input arguments to " + scriptName + ". Leave spaces between arguments. ";
+		if(popupMessage.isPresent()) description += popupMessage.get();
+		
+		new DetailedInputBox(
+			display.nuklear , 
+			scriptName + " Arguments" , 
+			description,
+			.5f - (.33f / 2) ,
+			.5f - (.22f / 2) ,
+			.33f ,
+			.22f ,
+			CSNuklear.NO_FILTER ,
+			999 ,
+			onFinish
+		);
 		
 	}
 	
@@ -758,19 +986,33 @@ public final class Engine implements ShutDown {
 		else display.window.goNonFullScreen();
 		
 	}
+
+	public void realtimeMode(boolean mode) {
+		
+		this.realtimeMode = mode;
+		
+	}	
+		
+	public boolean realtimeMode() {
+		
+		return realtimeMode;
+		
+	}
 	
 	public boolean wasMousePressedOverUI() {
 		
 		return wasMousePressedOverUI;
 		
 	}
-	
+		
 	@Override public void shutDown() {
 		
 		Await writeFiles = THE_THREADS.async(() -> writeSettingsToDisk());
 		
 		display.renderer.post(() -> CSJEP.interpreter().shutDown());
 		CSJEP.interpreter().shutDown();
+		
+		editor.shutDown();
 		
 		if(!display.isFreed()) { 
 

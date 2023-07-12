@@ -6,10 +6,11 @@ out vec2 fragUV;
 
 uniform mat4 projection;
 uniform mat4 view;
+uniform mat4 translation;
 
 void main() {
 	
-	gl_Position = projection * view * vec4(vertexPosition , 0 , 1);
+	gl_Position = projection * view * translation * vec4(vertexPosition , 0 , 1);
 	fragUV = vertexUV;
 
 }

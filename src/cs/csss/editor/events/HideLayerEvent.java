@@ -1,6 +1,6 @@
 package cs.csss.editor.events;
 
-import cs.csss.artboard.Artboard;
+import cs.csss.project.Artboard;
 
 public class HideLayerEvent extends CSSSEvent {
 

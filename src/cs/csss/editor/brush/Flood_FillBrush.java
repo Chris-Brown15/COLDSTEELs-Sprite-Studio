@@ -1,10 +1,10 @@
 package cs.csss.editor.brush;
 
-import cs.csss.artboard.Artboard;
-import cs.csss.artboard.ArtboardPalette.PalettePixel;
 import cs.csss.editor.Editor;
 import cs.csss.editor.events.CSSSEvent;
 import cs.csss.editor.events.FloodFillEvent;
+import cs.csss.project.Artboard;
+import cs.csss.project.ArtboardPalette.PalettePixel;
 
 public class Flood_FillBrush extends CSSSBrush {
 

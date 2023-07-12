@@ -1,7 +1,7 @@
 package cs.csss.editor.events;
 
-import cs.csss.artboard.ArtboardTexture;
-import cs.csss.core.CSSSProject;
+import cs.csss.project.ArtboardTexture;
+import cs.csss.project.CSSSProject;
 
 /**
  * Changes all visible background checkers to the current size (so set the new sizes before entering this event)

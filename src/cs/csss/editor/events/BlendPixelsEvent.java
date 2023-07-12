@@ -1,7 +1,7 @@
 package cs.csss.editor.events;
 
-import cs.csss.artboard.Artboard;
-import cs.csss.artboard.ArtboardPalette.PalettePixel;
+import cs.csss.project.Artboard;
+import cs.csss.project.ArtboardPalette.PalettePixel;
 
 public class BlendPixelsEvent extends CSSSEvent {
 

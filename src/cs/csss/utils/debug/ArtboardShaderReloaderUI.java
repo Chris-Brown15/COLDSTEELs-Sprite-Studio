@@ -7,8 +7,8 @@ import static cs.core.ui.CSUIConstants.*;
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
+import cs.csss.project.Artboard;
 import cs.core.ui.CSNuklear.CSUserInterface;
-import cs.csss.artboard.Artboard;
 
 public class ArtboardShaderReloaderUI {
 

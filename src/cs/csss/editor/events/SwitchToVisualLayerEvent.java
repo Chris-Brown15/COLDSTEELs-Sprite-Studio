@@ -1,8 +1,9 @@
 package cs.csss.editor.events;
 
-import cs.csss.artboard.Artboard;
-import cs.csss.artboard.Layer;
-import cs.csss.artboard.VisualLayer;
+import cs.csss.project.Artboard;
+import cs.csss.project.CSSSProject;
+import cs.csss.project.Layer;
+import cs.csss.project.VisualLayer;
 
 public class SwitchToVisualLayerEvent extends CSSSEvent {
 
@@ -13,13 +14,17 @@ public class SwitchToVisualLayerEvent extends CSSSEvent {
 	
 	private final boolean sameTypes;
 	
-	public SwitchToVisualLayerEvent(Artboard artboard , VisualLayer newActiveLayer) {
+	private final CSSSProject project;
+	
+	public SwitchToVisualLayerEvent(Artboard artboard , CSSSProject project , VisualLayer newActiveLayer) {
 		
 		super(true);
 		
 		this.artboard = artboard;
 		this.newActiveLayer = newActiveLayer;
 		previousLayer = artboard.activeLayer();
+		
+		this.project = project;
 		
 		sameTypes = newActiveLayer instanceof VisualLayer && previousLayer instanceof VisualLayer;
 		
@@ -30,7 +35,9 @@ public class SwitchToVisualLayerEvent extends CSSSEvent {
 		if(newActiveLayer == previousLayer) return;
 
 		artboard.setActiveLayer(newActiveLayer);
-			
+		project.forEachCopyOf(artboard , copy -> copy.setActiveLayer(newActiveLayer));
+		if(project.isCopy(artboard)) project.getSource(artboard).setActiveLayer(newActiveLayer);
+		
 		//previous was a nonvisual layer
 		if(!sameTypes) { 
 			
@@ -46,6 +53,8 @@ public class SwitchToVisualLayerEvent extends CSSSEvent {
 		if(newActiveLayer == previousLayer) return;
 
 		artboard.setActiveLayer(previousLayer);
+		project.forEachCopyOf(artboard , copy -> copy.setActiveLayer(previousLayer));
+		if(project.isCopy(artboard)) project.getSource(artboard).setActiveLayer(previousLayer);
 		
 		//switching to a nonvisual layer
 		if(!sameTypes) { 
