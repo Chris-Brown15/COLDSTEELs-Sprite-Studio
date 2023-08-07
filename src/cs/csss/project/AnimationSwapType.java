@@ -19,7 +19,7 @@ package cs.csss.project;
 public enum AnimationSwapType {
 
 	SWAP_BY_TIME ,
-	SWAP_BY_UPDATES
+	SWAP_BY_UPDATES ,
 	;
 	
 	/**

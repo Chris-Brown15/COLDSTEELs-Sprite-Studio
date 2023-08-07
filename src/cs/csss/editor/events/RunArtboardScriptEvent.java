@@ -18,7 +18,7 @@ public class RunArtboardScriptEvent extends CSSSEvent {
 	
 	public RunArtboardScriptEvent(boolean isRenderEvent , CSFile script , Artboard artboard , Editor editor , List<String> args) {
 
-		super(isRenderEvent);
+		super(isRenderEvent , false);
 		
 		this.artboard = artboard;
 		this.editor = editor;

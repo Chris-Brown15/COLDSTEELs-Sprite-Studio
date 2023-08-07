@@ -8,15 +8,9 @@ import static cs.core.graphics.StandardRendererConstants.UV;
 import static cs.core.utils.CSUtils.specify;
 import static cs.core.utils.CSUtils.require;
 
-import static org.lwjgl.system.MemoryUtil.memFree;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
+import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.function.Consumer;
 
 import org.joml.Random;
@@ -26,7 +20,7 @@ import cs.core.graphics.CSVAO;
 import cs.core.graphics.CSVAO.VertexBufferAccess;
 import cs.core.graphics.utils.VertexBufferBuilder;
 import cs.csss.project.ArtboardPalette.PalettePixel;
-import cs.csss.project.ArtboardTexture.IndexPixel;
+import cs.csss.project.IndexTexture.IndexPixel;
 
 /**
  * Artboard contains the data needed to display and edit a graphic in CSSS and has methods to operate on pixels and artboards.
@@ -36,25 +30,17 @@ import cs.csss.project.ArtboardTexture.IndexPixel;
  */
 public class Artboard {
 	
-	private static final ArtboardShader theArtboardShader = new ArtboardShader();
-
 	/**
-	 * The shader for artboards stays the same over any artboard, so only one is created and used everywhere.
+	 * Deep copies the visual layers of {@code source} into {@code destination}. They will be independent of one another for the purposes
+	 * of layer modification.
+	 * 
+	 * @param project — the project 
+	 * @param source — the source artboard 
+	 * @param destination — the destination artboard
 	 */
-	public static void initializeTheArtboardShader() {
-		
-		theArtboardShader.initialize();
-
-	}
-	
-	public static ArtboardShader theArtboardShader() {
-		
-		return theArtboardShader;
-		
-	}
-	
 	private static void deepCopyVisualLayers(CSSSProject project , Artboard source , Artboard destination) {
 
+		//creates all visual layers
 		project.forEachVisualLayerPrototype(prototype -> {
 			
 			VisualLayer instance = new VisualLayer(destination , project.palette() , prototype);
@@ -67,9 +53,30 @@ public class Artboard {
 			if(sourceLayer == source.activeLayer()) destination.setActiveLayer(instance);
 			
 		});
+	
+		//arranges them
+		for(int i = 0 ; i < source.numberVisualLayers() ; i++) {
+			
+			VisualLayer sourceLayerForIndex = source.getVisualLayer(i);
+			VisualLayer destinationLayerForIndex = destination.getVisualLayer(i);
+			if(!sourceLayerForIndex.name.equals(destinationLayerForIndex.name)) {
+				
+				destination.moveVisualLayerRank(destination.getLayerRank(destination.getVisualLayer(sourceLayerForIndex.name)), i);
+				
+			}
+			
+		}
 		
 	}
 	
+	/**
+	 * Deep copies the nonvisual layers of {@code source} into {@code destination}. They will be independent of one another for the 
+	 * purposes of layer modification.
+	 * 
+	 * @param project — the project 
+	 * @param source — the source artboard 
+	 * @param destination — the destination artboard
+	 */
 	private static void deepCopyNonVisualLayers(CSSSProject project , Artboard source , Artboard destination) {
 
 		project.forEachNonVisualLayerPrototype(proto -> {
@@ -94,7 +101,7 @@ public class Artboard {
 	 * @param project — owning project
 	 * @return Copied project.
 	 */
-	public static Artboard deepCopy(String newArtboardName , Artboard source , CSSSProject project) {
+	static Artboard deepCopy(String newArtboardName , Artboard source , CSSSProject project) {
 		
 		Artboard newArtboard = new Artboard(newArtboardName , source.width() , source.height());
 		
@@ -141,32 +148,50 @@ public class Artboard {
 	private boolean isActiveLayerVisual = true;
 	
 	private CSVAO vao = new CSVAO();
-	private CSRender render;	
+	private CSRender render;
 
-	private ArtboardTexture indexTexture;
+	private IndexTexture indexTexture;
 	
-	//Container of visual layers. Layers are stored in this list such that the layer with the lowest index is said to be the highest rank,
-	//meaning it is the topmost layer. The greater some layer's index, the lower its rank.
-	private LinkedList<VisualLayer> visualLayers = new LinkedList<>();
+	/**
+	 * Container of visual layers. Layers are stored in this list such that the layer with the lowest index is said to be the highest rank,
+	 * meaning it is the topmost layer. The greater some layer's index, the lower its rank.
+	 */
+	private ArrayList<VisualLayer> visualLayers = new ArrayList<>();
 	
-	private LinkedList<NonVisualLayer> nonVisualLayers = new LinkedList<>();
+	private ArrayList<NonVisualLayer> nonVisualLayers = new ArrayList<>();
 	
 	private Layer activeLayer;
 	
 	public final String name;
 	
-	public Artboard(String name , int width , int height) {
+	/**
+	 * Initializes a new artboard.
+	 * 
+	 * @param name — name of this artboard
+	 * @param width — width of this artboard
+	 * @param height — height of this artboard
+	 */
+	Artboard(String name , int width , int height) {
  		
-		this(name , new ArtboardTexture() , width , height);
+		this(name , new IndexTexture() , width , height);
 
 	}
 	
-	Artboard(String name , ArtboardTexture texture , int width , int height) {
+	/**
+	 * Initializes a new artboard.
+	 * 
+	 * @param name — name of this artboard
+	 * @param texture — an index texture this artboard will use
+	 * @param width — width of this artboard
+	 * @param height — height of this artboard
+	 */
+	Artboard(String name , IndexTexture texture , int width , int height) {
 		
 		this.name = name;
 
 		VertexBufferBuilder vertexBuffer = new VertexBufferBuilder(POSITION_2D|UV);
 		vertexBuffer.size(width , height); 
+		
 		vao.initialize(vertexBuffer.attributes, STATIC_VAO, vertexBuffer.get());
 		vao.drawAsElements(6, UINT);
 		
@@ -174,8 +199,9 @@ public class Artboard {
 
 		this.indexTexture = texture;
 		if(!indexTexture.isInitialized()) indexTexture.initialize(width , height);
-		render = new CSRender(vao , theArtboardShader);
 		
+		render = new CSRender(vao);
+				
 	}
 	
 	/**
@@ -183,9 +209,10 @@ public class Artboard {
 	 * 
 	 */
 	public void draw() {
-
-		theArtboardShader.activate(this);
-		render.draw();
+		
+		vao.activate();
+		vao.draw();
+		vao.deactivate();
 				
 	}
 	
@@ -335,7 +362,7 @@ public class Artboard {
 	 * @param height — number of pixels to extend upward from {@code yIndex} to put the color in
 	 * @param pixel — A {@code PalettePixel} containing the pixel values the index texture's pixel will point to
 	 */
-	public void writeToIndexTexture(final int xIndex , final int yIndex , final int width , final int height , final PalettePixel pixel) {
+	public void writeToIndexTexture(int xIndex , int yIndex , int width , int height , PalettePixel pixel) {
 
 		writeToIndexTexture(xIndex , yIndex , width , height , activeLayersPalette() , pixel);
 		
@@ -352,14 +379,7 @@ public class Artboard {
 	 * @param palette — a palette of the user's choosing
 	 * @param pixel — A {@code PalettePixel} containing the pixel values the index texture's pixel will point to
 	 */
-	void writeToIndexTexture(
-		final int xIndex , 
-		final int yIndex , 
-		final int width , 
-		final int height , 
-		ArtboardPalette palette , 
-		final PalettePixel pixel
-	) {
+	void writeToIndexTexture(int xIndex , int yIndex , int width , int height , ArtboardPalette palette , PalettePixel pixel) {
 		
 		short[] colorValueLookup = palette.putOrGetColors(pixel);
 		IndexPixel indexPixel = indexTexture.new IndexPixel(colorValueLookup[0], colorValueLookup[1]);
@@ -601,21 +621,93 @@ public class Artboard {
 	
 	}
 
+	/**
+	 * Returns whether the given layer is the active layer.
+	 * 
+	 * @param layer — a layer
+	 * @return {@code true} if {@code layer} is this artboard's current layer.
+	 */
 	public boolean isActiveLayer(Layer layer) {
 		
 		return this.activeLayer() == layer;
 		
 	}
 	
+	/**
+	 * Invokes {@code callback} on each visual layer.
+	 * 
+	 * @param callback — code to execute on each visual layer.
+	 */
 	public void forEachVisualLayer(Consumer<VisualLayer> callback) {
 		
 		visualLayers.forEach(callback);
 		
 	}
 	
+	/**
+	 * Invokes {@code callback} on each nonvisual layer.
+	 * 
+	 * @param callback — code to execute on each visual layer.
+	 */
 	public void forEachNonVisualLayer(Consumer<NonVisualLayer> callback) {
 		
 		nonVisualLayers.forEach(callback);
+		
+	}
+	
+	/**
+	 * Creates and returns an iterator over the visual layers of this artboard. Supports only {@link java.util.Iterator#hasNext() hasNext}
+	 * and {@link java.util.Iterator#next() next}.
+	 * 
+	 * @return Iterator over the visual layers of this artboard.
+	 */
+	public Iterator<VisualLayer> visualLayers () {
+		
+		return new Iterator<>() {
+
+			Iterator<VisualLayer> source = visualLayers.iterator();
+			
+			@Override public boolean hasNext() {
+
+				return source.hasNext();
+				
+			}
+
+			@Override public VisualLayer next() {
+
+				return source.next();
+				
+			}
+			
+		};
+		
+	}
+
+	/**
+	 * Creates and returns an iterator over the nonvisual layers of this artboard. Supports only 
+	 * {@link java.util.Iterator#hasNext() hasNext} and {@link java.util.Iterator#next() next}.
+	 * 
+	 * @return Iterator over the nonvisual layers of this artboard.
+	 */
+	public Iterator<NonVisualLayer> nonVisualLayers () {
+		
+		return new Iterator<>() {
+
+			Iterator<NonVisualLayer> source = nonVisualLayers.iterator();
+			
+			@Override public boolean hasNext() {
+
+				return source.hasNext();
+				
+			}
+
+			@Override public NonVisualLayer next() {
+
+				return source.next();
+				
+			}
+			
+		};
 		
 	}
 	
@@ -642,7 +734,7 @@ public class Artboard {
 	 * @param xPosition — x position of the pixel to copy
 	 * @param yPosition — y position of the pixel to copy
 	 */
-	public void putInActiveLayer(final IndexPixel source , final int xPosition , final int yPosition) {
+	public void putInActiveLayer(IndexPixel source , int xPosition , int yPosition) {
 		
 		if(activeLayer() == null) return;
 		
@@ -662,13 +754,7 @@ public class Artboard {
 	 * @param width — width of the region to copy
 	 * @param height — height of the region to copy
 	 */
-	public void bulkPutInActiveLayer(
-		final IndexPixel source , 
-		final int xPosition , 
-		final int yPosition , 
-		final int width , 
-		final int height
-	) {
+	public void bulkPutInActiveLayer(IndexPixel source , int xPosition , int yPosition , int width , int height) {
 		
 		for(int row = 0 ; row < height ; row++) for(int col = 0 ; col < width ; col++) {
 			
@@ -908,6 +994,18 @@ public class Artboard {
 	}
 	
 	/**
+	 * Returns a nonvisual layer at the given index.
+	 * 
+	 * @param index — index of a nonvisual layer
+	 * @return Nonvisual layer at the given index.
+	 */
+	public NonVisualLayer getNonVisualLayer(int index) {
+		
+		return nonVisualLayers.get(index);
+		
+	}
+	
+	/**
 	 * Gets the visual layer whose prototype is {@code prototype}.
 	 * 
 	 * @param prototype — prototype of a visual layer from which an instance is derived and contained within this artboard 
@@ -919,7 +1017,13 @@ public class Artboard {
 		throw new IllegalStateException("Layer not found!");
 		
 	}
-	
+
+	/**
+	 * Gets the nonvisual layer whose prototype is {@code prototype}.
+	 * 
+	 * @param prototype — prototype of a nonvisual layer from which an instance is derived and contained within this artboard 
+	 * @return Instance of nonvisual layer derived from {@code prototype}.
+	 */
 	public NonVisualLayer getNonVisualLayer(NonVisualLayerPrototype prototype) {
 		
 		for(int i = 0 ; i < nonVisualLayers.size() ; i ++) if(nonVisualLayers.get(i).isInstanceOfPrototype(prototype)) {
@@ -931,7 +1035,7 @@ public class Artboard {
 		throw new IllegalStateException("Layer not found");
 		
 	}
-	
+		
 	/**
 	 * Removes the abstract layer {@code layer} from whatever list contains its implementation type.
 	 * 
@@ -960,8 +1064,21 @@ public class Artboard {
 	 */
 	public void showAllVisualLayers() {
 		
-		Iterator<VisualLayer> iter = visualLayers.descendingIterator();
-		while(iter.hasNext()) iter.next().show(this);
+		for(int i = visualLayers.size() - 1 ; i  >= 0 ; i--) visualLayers.get(i).show(this);
+		
+	}
+	
+	/**
+	 * Invokes {@link cs.csss.project.VisualLayer#show(Artboard) show} on all layers of this artboard that are not marked as hidden.
+	 */
+	public void showAllNonHiddenVisualLayers() {
+		
+		for(int i = visualLayers.size() - 1 ; i  >= 0 ; i--) { 
+			
+			VisualLayer x = visualLayers.get(i);
+			if(!x.hiding) x.show(this);
+			
+		}
 		
 	}
 	
@@ -987,8 +1104,8 @@ public class Artboard {
 		 */ 
 
 		int 
-			xRegion = xIndex / ArtboardTexture.backgroundCheckerWidth ,
-			yRegion = yIndex / ArtboardTexture.backgroundCheckerHeight
+			xRegion = xIndex / IndexTexture.backgroundWidth ,
+			yRegion = yIndex / IndexTexture.backgroundHeight
 		;
 		
 		//odd exponent, use the darker background otherwise use the lighter one
@@ -1058,8 +1175,48 @@ public class Artboard {
 	}
 	
 	/**
-	 * Overwrites the entire artboard image to the transparent checkered background. No layers are modified. This method should only be
-	 * called in conjuction with layer show methods.
+	 * Gets a visual layer by the given name.
+	 * 
+	 * @param layerName — name of a visual layer
+	 * @return Resulting layer.
+	 */
+	public VisualLayer getVisualLayer(String layerName) {
+		
+		for(VisualLayer x : visualLayers) if(x.name.equals(layerName)) return x;
+		throw new IllegalArgumentException(layerName + " does not name a layer.");
+		
+	}
+
+	/**
+	 * Gets a nonvisual layer by the given name.
+	 * 
+	 * @param layerName — name of a nonvisual layer
+	 * @return Resulting layer.
+	 */
+	public NonVisualLayer getNonVisualLayer(String layerName) {
+		
+		for(NonVisualLayer x : nonVisualLayers) if(x.name.equals(layerName)) return x;
+		throw new IllegalArgumentException(layerName + " does not name a layer.");
+		
+	}
+
+	/**
+	 * Gets a layer by the given name. The list of visual layer is searched first, then the nonvisual.
+	 * 
+	 * @param layerName — name of a layer
+	 * @return Resulting layer.
+	 */
+	public Layer getLayer(String name) {
+		
+		for(VisualLayer x : visualLayers) if(x.name.equals(name)) return x;
+		for(NonVisualLayer x : nonVisualLayers) if(x.name.equals(name)) return x;
+		throw new IllegalArgumentException(name + " does not name a layer.");
+		
+	}
+	
+	/**
+	 * Overwrites the entire artboard image to the checkered background. No layers are modified. This method should only be called in 
+	 * conjuction with layer show methods.
 	 */
 	public void setToCheckeredBackground() {
 		
@@ -1067,119 +1224,132 @@ public class Artboard {
 		
 	}
 	
-	public void writeToFile(final String projectFolderPath) {
-		
-//		createDirectory(name , projectFolderPath);
-		
-		ArtboardMeta meta = new ArtboardMeta()
-			.bindWidth(indexTexture.width)
-			.bindHeight(indexTexture.height)
-			.bindPosition(positions)
-		;
-		
-		try(FileOutputStream writer = new FileOutputStream(
-			projectFolderPath + File.separator + name + File.separator + "___meta"
-		)) {
-			
-			meta.write(writer);
-			
-		} catch (IOException e) {
-			
-			e.printStackTrace();
-			
-		}
-			
-		visualLayers.forEach(layer -> writeLayer(layer , projectFolderPath));
-		nonVisualLayers.forEach(layer -> writeLayer(layer , projectFolderPath));		
-		
-	}
-
-	private void writeLayer(Layer layer , String projectFolderPath) {
-
-		try(
-			FileOutputStream writer = new FileOutputStream(projectFolderPath + File.separator + name + File.separator + layer.name);
-			FileChannel channel = writer.getChannel()
-		) {
-			
-			ByteBuffer compressed = layer.encode();
-			layer.meta().write(writer);
-			channel.write(compressed);
-			memFree(compressed);
-			
-		} catch (IOException e) {
-			
-			e.printStackTrace();
-			
-		}
-		
-	}
-	
+	/**
+	 * Returns the number of visual layers.
+	 * 
+	 * @return The number of visual layers.
+	 */
 	public int numberVisualLayers() {
 		
 		return visualLayers.size();
 		
 	}
 	
+	/**
+	 * Returns the number of channels of the active layer.
+	 * 
+	 * @return Number of channels per pixel of the active layer.
+	 */
 	public int activeLayerChannelsPerPixel() {
 		
 		return activeLayer().pixelSizeBytes();
 		
 	}
 	
+	/**
+	 * Returns the width of this artboard.
+	 * 
+	 * @return — width of this artboard.
+	 */
 	public int width() {
 		
 		return (int) (rightX() - leftX());
 		
 	}
 
+	/**
+	 * Returns the height of this artboard.
+	 * 
+	 * @return — height of this artboard.
+	 */
 	public int height() {
 		
 		return (int) (topY() - bottomY());
 		
 	}
-	
-	float topY() {
+
+	/**
+	 * Returns the top Y coordinate (in world space) of this artboard.
+	 * 
+	 * @return — top Y coordinate of this artboard.
+	 */
+	public float topY() {
 		
 		return positions[1];
 		
 	}
-	
-	float bottomY() {
+
+	/**
+	 * Returns the bottom Y coordinate (in world space) of this artboard.
+	 * 
+	 * @return — bottom Y coordinate of this artboard.
+	 */
+	public float bottomY() {
 		
 		return positions[3];
 		
 	}
-	
-	float leftX() {
+
+	/**
+	 * Returns the left X coordinate (in world space) of this artboard.
+	 * 
+	 * @return — left X coordinate of this artboard.
+	 */
+	public float leftX() {
 		
 		return positions[4];
 		
 	}
-	
-	float rightX() {
+
+	/**
+	 * Returns the right X coordinate (in world space) of this artboard.
+	 * 
+	 * @return — right X coordinate of this artboard.
+	 */
+	public float rightX() {
 		
 		return positions[0];
 		
 	}
-	
-	float midX() {
+
+	/**
+	 * Returns the midpoint Y coordinate (in world space) of this artboard.
+	 * 
+	 * @return — midpoint X coordinate of this artboard.
+	 */
+	public float midX() {
 		
 		return leftX() + (width() / 2);
 		
 	}
 
-	float midY() {
+	/**
+	 * Returns the midpoint Y coordinate (in world space) of this artboard.
+	 * 
+	 * @return — midpoint Y coordinate of this artboard.
+	 */
+	public float midY() {
 		
 		return bottomY() + (height() / 2);
 		
 	}
 	
+	/**
+	 * Returns this artboard's render object, which contains its VAO.
+	 * 
+	 * @return Render of this artboard.
+	 */
 	public CSRender render() { 
 		
 		return render;
 		
 	}
 	
+	/**
+	 * Returns the active layer of this artboard.
+	 * 
+	 * @return Active layer of this artboard.
+	 */
 	public Layer activeLayer() {
 		
 		return activeLayer;
@@ -1199,6 +1369,16 @@ public class Artboard {
 		return createPalettePixel(channelValues);
 		
 	}
+
+	/**
+	 * 
+	 */
+	public void switchToVisualLayers() {
+		
+		//there will always be one visual layer
+		setActiveLayer(visualLayers.get(0));
+		
+	}
 	
 	public boolean isActiveLayerVisual() {
 		
@@ -1206,7 +1386,7 @@ public class Artboard {
 		
 	}
 	
-	ArtboardTexture indexTexture() {
+	IndexTexture indexTexture() {
 		
 		return indexTexture;
 		
@@ -1223,5 +1403,5 @@ public class Artboard {
 		return visualLayers.get(0).palette;
 		
 	}
-	
+
 }

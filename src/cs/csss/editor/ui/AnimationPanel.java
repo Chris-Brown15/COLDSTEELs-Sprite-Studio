@@ -29,14 +29,15 @@ import cs.core.utils.CSRefInt;
 import cs.core.utils.ShutDown;
 import cs.core.ui.CSNuklear.CSUI.CSRow;
 import cs.core.ui.CSNuklear.CSUserInterface;
-import cs.csss.core.Engine;
 import cs.csss.editor.Editor;
+import cs.csss.editor.events.ModifyArtboardInAnimationStatusEvent;
+import cs.csss.engine.Engine;
 import cs.csss.project.Animation;
 import cs.csss.project.AnimationSwapType;
 import cs.csss.project.CSSSProject;
 import cs.csss.ui.decorators.UIAttachedElement;
 import cs.csss.ui.elements.ProgressBar;
-import cs.csss.utils.UIUtils;
+import cs.csss.ui.utils.UIUtils;
 
 /**
  * This panel is used to modify animations. It has more state than others because it also facilitates rendering the active frame of the 
@@ -128,10 +129,10 @@ public class AnimationPanel implements ShutDown {
 			String updateSliderTooltip = "Used to set the amount of program frames frames of this animation will take before going to the "
 				+ "next one (except for animation frames that have their own frame amounts and animation frames that swap by time).";
 			
-			averageFrameTimeSlider.initializeToolTip(toolTipShow , MOUSE_RIGHT , 0 , UIUtils.textLength(nuklear, timeSliderTooltip));
+			averageFrameTimeSlider.initializeToolTip(toolTipShow , MOUSE_RIGHT , 0 , UIUtils.textLength(timeSliderTooltip));
 			averageFrameTimeSlider.toolTip.new CSDynamicRow(20).new CSText(timeSliderTooltip);
 			
-			averageFrameUpdatesSlider.initializeToolTip(toolTipShow , MOUSE_RIGHT , 0 , UIUtils.textLength(nuklear, updateSliderTooltip));
+			averageFrameUpdatesSlider.initializeToolTip(toolTipShow , MOUSE_RIGHT , 0 , UIUtils.textLength(updateSliderTooltip));
 			averageFrameUpdatesSlider.toolTip.new CSDynamicRow(20).new CSText(updateSliderTooltip);
 
 			CSRadio[] swapTypeRadios = new CSRadio[swapTypeRows.length];
@@ -222,7 +223,7 @@ public class AnimationPanel implements ShutDown {
 				
 				nk_layout_row_begin(context , NK_DYNAMIC , 30 , 2);					
 				nk_layout_row_push(context , .5f);
-				if(nk_button_text(context , "Remove")) editor.rendererPost(() -> project.removeArtboardFromCurrentAnimation(current));
+				if(nk_button_text(context , "Remove")) editor.eventPush(new ModifyArtboardInAnimationStatusEvent(project, artboard));
 				
 				nk_layout_row_push(context , .5f);
 				if(nk_button_text(context , "Swap Type")) editor.startSetAnimationFrameSwapType(current);
@@ -276,7 +277,7 @@ public class AnimationPanel implements ShutDown {
 				nk_layout_row_push(context , 0.75f);
 				nk_text(context , "Artboard " + artboard.name , textOptions);
 				nk_layout_row_push(context , 0.25f);
-				if(nk_button_text(context , "Add")) editor.rendererPost(() -> project.appendArtboardToCurrentAnimation(artboard));
+				if(nk_button_text(context , "Add")) editor.eventPush(new ModifyArtboardInAnimationStatusEvent(project , artboard));
 				
 				nk_layout_row_end(context);
 				
@@ -406,7 +407,7 @@ public class AnimationPanel implements ShutDown {
 	
 	private void togglePlay() {
 		
-		if(animation() != null) animation().togglePlaying();
+		if(animation() != null && animation().numberFrames() > 0) animation().togglePlaying();
 		
 	}
 

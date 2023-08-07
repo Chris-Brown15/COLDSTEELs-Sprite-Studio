@@ -9,6 +9,7 @@ import static cs.core.utils.CSUtils.specify;
 import java.util.Objects;
 import java.util.Vector;
 import java.util.function.Consumer;
+import java.util.function.DoubleSupplier;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
 
@@ -18,30 +19,35 @@ import cs.core.utils.CSRefInt;
 import cs.core.utils.FloatConsumer;
 import cs.core.utils.FloatSupplier;
 import cs.core.utils.Timer;
-import cs.csss.core.CSSSCamera;
-import cs.csss.core.Engine;
 import cs.csss.editor.ui.AnimationPanel;
+import cs.csss.engine.CSSSCamera;
 import cs.csss.utils.FloatReference;
 
+/**
+ * Container for all information needed to create and edit animations.
+ * 
+ * <p>
+ * 	Animations are collections of {@link cs.csss.project.AnimationFrame AnimationFrame}s contain an artboard and a time. There are two basic
+ * 	ways animations can swap their frames. The first is by time. In this mode, each frame has a set number of milliseconds it will be the 
+ * 	current frame, and once that time has elapsed, the timer will restart and the the next frame is set as the current frame. Alternatively,
+ * 	frames can be swapped by updates. In this mode, an update method is called every program frame, and for each invokation, a counter is 
+ * 	incremented. Once the counter reaches the current frame's number of updates, the counter is reset and the next frame is moved to.
+ * </p>
+ * 
+ * <p>
+ * 	Additionally, it is possible to specifically set the time or number of updates of an animation frame. This means that while there is an
+ * 	animation-wide default, frames can also have a unique value. Further, it is possible to set the swap method for individual frames. This
+ * 	means that some frames can be swap by time, and others can be swap by updates.
+ * </p>
+ * 
+ * @author Chris Brown
+ * 
+ */
 public class Animation {
 	
 	public static boolean isValidAnimationName(final String prospectiveName) {
 		
-		return !(
-			prospectiveName.equals("") ||
-			prospectiveName.contains("0") || 
-			prospectiveName.contains("1") || 
-			prospectiveName.contains("2") || 
-			prospectiveName.contains("3") || 
-			prospectiveName.contains("4") || 
-			prospectiveName.contains("5") || 
-			prospectiveName.contains("6") || 
-			prospectiveName.contains("7") || 
-			prospectiveName.contains("8") || 
-			prospectiveName.contains("9") || 
-			prospectiveName.contains("&") ||
-			prospectiveName.contains("_")
-		);
+		return true;
 		
 	}
 	
@@ -64,13 +70,16 @@ public class Animation {
 	public final IntSupplier getUpdates = swapOnUpdates::intValue;
 	public final IntConsumer setUpdates = swapOnUpdates::set;
 	
+	private final DoubleSupplier realtimeFrameTime;
+	
 	private AnimationSwapType defaultSwapType = AnimationSwapType.SWAP_BY_TIME;
 	
 	private boolean playing = false;
 
-	public Animation(final String name) {
+ 	Animation(final String name , DoubleSupplier realtimeFrameTime) {
 	
 		this.name = name;	
+		this.realtimeFrameTime = realtimeFrameTime;
 		
 	}
 
@@ -199,7 +208,7 @@ public class Animation {
 		
 			time += switch(frame.swapType()) {
 				case SWAP_BY_TIME -> frame.time.get();
-				case SWAP_BY_UPDATES -> Engine.realtimeFrameTime() * frame.frames.intValue();
+				case SWAP_BY_UPDATES -> realtimeFrameTime.getAsDouble() * frame.frames.intValue();
 			};
 			
 		}
@@ -220,7 +229,7 @@ public class Animation {
 			
 			accum += switch(frames.get(i).swapType()) {
 				case SWAP_BY_TIME -> frames.get(i).time.get();
-				case SWAP_BY_UPDATES -> Engine.realtimeFrameTime() * frames.get(i).frames.intValue();
+				case SWAP_BY_UPDATES -> realtimeFrameTime.getAsDouble() * frames.get(i).frames.intValue();
 			};
 			
 		}
@@ -289,16 +298,10 @@ public class Animation {
 	 * @param camera — the program's camera
 	 * @param renderOnto — the animation panel, which is where the active frame will be rendered to; this object contains the data needed
 	 * 					   to correctly position the frame
-	 * @param screenHeight — needed because Nuklear represents its points as top left but opengl represents its points as bottom left, so 
-	 * 						 we need to get the difference to get the bottom left point for the scissor test
-	 * @param channels — number of channels for rendering purposes 
+	 * @param screenHeight — needed because Nuklear's origin is top left but OpenGL represents its points as bottom left, so we need to get 
+	 * 						 the difference to get the bottom left point for the scissor test
 	 */
-	public void renderCurrentFrame(
-		CSSSCamera camera , 
-		AnimationPanel renderOnto ,
-		int screenHeight ,
-		int channels
-	) {		
+	public void renderCurrentFrame(CSSSCamera camera , AnimationPanel renderOnto , int screenHeight ) {		
 	
 		AnimationFrame frame = getCurrentFrame();
 		
@@ -333,12 +336,9 @@ public class Animation {
 		//applies the additional translation people can do when mousing over the ui element
 		translationToUIPoint.translate(renderOnto.xTranslation(), renderOnto.yTranslation(), 0);
 		
-		Artboard.theArtboardShader().updatePassVariables(
-			camera.projection() , 
-			camera.viewTranslation() ,	
-			translationToUIPoint ,
-			channels
-		);
+		CSSSShader shader = CSSSProject.currentShader(); 
+		
+		shader.updatePassVariables(camera.projection() , camera.viewTranslation() , translationToUIPoint);
 		
 		//resets the camera to the orignal zoom
 		camera.zoom(originalZoom);
@@ -347,14 +347,12 @@ public class Animation {
 
 		//cuts off parts of the object that are outside the bounds of the group, the random primitives are used to approximately fit
 		//the artboard into the frame as perfectly as possible. this will look the same no matter the window dimensions.
-		glScissor(
-			panelTopLeft[0] , 
-			screenHeight - panelTopLeft[1] - panelDims[1] - 5,
-			panelDims[0] + 10 , 
-			panelDims[1] - 1
-		);
+		glScissor(panelTopLeft[0] , screenHeight - panelTopLeft[1] - panelDims[1] - 5, panelDims[0] + 10 , panelDims[1] - 1);
 		
+		shader.activate(frame.board);
+		shader.activate();
 		frame.board.draw();
+		
 		glDisable(GL_SCISSOR_TEST);
 		
 	}
@@ -464,10 +462,29 @@ public class Animation {
 		return frameWidth() * numberFrames();
 		
 	}
+
+	public int indexOf(Artboard artboard) {
+
+		for(int i = 0 ; i < frames.size() ; i++) if(frames.get(i).board == artboard) return i;
+		throw new IllegalArgumentException("Artboard not found in this animation.");
+		
+	}
 	
 	private AnimationFrame newFrame(Artboard frame) {
 		
 		return new AnimationFrame(frame , swapOnUpdates , swapTime , () -> defaultSwapType);
+		
+	}
+	
+	public FloatReference defaultSwapTime() {
+		
+		return swapTime;
+		
+	}
+
+	public CSRefInt defaultUpdateAmount() {
+		
+		return swapOnUpdates;
 		
 	}
 

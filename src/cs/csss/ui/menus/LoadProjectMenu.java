@@ -16,8 +16,7 @@ public class LoadProjectMenu {
 	private String selected = null;
 	private String[] entries;
 	
-	private boolean readyToFinish = false;
-	
+	private boolean readyToFinish = false;	
 	
 	public LoadProjectMenu(CSNuklear nuklear) {
 
@@ -27,7 +26,7 @@ public class LoadProjectMenu {
 		
 		// load names of projects
 		
-		entries = new File("data/").list();
+		entries = new File("data/projects").list();
 		
 		Lambda onFinish = () -> {
 	 		

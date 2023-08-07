@@ -23,7 +23,7 @@ public class MoveLayerRankEvent extends CSSSEvent {
 	
 	public MoveLayerRankEvent(final Artboard artboard , int moveToThis) {
 
-		super(true);
+		super(true , false);
 		
 		this.artboard = artboard;
 		this.moveToThis = moveToThis;

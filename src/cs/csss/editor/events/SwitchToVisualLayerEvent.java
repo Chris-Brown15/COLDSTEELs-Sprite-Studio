@@ -18,7 +18,7 @@ public class SwitchToVisualLayerEvent extends CSSSEvent {
 	
 	public SwitchToVisualLayerEvent(Artboard artboard , CSSSProject project , VisualLayer newActiveLayer) {
 		
-		super(true);
+		super(true , false);
 		
 		this.artboard = artboard;
 		this.newActiveLayer = newActiveLayer;
@@ -39,7 +39,7 @@ public class SwitchToVisualLayerEvent extends CSSSEvent {
 		if(project.isCopy(artboard)) project.getSource(artboard).setActiveLayer(newActiveLayer);
 		
 		//previous was a nonvisual layer
-		if(!sameTypes) { 
+		if(!sameTypes) {
 			
 			artboard.setToCheckeredBackground();
 			artboard.showAllVisualLayers();

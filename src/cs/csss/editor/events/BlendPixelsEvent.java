@@ -25,7 +25,7 @@ public class BlendPixelsEvent extends CSSSEvent {
 		int height
 	) {
 
-		super(true);
+		super(true , false);
 
 		this.bottomLeftX = bottomLeftX;
 		this.bottomLeftY = bottomLeftY;

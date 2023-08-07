@@ -1,21 +1,31 @@
 package cs.csss.project;
 
 import static cs.core.utils.CSUtils.specify;
+import static org.lwjgl.system.MemoryUtil.memAlloc;
+import static org.lwjgl.system.MemoryUtil.memFree;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
-import cs.csss.core.Engine;
+import cs.core.utils.CSRefInt;
+import cs.core.utils.ShutDown;
+import cs.csss.engine.Engine;
+import cs.csss.project.io.CTSPFile;
+import cs.csss.project.io.CTSPFile.AnimationChunk;
+import cs.csss.project.io.CTSPFile.AnimationFrameChunk;
+import cs.csss.project.io.CTSPFile.ArtboardChunk;
+import cs.csss.project.io.CTSPFile.NonVisualLayerChunk;
+import cs.csss.project.io.CTSPFile.NonVisualLayerDataChunk;
+import cs.csss.project.io.CTSPFile.PaletteChunk;
+import cs.csss.project.io.CTSPFile.VisualLayerDataChunk;
+import cs.csss.project.io.ProjectExporter;
+import cs.csss.utils.FloatReference;
 
 /**
  * Contains all data about the currently in-use project. 
@@ -33,36 +43,79 @@ import cs.csss.core.Engine;
  * @author Chris Brown
  *
  */
-public class CSSSProject {  
+public class CSSSProject implements ShutDown {
 
-	public static final String dataDir = new File("data/").getAbsolutePath() + "/";
+	private static final PaletteShader thePaletteShader = new PaletteShader();
+	private static final TextureShader theTextureShader = new TextureShader();
+	private static CSSSShader currentShader = thePaletteShader;
 
-	public static boolean isValidProjectName(final String prospectiveName) {
+	/**
+	 * The shader for artboards stays the same over any artboard, so only one is created and used everywhere.
+	 */
+	public static void initializeArtboardShaders() {
 		
-		return !(
-			prospectiveName.equals("") ||
-			prospectiveName.contains("0") || 
-			prospectiveName.contains("1") || 
-			prospectiveName.contains("2") || 
-			prospectiveName.contains("3") || 
-			prospectiveName.contains("4") || 
-			prospectiveName.contains("5") || 
-			prospectiveName.contains("6") || 
-			prospectiveName.contains("7") || 
-			prospectiveName.contains("8") || 
-			prospectiveName.contains("9") || 
-			prospectiveName.contains("&") ||
-			prospectiveName.contains("_")
-		);
-	}
+		thePaletteShader.initialize();
+		theTextureShader.initialize();
 
+	}
+	
+	/**
+	 * Returns the shader used to render paletted images.
+	 * 
+	 * @return The single palette shader used to render paletted images.
+	 */
+	public static PaletteShader thePaletteShader() {
+		
+		return thePaletteShader;
+		
+	}
+	
+	/**
+	 * Returns the shader used to render textures directly.
+	 * 
+	 * @return The shader used to render textures.
+	 */
+	public static TextureShader theTextureShader() {
+				
+		return theTextureShader;
+		
+	}
+	
+	/**
+	 * Returns the current shader.
+	 * 
+	 * @return The current shader for artboards.
+	 */
+	public static CSSSShader currentShader() {
+		
+		return currentShader;
+		
+	}
+	
+	/**
+	 * Sets the current shader to the given shader.
+	 * 
+	 * @param newCurrent — new current shader
+	 */
+	public static void setTheCurrentShader(CSSSShader newCurrent) {
+		
+		currentShader = newCurrent;
+		
+	}
+	
+	private AtomicBoolean isFreed = new AtomicBoolean(false);
+	
 	private String name;
 
 	private final Engine engine;
 	
 	private int channelsPerPixel = -1;
 	
-	private boolean paletted = false;
+	private boolean 
+		freemoveMode = false ,
+		freemoveCheckCollisions = true ,
+		padAnimationFrames = true
+	;
 	
 	private ArtboardPalette visualPalette;
 	private ArrayList<ArtboardPalette> nonVisualPalettes = new ArrayList<>(NonVisualLayerPrototype.MAX_SIZE_BYTES);
@@ -71,9 +124,8 @@ public class CSSSProject {
 	
 	private final LinkedList<Artboard> 
 		allArtboards = new LinkedList<>() ,
-		looseArtboards = new LinkedList<>() 
-	;
-	
+		looseArtboards = new LinkedList<>();
+
 	private final LinkedList<Animation> animations = new LinkedList<>();
 	private final LinkedList<VisualLayerPrototype> visualLayerPrototypes = new LinkedList<>();
 	private final LinkedList<NonVisualLayerPrototype> nonVisualLayerPrototypes = new LinkedList<>();
@@ -81,25 +133,18 @@ public class CSSSProject {
 	private Artboard currentArtboard;
 	private Animation currentAnimation;
 	
-	public CSSSProject(Engine engine , final String name , int channelsPerPixel , final boolean paletted , boolean makeDefaultLayer) {
+	public CSSSProject(Engine engine , final String name , int channelsPerPixel , boolean makeDefaultLayer) {
 		
 		specify(channelsPerPixel > 0 && channelsPerPixel <= 4 , channelsPerPixel + " is not a valid number of channels per pixel.");
-		
-		specify(isValidProjectName(name) , name + " is not a valid project name.");
-		
+
 		this.engine = engine;
 		
 		setName(name);
-		this.channelsPerPixel = channelsPerPixel ; this.paletted = paletted;
+		this.channelsPerPixel = channelsPerPixel;
 		
-		byte tff = (byte) 255;
-		visualPalette = new ArtboardPalette(channelsPerPixel , tff , tff , tff , tff);
+		visualPalette = new ArtboardPalette(channelsPerPixel);
 
-		for(int i = 1 ; i <= NonVisualLayerPrototype.MAX_SIZE_BYTES ; i++) { 
-			
-			nonVisualPalettes.add(new ArtboardPalette(i , tff , tff , tff , tff));
-		
-		}
+		for(int i = 1 ; i <= NonVisualLayerPrototype.MAX_SIZE_BYTES ; i++) nonVisualPalettes.add(new ArtboardPalette(i));
 		
 	 	if(makeDefaultLayer) addVisualLayerPrototype(new VisualLayerPrototype("Default Layer"));
 		
@@ -107,8 +152,6 @@ public class CSSSProject {
 
 	public CSSSProject(Engine engine , final String name) {
 	
-		specify(isValidProjectName(name) , name + " is not a valid project name.");
-		
 		this.engine = engine;
 		
 		setName(name);
@@ -116,30 +159,132 @@ public class CSSSProject {
 				
 	}
 	
- 	public CSSSProject(Engine engine , ProjectMeta meta) {
+ 	public CSSSProject(Engine engine , CTSPFile ctsp) {
 
-		this(engine , meta.name() , meta.channelsPerPixel() , meta.paletted() , false);
-		
-		byte[] nvlSizes = meta.nonVisualLayerSizes();
-		
-		String[] 
-			nvlNames = meta.nonVisualLayerNames() ,
-			vlNames = meta.visualLayerNames() ,
-			animations = meta.animations()
-		;
-		
-		for(int i = 0 ; i < nvlSizes.length ; i++) { 
-			
-			addNonVisualLayerPrototype(new NonVisualLayerPrototype(nvlSizes[i] , nvlNames[i]));
-			
-		}
+ 		this.engine = engine;
+ 		setName(ctsp.name());
+ 		channelsPerPixel = ctsp.channelsPerPixel();
+ 		
+ 		//layers
+ 		for(String x : ctsp.visualLayerNames()) addVisualLayerPrototype(new VisualLayerPrototype(x));
+ 		for(NonVisualLayerChunk x : ctsp.nonVisualLayerChunks()) {
+ 			
+ 			addNonVisualLayerPrototype(new NonVisualLayerPrototype(x.size() , x.name()));
+ 			
+ 		}
+ 		
+ 		//palettes
+ 		visualPalette = loadPalette(ctsp.paletteChunks()[0]);
+ 		for(int i = 1 ; i < 5 ; i ++) nonVisualPalettes.add(loadPalette(ctsp.paletteChunks()[i]));
+ 		
+ 		//artboards
+ 		for(ArtboardChunk x : ctsp.artboardChunks()) loadArtboard(x);
+ 		
+ 		//animations
+ 		for(AnimationChunk x : ctsp.animationChunks()) loadAnimation(x);
+ 		
+ 	}
+	
+ 	private ArtboardPalette loadPalette(PaletteChunk chunk) {
 
-		for(int i = 0 ; i < vlNames.length ; i++) addVisualLayerPrototype(new VisualLayerPrototype(vlNames[i]));
-		
-		for(int i = 0 ; i < animations.length ; i++) addAnimation(new Animation(animations[i]));
-	
-	}
-	
+ 		int width = chunk.width();
+ 		int height = chunk.height();
+ 		byte[] pixelData = chunk.pixelData();
+ 		
+ 		ArtboardPalette palette = new ArtboardPalette(chunk.channels());
+ 		palette.initialize();
+ 		palette.resizeAndCopy(width , height);
+ 		
+ 		//this skips the first two entries, the background pixel values
+ 		int i = 2 * chunk.channels();
+ 		
+ 		byte[] channelValues = new byte[chunk.channels()];
+ 		while(i < pixelData.length) {
+ 			
+ 			for(int j = 0 ; j < chunk.channels() ; j++) channelValues[j] = pixelData[i++];
+ 			palette.put(palette.new PalettePixel(channelValues));
+ 			
+ 		}
+ 		
+ 		return palette;
+ 		
+ 	}
+ 	
+ 	private Artboard loadArtboard(ArtboardChunk chunk) {
+ 		
+ 		Artboard newArtboard = createArtboard(chunk.name() , chunk.width() , chunk.height());
+ 		 		
+ 		//also set up visual layer ranks here. the order the chunks are found are the ranks the layers are supposed to be in
+ 		int i = 0;
+ 		for(VisualLayerDataChunk x : chunk.visualLayers()) { 
+ 			
+ 			VisualLayer layer = (VisualLayer) loadLayer(newArtboard , x);
+ 			int previousRank = newArtboard.getLayerRank(layer);
+ 			if(previousRank != i) newArtboard.moveVisualLayerRank(previousRank , i);
+ 			i++;
+
+ 		}
+ 		
+ 		//nonvisual
+ 		for(NonVisualLayerDataChunk x : chunk.nonVisualLayers()) loadLayer(newArtboard , x);
+ 		
+ 		//set active layer
+ 		if(chunk.isActiveLayerVisual()) { 
+ 			
+ 			newArtboard.setActiveLayer(newArtboard.getVisualLayer(chunk.activeLayerIndex()));
+ 			newArtboard.showAllNonHiddenVisualLayers();
+ 			
+ 		} else { 
+ 			
+ 			Layer active = newArtboard.getNonVisualLayer(chunk.activeLayerIndex());
+ 			newArtboard.setActiveLayer(active);
+ 			active.show(newArtboard); 
+ 			
+ 		}
+ 		
+ 		return newArtboard;
+ 		
+ 	}
+
+ 	private Layer loadLayer(Artboard artboard , VisualLayerDataChunk chunk) {
+ 		
+ 		return loadLayer(artboard , chunk.name() , chunk.hiding() , chunk.locked() , chunk.isCompressed() , chunk.pixelData());
+ 		
+ 	}
+
+ 	private Layer loadLayer(Artboard artboard , NonVisualLayerDataChunk chunk) {
+ 		
+ 		return loadLayer(artboard , chunk.name() , chunk.hiding() , chunk.locked() , chunk.isCompressed() , chunk.pixelData());
+ 		
+ 	}
+ 	
+ 	private void loadAnimation(AnimationChunk x) {
+ 		
+ 		Animation animation = createAnimation(x.name());
+ 		animation.defaultSwapType(AnimationSwapType.valueOf(x.defaultSwapType()));
+ 		animation.setFrameTime(x.defaultSwapTime());
+ 		animation.setUpdates(x.defaultUpdates());
+ 		
+ 		currentAnimation(animation);
+ 		
+ 		for(AnimationFrameChunk y : x.frames()) {
+ 			
+ 			appendArtboardToCurrentAnimation(getArtboard(y.artboardName()));
+ 			//most recent frame
+ 			AnimationFrame frame = animation.getFrame(animation.numberFrames() - 1); 			
+ 			AnimationSwapType swapType = AnimationSwapType.valueOf(y.swapType());
+ 			frame.swapType(() -> swapType);
+ 			
+ 			if(y.frameTime() == animation.getFrameTime.getAsFloat()) frame.time(animation.defaultSwapTime());
+ 			else frame.time(new FloatReference(y.frameTime()));
+ 			
+ 			if(y.frameUpdates() == animation.getUpdates.getAsInt()) frame.updates(animation.defaultUpdateAmount());
+ 			else frame.updates(new CSRefInt(y.frameUpdates()));
+ 			
+ 		}
+ 		
+ 	}
+ 	
 	public void initialize() {
 		
 		visualPalette.initialize();
@@ -209,8 +354,8 @@ public class CSSSProject {
 			
 		} else FindFirstShallowCopy: {
 			
-			//if the removed frame is a source of other shallow copies, we look through each animation until we find a shallow copy that was
-			//made from the removed one. In that case, we replace the shallow copy with the original.
+			//if the removed frame is a source of other shallow copies, we look through each animation until we find a shallow copy that 
+			//was made from the removed one. In that case, we replace the shallow copy with the original.
 			if(copier.isSource(frame.board)) for(Animation x : animations) for(int i = 0 ; i < x.frames.size() ; i++) {
 				
 				AnimationFrame iterFrame = x.frames.get(i);
@@ -228,6 +373,12 @@ public class CSSSProject {
 		}
 			
 		return Optional.of(frame.board);
+		
+	}
+	
+	public void removeArtboardFromCurrentAnimation(Artboard artboard) {
+		
+		removeArtboardFromCurrentAnimation(currentAnimation.indexOf(artboard));
 		
 	}
 	
@@ -259,7 +410,22 @@ public class CSSSProject {
 	
 	public void renderAllArtboards() {
 		
-		forEachArtboard(Artboard::draw);
+		renderAllArtboards(currentShader);
+		
+	}
+
+	public void renderAllArtboards(CSSSShader shader) {
+		
+		forEachArtboard(artboard -> {
+
+			if(artboard.isActiveLayerVisual()) visualPalette.activate();
+			else nonVisualPalettes.get(artboard.activeLayerChannelsPerPixel() - 1).activate();
+			
+			shader.activate(artboard);
+			shader.activate();
+			artboard.draw();
+			
+		});
 		
 	}
 	
@@ -358,7 +524,7 @@ public class CSSSProject {
 				if(looseArtboards.size() == 0) {
 					
 					//the first animation is a special case where only half of its height is applied to the accum.
-					arrangeAnimation(x , 0 , 2 , 0);
+					arrangeAnimation(x , 0 , padAnimationFrames ? 2 : 0 , 0);
 					heightAccum += (x.frameHeight() / 2) + 2;
 					next++;
 								
@@ -376,7 +542,7 @@ public class CSSSProject {
 					heightAccum += height / 2;
 					//this moves the animation's artboards into position. the second parameter is the x offset to apply to the animation.
 					//this is used to make all animations have their first artboard's left x positions align
-					arrangeAnimation(x , smallestXPosition + (x.frameWidth() / 2) , 2 , heightAccum);
+					arrangeAnimation(x , smallestXPosition + (x.frameWidth() / 2) , padAnimationFrames ? 2 : 0 , heightAccum);
 					heightAccum += (height / 2) + 5;
 					
 				}
@@ -387,41 +553,22 @@ public class CSSSProject {
 		
 	}
 	
-	public void addArtboard(Artboard newArtboard) {
-
-		synchronized(allArtboards) {
-			
-			allArtboards.add(newArtboard);
-			
-		}
-		
-		looseArtboards.add(newArtboard);
-
-		arrangeArtboards();
-		
-	}
-	
-	public void addNonVisualLayerPrototype(NonVisualLayerPrototype newNonVisualLayerPrototype) {
-		
-		 nonVisualLayerPrototypes.add(newNonVisualLayerPrototype);
-				
-	}
-
-	public void addVisualLayerPrototype(VisualLayerPrototype newVisualLayerPrototype) {
-		
-		visualLayerPrototypes.add(newVisualLayerPrototype);
-	
-	}
-	
-	public void addAnimation(Animation newAnimation) {
-		
-		animations.add(newAnimation);
-		
-	}
 	
 	public void forEachAnimation(Consumer<Animation> callback) {
 		
 		animations.forEach(callback);
+		
+	}
+	
+	public Iterator<Animation> animations() {
+		
+		return animations.iterator();
+		
+	}
+	
+	public Iterator<Artboard> allArtboards() {
+		
+		return allArtboards.iterator();
 		
 	}
 	
@@ -437,6 +584,17 @@ public class CSSSProject {
 		
 	}
 	
+	public Iterator<NonVisualLayerPrototype> nonvisualLayers() {
+		
+		return nonVisualLayerPrototypes.iterator();
+		
+	}
+	
+	/**
+	 * Invokes {@code callback} for all existing artboards, including shallow copies.
+	 * 
+	 * @param callback — consumer of an artboard
+	 */
 	public void forEachArtboard(Consumer<Artboard> callback) {
 		
 		synchronized(allArtboards) {
@@ -453,6 +611,25 @@ public class CSSSProject {
 		
 	}
 	
+	public void forEachShallowCopy(Consumer<Artboard> callback) {
+		
+		copier.forEachCopy(callback);
+		
+	}
+	
+	public void forEachPalette(Consumer<ArtboardPalette> callback) {
+		
+		callback.accept(visualPalette);
+		nonVisualPalettes.forEach(callback);
+		
+	}
+
+	public void forEachNonVisualPalette(Consumer<ArtboardPalette> callback) {
+		
+		nonVisualPalettes.forEach(callback);
+		
+	}
+	
 	public int channelsPerPixel() {
 		
 		return channelsPerPixel;
@@ -465,9 +642,21 @@ public class CSSSProject {
 		
 	}
 	
-	public int visualLayerPrototypeSize() {
+	public int numberVisualLayers() {
 		
 		return visualLayerPrototypes.size();
+		
+	}
+	
+	public int numberNonVisualLayers() {
+		
+		return nonVisualLayerPrototypes.size();
+		
+	}
+	
+	public int numberAnimations() {
+		
+		return animations.size();
 		
 	}
 	
@@ -481,7 +670,7 @@ public class CSSSProject {
 		
 	}
 	
-	public void setCurrentArtboardByCursorPosition(float cursorWorldX , float cursorWorldY) {
+	public void setCurrentArtboardByMouse(float cursorWorldX , float cursorWorldY) {
 		
 		synchronized(allArtboards) {
 			
@@ -517,12 +706,6 @@ public class CSSSProject {
 	public void currentAnimation(Animation newCurrent) {
 		
 		this.currentAnimation = newCurrent;
-		
-	}
-	
-	public boolean paletted() {
-		
-		return paletted;
 		
 	}
 	
@@ -578,6 +761,12 @@ public class CSSSProject {
 	public void forEachLooseArtboard(Consumer<Artboard> callback) {
 		
 		looseArtboards.forEach(callback);
+		
+	}
+	
+	public Iterator<Artboard> looseArtboards() {
+		
+		return looseArtboards.iterator();
 		
 	}
 	
@@ -654,90 +843,6 @@ public class CSSSProject {
 		
 	}	
 	
-	/**
-	 * Saves this project by writing it to the disk.
-	 * 
-	 * @param writeAbsPath — path of a directory into which this project will be written
-	 * @throws IOException 
-	 */
-	public void save() throws IOException {
-
-		Path projectAbsPath = Paths.get(dataDir + name);		
-		if(!Files.exists(projectAbsPath)) Files.createDirectory(projectAbsPath);
-		
-		writeMeta(projectAbsPath);
-		
-		//save palettes
-		
-		visualPalette.toPNG(projectAbsPath.toString() + File.separator + "visual");
-		for(int i = 0 ; i < nonVisualPalettes.size() ; i++) { 
-			
-			nonVisualPalettes.get(i).toPNG(projectAbsPath.toString() + File.separator + "nonvisual " + i);
-			
-		}
-		
-		synchronized(allArtboards) {
-			
-			for(Artboard x : allArtboards) x.writeToFile(projectAbsPath.toString());
-		
-		}
-		
-	}
-	
-	private void writeMeta(Path projectPath) {
-
-		//create array of nonvisual layer prototype data
-		
-		byte[] nvlSizes = new byte[nonVisualLayerPrototypes.size()];
-		String[] nvlNames = new String[nonVisualLayerPrototypes.size()];
-		
-		int i = 0;
-		
-		for(var x : nonVisualLayerPrototypes) { 
-			
-			nvlSizes[i] = (byte) x.sizeBytes() ; nvlNames[i++] = x.name();
-			
-		}
-
-		//setup arrays of visual layer prototype data
-		
-		i = 0;
-		
-		String[] vlNames = new String[visualLayerPrototypes.size()] ; for(var x : visualLayerPrototypes) vlNames[i++] = x.name();
-		
-		//same for animation names
-		
-		i = 0;
-		
-		String[] animationNames = new String[animations.size()] ; for(var x : animations) animationNames[i++] = x.name();
-				
-		//bind data to file composition
-
-		ProjectMeta file = new ProjectMeta()		
-			.bindName(name)
-			.bindChannelsPerPixel((byte) channelsPerPixel)
-			.bindPaletted(paletted)
-			.bindNonVisualLayerSizes(nvlSizes)
-			.bindNonVisualLayerNames(nvlNames)
-			.bindVisualLayerNames(vlNames)
-			.bindAnimations(animationNames)			
-		;
-
-		//write file
-		
-		try(FileOutputStream writer = new FileOutputStream(new File(projectPath.toString() + File.separator + name + ".csssmeta"))) {
-			
-			file.write(writer);
-		
-		} catch (IOException e) {
-			
-			e.printStackTrace();
-			throw new IllegalStateException();
-			
-		}
-		
-	}
-
 	public ArtboardPalette palette() {
 		
 		return visualPalette;
@@ -747,6 +852,13 @@ public class CSSSProject {
 	public synchronized Artboard getArtboard(final int index) {
 		
 		return allArtboards.get(index);
+		
+	}
+	
+	public synchronized Artboard getArtboard(final String name) {
+		
+		for(Artboard x : allArtboards) if(x.name.equals(name)) return x;
+		throw new IllegalArgumentException(name + " does not name an artboard");
 		
 	}
 	
@@ -801,4 +913,328 @@ public class CSSSProject {
 		
 	}
 	
+	/**
+	 * Creates a new artboard.
+	 * 
+	 * @param name — name of the artboard
+	 * @param width — width of the artboard
+	 * @param height — height of the artboard
+	 * @return The new Artboard
+	 */
+	public Artboard createArtboard(String name , int width , int height) {
+
+		Artboard newArtboard = new Artboard(name , width , height);
+		
+		forEachVisualLayerPrototype(vlP -> {
+			
+			VisualLayer layer = new VisualLayer(newArtboard , visualPalette , vlP);
+			newArtboard.addVisualLayer(layer);
+			
+		});
+		
+		forEachNonVisualLayerPrototype(nvlP -> {
+			
+			NonVisualLayer layer = new NonVisualLayer(newArtboard , getNonVisualPaletteBySize(nvlP.sizeBytes()) , nvlP);
+			newArtboard.addNonVisualLayer(layer);
+		
+		});
+		
+		addArtboard(newArtboard);
+		return newArtboard;
+		
+	}
+	
+	/**
+	 * Creates a new artboard with a default name.
+	 * 
+	 * @param name — name of the artboard
+	 * @param width — width of the artboard
+	 * @param height — height of the artboard
+	 * @return The new Artboard.
+	 */
+	public Artboard createArtboard(int width , int height) {
+		
+		return createArtboard(String.valueOf(numberNonCopiedArtboards()) , width , height);
+		
+	}
+	
+	/**
+	 * Deep copies the source artboard, naming the copy the given name.
+	 * 
+	 * @param source — an existing artboard to make a deep copy of
+	 * @param newArtboardName — name of the copied artboard
+	 * @return The result of the copy.
+	 */
+	public Artboard deepCopy(Artboard source , String newArtboardName) {
+		
+		Artboard result = Artboard.deepCopy(newArtboardName, source, this);
+		addArtboard(result);
+		return result;
+		
+	}
+
+	/**
+	 * Deep copies the source artboard, giving the result a default name.
+	 * 
+	 * @param source — an existing artboard to make a deep copy of
+	 * @return The result of the deep copy.
+	 */
+	public Artboard deepCopy(Artboard source) {
+		
+		return deepCopy(source , String.valueOf(numberNonCopiedArtboards()));
+		
+	}
+	
+	/**
+	 * Creates a new animation with the given name.
+	 * 
+	 * @param name — name of this animation 
+	 * @return The new Animation.
+	 */
+	public Animation createAnimation(String name) {
+		
+		Animation newAnimation = new Animation(name , engine::realtimeFrameTime);
+		addAnimation(newAnimation);
+		return newAnimation;
+		
+	}
+	
+	/**
+	 * Creates a new nonvisual layer from the given parameters and gives a new copy of it to each artboard.
+	 * 
+	 * @param name — name of the nonvisual layer
+	 * @param sizeBytes — size in bytes of pixels of the nonvisual layer
+	 * @return Instance of the nonvisual layer prototype.
+	 */
+	public NonVisualLayerPrototype createNonVisualLayer(String name , int sizeBytes) {
+		
+		NonVisualLayerPrototype newNVL = new NonVisualLayerPrototype(sizeBytes , name);
+		
+		addNonVisualLayerPrototype(newNVL);
+		forEachNonShallowCopiedArtboard(artboard -> {
+			
+			NonVisualLayer layer = new NonVisualLayer(artboard , getNonVisualPaletteBySize(sizeBytes) , newNVL);			
+			artboard.addNonVisualLayer(layer);
+			
+		});
+		
+		return newNVL;
+		
+	}
+	
+	public VisualLayerPrototype createVisualLayer(String name) {
+		
+		VisualLayerPrototype newVL = new VisualLayerPrototype(name);
+		addVisualLayerPrototype(newVL);
+		forEachNonShallowCopiedArtboard(artboard -> artboard.addVisualLayer(new VisualLayer(artboard , palette() , newVL)));
+		
+		return newVL;
+		
+	}
+
+	private void addArtboard(Artboard newArtboard) {
+
+		synchronized(allArtboards) {
+			
+			allArtboards.add(newArtboard);
+			
+		}
+		
+		looseArtboards.add(newArtboard);
+
+		arrangeArtboards();
+		
+	}
+	
+	private void addNonVisualLayerPrototype(NonVisualLayerPrototype newNonVisualLayerPrototype) {
+		
+		 nonVisualLayerPrototypes.add(newNonVisualLayerPrototype);
+				
+	}
+
+	public void addVisualLayerPrototype(VisualLayerPrototype newVisualLayerPrototype) {
+		
+		visualLayerPrototypes.add(newVisualLayerPrototype);
+	
+	}
+	
+	private void addAnimation(Animation newAnimation) {
+		
+		animations.add(newAnimation);
+		
+	}
+	
+	void resizeIndexTextures() {
+		
+		forEachNonShallowCopiedArtboard(artboard -> {});
+		
+	}
+
+ 	private Layer loadLayer(
+ 		Artboard artboard , 
+ 		String layerName , 
+ 		boolean hiding , 
+ 		boolean locked , 
+ 		boolean isCompressed , 
+ 		byte[] pixels
+ 	) {
+		
+		Layer layer = artboard.getLayer(layerName);
+		ByteBuffer uncompressed;		
+		byte[] pixelData = pixels;
+				
+		if(isCompressed) {
+		
+			ByteBuffer compressed = memAlloc(pixelData.length).put(pixelData).flip();
+			uncompressed = layer.decode(compressed);
+			memFree(compressed);
+			
+			
+		} else uncompressed = memAlloc(pixelData.length).put(pixelData).flip();
+		
+		//do stuff with uncompressed
+		//uncompressed is a buffer of ten byte regions containing x and y coordinates on the layer and lookup x and y to put there
+		while(uncompressed.hasRemaining()) {
+				
+			layer.put(new LayerPixel(uncompressed.getInt() , uncompressed.getInt() , uncompressed.get() , uncompressed.get()));
+				
+		}
+			
+		memFree(uncompressed); 		
+		layer.setHiding(hiding);
+		layer.setLock(locked);
+		
+		return layer;
+	
+	}
+
+ 	public boolean freemoveMode() {
+ 		
+ 		return freemoveMode;
+ 		
+ 	}
+ 	
+ 	public void toggleFreemoveMode() {
+ 		
+ 		freemoveMode = !freemoveMode;
+ 		
+ 	}
+ 	
+ 	public void runFreemove(float[] cursorWorldCoords) {
+		
+ 		if(freemoveMode && currentArtboard != null) {
+ 		
+			cursorWorldCoords[0] = (int) Math.floor(cursorWorldCoords[0]);
+			cursorWorldCoords[1] = (int) Math.floor(cursorWorldCoords[1]);
+			
+			if(isLoose(currentArtboard)) { 
+			
+				currentArtboard.moveTo((int)cursorWorldCoords[0], (int)cursorWorldCoords[1]);
+				if(freemoveCheckCollisions) for(Artboard x : allArtboards) {
+					
+					if(x != currentArtboard && ProjectExporter.colliding(currentArtboard, x)) {
+						
+						int[] deltas = ProjectExporter.collisionDeltas(currentArtboard , x);
+						resolveCollision(currentArtboard , deltas[0] , deltas[1]);
+
+					}
+					
+				}
+				
+			} else for(Animation animation : animations) if(animation.hasArtboard(currentArtboard)) {
+				
+				int animationWidthDiv2 = (animation.frameWidth() * animation.numberFrames()) / 2;
+				
+				int animationMidX = (int) animation.getFrame(animation.numberFrames() - 1).board().rightX() - animationWidthDiv2;
+				int animationMidY = (int) animation.getFrame(0).board().midY();
+				
+				int deltaX = (int) (cursorWorldCoords[0] - animationMidX);
+				int deltaY = (int) (cursorWorldCoords[1] - animationMidY);
+				
+				animation.forAllFrames(artboard -> artboard.translate(deltaX, deltaY));
+				
+				/*
+				 * Resolves collisions between animations and other artboards by iterating over the boards of the animation and all 
+				 * artboards not in the animation, resolving individual collisions between them, and then moving all artboards of the 
+				 * animation accordingly.
+				 */
+				
+				if(freemoveCheckCollisions) ResolveCollisions: for(var iter = animation.frames.iterator() ; iter.hasNext() ;) {
+					
+					Artboard artboard = iter.next().board;
+
+					for(Artboard other : allArtboards) if(!animation.hasArtboard(other)) if(ProjectExporter.colliding(artboard, other)) {
+
+						int[] deltas = ProjectExporter.collisionDeltas(artboard , other);
+						animation.forAllFrames(moveArtboard -> resolveCollision(moveArtboard , deltas[0] , deltas[1]));				
+						continue ResolveCollisions;
+						
+					}
+					
+				}
+				
+			}		
+			
+		}
+ 		
+ 	}
+ 	
+ 	private void resolveCollision(Artboard x , int deltaX , int deltaY) {
+
+		if(deltaX > deltaY) x.translate(deltaX , 0);
+		else x.translate(0 , deltaY);
+		
+ 	}
+ 	
+ 	public boolean padAnimationFrames() {
+ 	
+ 		return padAnimationFrames;
+ 		
+ 	}
+
+ 	public void padAnimationFrames(boolean doPad) {
+ 		
+ 		this.padAnimationFrames = doPad;
+ 		engine.renderer().post(this::arrangeArtboards);
+ 		
+ 	}
+ 	
+ 	public void togglePadAnimationFrames() {
+ 	
+ 		padAnimationFrames = !padAnimationFrames;
+ 		engine.renderer().post(this::arrangeArtboards);
+ 		
+ 	}
+ 	
+ 	public boolean isLoose(Artboard artboard) {
+ 		
+ 		return looseArtboards.contains(artboard);
+ 		
+ 	}
+ 	
+ 	public boolean freemoveCheckCollisions() {
+ 		
+ 		return freemoveCheckCollisions;
+ 		
+ 	}
+
+ 	public void toggleFreemoveCheckCollisions() {
+ 		
+ 		freemoveCheckCollisions = !freemoveCheckCollisions;
+ 		
+ 	}
+ 	
+	@Override public void shutDown() {
+
+		forEachArtboard(artboard -> engine.removeRender(artboard.render()));		
+		isFreed.set(true);
+
+	}
+
+	@Override public boolean isFreed() {
+
+		return isFreed.get();
+		
+	}
+ 	
 }

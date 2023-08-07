@@ -26,9 +26,33 @@ public class AnimationFrame {
 		
 	}
 	
+	public String artboardName() {
+		
+		return board.name;
+		
+	}
+	
+	public float time() {
+		
+		return time.get();
+		
+	}
+	
+	public int updates() {
+		
+		return frames.intValue();
+		
+	}
+	
 	public void time(FloatReference time) {
 		
 		this.time = time;
+		
+	}
+	
+	public void updates(CSRefInt updates) {
+		
+		this.frames = updates;
 		
 	}
 	
@@ -38,6 +62,12 @@ public class AnimationFrame {
 		
 	}
 
+	public Artboard board() {
+		
+		return board;
+		
+	}
+	
 	void swapType(Supplier<AnimationSwapType> swapTypeGetter) {
 		
 		this.swapTypeGetter = swapTypeGetter;

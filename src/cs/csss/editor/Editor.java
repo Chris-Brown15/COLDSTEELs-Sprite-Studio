@@ -1,5 +1,6 @@
 package cs.csss.editor;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -12,8 +13,6 @@ import cs.core.utils.Lambda;
 import cs.core.utils.ShutDown;
 import cs.core.utils.threads.Await;
 import cs.coreext.python.CSJEP;
-import cs.csss.core.Control;
-import cs.csss.core.Engine;
 import cs.csss.editor.brush.BlenderBrush;
 import cs.csss.editor.brush.CSSSBrush;
 import cs.csss.editor.brush.EraserBrush;
@@ -29,14 +28,13 @@ import cs.csss.editor.ui.AnimationPanel;
 import cs.csss.editor.ui.FilePanel;
 import cs.csss.editor.ui.LHSPanel;
 import cs.csss.editor.ui.RHSPanel;
+import cs.csss.engine.Control;
+import cs.csss.engine.Engine;
 import cs.csss.misc.files.CSFile;
 import cs.csss.project.Animation;
 import cs.csss.project.Artboard;
 import cs.csss.project.CSSSProject;
-import cs.csss.project.NonVisualLayer;
-import cs.csss.project.NonVisualLayerPrototype;
 import cs.csss.project.VisualLayer;
-import cs.csss.project.VisualLayerPrototype;
 import cs.csss.utils.StringUtils;
 import jep.JepException;
 import cs.csss.project.ArtboardPalette.PalettePixel;
@@ -51,7 +49,7 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
  */
 public class Editor implements ShutDown {
 	
-	//create the brushes used by all editors	 
+	//create the brushes used by all editors
 	static final PencilBrush thePencilBrush = new PencilBrush();
 	static final EraserBrush theEraserBrush = new EraserBrush();
 	static final Eye_DropperBrush theEyeDropper = new Eye_DropperBrush();
@@ -69,8 +67,8 @@ public class Editor implements ShutDown {
 	private volatile CSSSBrush currentBrush;
 	
 	private ConcurrentLinkedDeque<CSSSEvent> events = new ConcurrentLinkedDeque<>();
-	private UndoRedoQueue redos = new UndoRedoQueue();
-	private UndoRedoQueue undos = new UndoRedoQueue();
+	private UndoRedoQueue redos = new UndoRedoQueue(1000);
+	private UndoRedoQueue undos = new UndoRedoQueue(1000);
 	
 	private final AnimationPanel animationPanel;
 	
@@ -85,7 +83,7 @@ public class Editor implements ShutDown {
 		new FilePanel(this , display.nuklear);
 		new RHSPanel(this , display.nuklear);
 		animationPanel = new AnimationPanel(this , display.nuklear);
-		
+				
 	}
 
 	/**
@@ -111,7 +109,7 @@ public class Editor implements ShutDown {
 	public void eventPush(CSSSEvent event) {
 		
 		events.add(event);
-		undos.push(event);
+		if(!event.isTransientEvent) undos.push(event);
 	
 	}
 
@@ -135,13 +133,13 @@ public class Editor implements ShutDown {
 	
 	private void editArtboardOnControls() {
 
-		if(!engine.wasMousePressedOverUI() && Control.ARTBOARD_INTERACT.pressed() && currentBrush != null && !engine.isCursorHoveringUI()) {
+		if(!engine.wasMousePressedOverUI() && Control.ARTBOARD_INTERACT.pressed() && !engine.isCursorHoveringUI()) {
 			
 			float[] cursor = engine.getCursorWorldCoords();
 			
-			Artboard current = engine.currentArtboard();
+			Artboard current = setCurrentArtboard(cursor);
 			
-			if(current != null && current.isCursorInBounds(cursor)) {
+			if(current != null && current.isCursorInBounds(cursor) && currentBrush != null && !project().freemoveMode()) {
 				
 				int[] pixelIndex = current.cursorToPixelIndex(cursor);				
 		
@@ -165,20 +163,16 @@ public class Editor implements ShutDown {
 	 */
 	private void undoRedoOnControls() {
 
-		if(Control.PRELIM.pressed()) {
+		if(Control.PRELIM.pressed()) if(Control.PRELIM2.pressed()) {
 			
-			if(Control.PRELIM2.pressed()) {
-				
-				if(Control.UNDO.pressed()) undo();
-				else if (Control.REDO.pressed()) redo();
+			if(Control.UNDO.pressed()) undo();
+			else if (Control.REDO.pressed()) redo();
+		
+		} else {
 			
-			} else {
-				
-				if(Control.UNDO.struck()) undo();
-				else if (Control.REDO.struck()) redo();
-			
-			}
-			
+			if(Control.UNDO.struck()) undo();
+			else if (Control.REDO.struck()) redo();
+		
 		}
 		
 	}
@@ -279,24 +273,6 @@ public class Editor implements ShutDown {
 	
 	/* OPERATIONS */
 	
-	public void saveCurrentProject() {
-		
-		engine.saveCurrentProject();
-		
-	}
-
-	public void startSaveAs() {
-		
-		engine.startSaveProjectAs();
-		
-	}
-	
-	public void startProjectLoad() {
-		
-		engine.startLoadProject();
-		
-	}
-	
 	/**
 	 * Invokes the script pointed to by {@code script}.
 	 * 
@@ -338,48 +314,18 @@ public class Editor implements ShutDown {
 
 		engine.renderer().post(() -> {
 			
-			CSSSProject project = new CSSSProject(engine , "debug proj" , 4 , true , true);
+			CSSSProject project = new CSSSProject(engine , "debug proj" , 4 , true);
 			project.initialize();
-			project.addVisualLayerPrototype(new VisualLayerPrototype("Layer 1"));
-			project.addVisualLayerPrototype(new VisualLayerPrototype("Layer 2"));
-			project.addNonVisualLayerPrototype(new NonVisualLayerPrototype(2 , "Nonvisual"));
-			project.addAnimation(new Animation("Default Animation"));
-			project.addAnimation(new Animation("Animation One"));
-			project.addAnimation(new Animation("Animation Two"));
 			
-			Artboard artboard = new Artboard("1" , 100 , 100);
-			Artboard artboard2 = new Artboard("2" , 200 , 200);
-			Artboard artboard3 = new Artboard("3" , 300 , 300);
-			project.addArtboard(artboard);
-			project.addArtboard(artboard2);
-			project.addArtboard(artboard3);
+			project.createVisualLayer("Layer 1");
+			project.createVisualLayer("Layer 2");
+
+			project.createNonVisualLayer("Nonvisual" , 2);
 			
-			project.forEachVisualLayerPrototype(vlP -> {
-				
-				VisualLayer layer = new VisualLayer(artboard , project.palette() , vlP);
-				artboard.addVisualLayer(layer);
-
-				VisualLayer layer2 = new VisualLayer(artboard2 , project.palette() , vlP);
-				artboard2.addVisualLayer(layer2);
-
-				VisualLayer layer3 = new VisualLayer(artboard3 , project.palette() , vlP);
-				artboard3.addVisualLayer(layer3);
-				
-			});
+			project.createAnimation("Default Animation");
 			
-			project.forEachNonVisualLayerPrototype(nvlP -> {
-				
-				NonVisualLayer layer = new NonVisualLayer(artboard , project.getNonVisualPaletteBySize(nvlP.sizeBytes()) , nvlP);
-				artboard.addNonVisualLayer(layer);			
-
-				NonVisualLayer layer2 = new NonVisualLayer(artboard2 , project.getNonVisualPaletteBySize(nvlP.sizeBytes()) , nvlP);
-				artboard2.addNonVisualLayer(layer2);			
-
-				NonVisualLayer layer3 = new NonVisualLayer(artboard3 , project.getNonVisualPaletteBySize(nvlP.sizeBytes()) , nvlP);
-				artboard3.addNonVisualLayer(layer3);			
-				
-			});
-
+			project.createArtboard(100 , 100);		
+			
 			setCurrentProject(project);
 			
 		});
@@ -484,6 +430,12 @@ public class Editor implements ShutDown {
 		
 	}
 	
+	public void startExport() {
+		
+		engine.startExport();
+		
+	}
+	
 	public AnimationPanel animationPanel() {
 				
 		return animationPanel;
@@ -584,12 +536,73 @@ public class Editor implements ShutDown {
 		
 	}	
 	
+	private Artboard setCurrentArtboard(float[] cursor) {
+		
+		//grant that the cursor is in a valid position
+		
+		CSSSProject project = project();
+		if(project == null) return null;
+		
+		Artboard oldCurrent = project.currentArtboard();
+		
+		project.setCurrentArtboardByMouse(cursor[0] , cursor[1]);
+		
+		Artboard current = project.currentArtboard();
+		
+		if(project.freemoveMode()) {
+			
+			boolean sameAnimation = false;
+			
+			for(Iterator<Animation> animations = project.animations() ; animations.hasNext() ; ) { 
+				
+				Animation x = animations.next();
+				
+				if(x.hasArtboard(oldCurrent) && x.hasArtboard(current)) { 
+					
+					sameAnimation = true;
+					break;
+										
+				}
+				
+			}			
+			
+			if(current == oldCurrent || sameAnimation) {
+				
+				project.currentArtboard(null);
+				current = null;
+				
+			}
+		
+		}
+		
+		return current;
+		
+	}
+	
 	public void exit() {
 		
 		engine.exit();
 		
 	}
+	
+	public void saveProject() {
+		
+		engine.saveProject();
+		
+	}
+	
+	public void startProjectSaveAs() {
+		
+		engine.startProjectSaveAs();
+		
+	}
 
+	public void startLoadProject() {
+		
+		engine.startLoadProject();
+		
+	}
+	
 	/* DEBUG */
 	
 	public void toggleRealtime() throws DebugDisabledException {
@@ -597,6 +610,14 @@ public class Editor implements ShutDown {
 		if(!Engine.isDebug()) throw new DebugDisabledException(this);
 		
 		engine.realtimeMode(!engine.realtimeMode());
+		
+	}
+	
+	public float[] cursorCoords() throws DebugDisabledException {
+		
+		if(!Engine.isDebug()) throw new DebugDisabledException(this);
+		
+		return engine.getCursorWorldCoords();
 		
 	}
 	

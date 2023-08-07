@@ -4,7 +4,7 @@ import cs.csss.editor.Editor;
 import cs.csss.editor.events.CSSSEvent;
 import cs.csss.editor.events.ModifyPaletteEvent;
 import cs.csss.project.Artboard;
-import cs.csss.project.ArtboardTexture.IndexPixel;
+import cs.csss.project.IndexTexture.IndexPixel;
 
 public class Replace_AllBrush extends CSSSBrush {
 

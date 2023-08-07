@@ -1,6 +1,6 @@
 package cs.csss.editor.events;
 
-import cs.csss.project.ArtboardTexture;
+import cs.csss.project.IndexTexture;
 import cs.csss.project.CSSSProject;
 
 /**
@@ -12,15 +12,15 @@ public class ChangeBackgroundCheckerSizeEvent extends CSSSEvent {
 	private CSSSProject project;
 	
 	private final int
-		previousWidth = ArtboardTexture.backgroundCheckerWidth ,
-		previousHeight = ArtboardTexture.backgroundCheckerHeight ,
+		previousWidth = IndexTexture.backgroundWidth ,
+		previousHeight = IndexTexture.backgroundHeight ,
 		newWidth ,
 		newHeight
 	;
 	
 	public ChangeBackgroundCheckerSizeEvent(CSSSProject project , int newBackgroundWidth , int newBackgroundHeight) {
 		
-		super(true);
+		super(true , false);
 		this.project = project;
 		this.newWidth = newBackgroundWidth;
 		this.newHeight = newBackgroundHeight;
@@ -29,15 +29,15 @@ public class ChangeBackgroundCheckerSizeEvent extends CSSSEvent {
 
 	@Override public void _do() {
 		
-		ArtboardTexture.backgroundCheckerWidth = newWidth;
-		ArtboardTexture.backgroundCheckerHeight = newHeight;		
+		IndexTexture.backgroundWidth = newWidth;
+		IndexTexture.backgroundHeight = newHeight;		
 		setCheckeredBackgroundByLayerShowing();
 	}
 
 	@Override public void undo() {
 
-		ArtboardTexture.backgroundCheckerWidth = previousWidth;
-		ArtboardTexture.backgroundCheckerHeight = previousHeight;
+		IndexTexture.backgroundWidth = previousWidth;
+		IndexTexture.backgroundHeight = previousHeight;
 		setCheckeredBackgroundByLayerShowing();
 		
 	}

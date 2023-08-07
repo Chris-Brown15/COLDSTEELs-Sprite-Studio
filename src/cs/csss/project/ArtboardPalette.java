@@ -1,6 +1,7 @@
 package cs.csss.project;
 
 import static cs.core.utils.CSUtils.require;
+import static cs.csss.engine.Logging.*;
 import static org.lwjgl.opengl.GL11C.GL_RED;
 import static org.lwjgl.opengl.GL11C.GL_RGB;
 import static org.lwjgl.opengl.GL11C.GL_RGBA;
@@ -8,7 +9,9 @@ import static org.lwjgl.opengl.GL11C.GL_UNSIGNED_BYTE;
 import static org.lwjgl.opengl.GL30C.GL_RG;
 import static org.lwjgl.opengl.GL30C.GL_TEXTURE_2D;
 import static org.lwjgl.opengl.GL30C.glTexSubImage2D;
-import static org.lwjgl.stb.STBImageWrite.stbi_write_png;
+import static org.lwjgl.opengl.GL30C.glTexImage2D;
+
+import static org.lwjgl.system.MemoryUtil.memCopy;
 
 import java.nio.ByteBuffer;
 
@@ -16,7 +19,9 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryStack;
 
 import cs.core.graphics.CSTexture;
-import cs.csss.core.FlexableGraphic;
+import cs.csss.misc.files.CSFolder;
+import cs.csss.misc.utils.FlexableGraphic;
+import cs.csss.project.io.ExportFileTypes;
 
 /**
  * Extender of {@code CSTexture} used extensively as a container of color values. The indices of pixels in the artboard are the values 
@@ -29,14 +34,7 @@ import cs.csss.core.FlexableGraphic;
  */
 public class ArtboardPalette extends CSTexture {
 
-	public static final int 
-		paletteWidth = 256 ,
-		paletteHeight = 256 ,
-		glChannelType = GL_UNSIGNED_BYTE;
-	;
-	
-	static final byte[] transparentBackgroundDarkerPixel = new byte[] {77 , 77 , 77 , -1};
-	static final byte[] transparentBackgroundLighterPixel = new byte[] {115 , 115 , 115 , -1};
+	public static final int glChannelType = GL_UNSIGNED_BYTE;
 	
 	short
 		currentRow = 0 ,
@@ -45,35 +43,47 @@ public class ArtboardPalette extends CSTexture {
 	
 	final int channelsPerPixel;
 	
-	int	
+	private int	
 		glDataFormat ,
-		pixelSizeBytes
+		pixelSizeBytes ,
+		paletteWidth = 256 ,
+		paletteHeight = 256
 	;
 
-	private ByteBuffer paletteMemory;
+	/**
+	 * Notates how many additional rows the palette gains when a resize occurs.
+	 */
+	private int resizeInterval = 16;
 	
-	public ArtboardPalette(
-		int channelsPerPixel , 
-		final byte defaultRed , 
-		final byte defaultGreen , 
-		final byte defaultBlue , 
-		final byte defaultAlpha
-	) {
+	private volatile ByteBuffer paletteMemory;
+	
+	/**
+	 * For these arrays, if there is an alpha channel available, it will contain either -1 or 0 depending upon if the background is 
+	 * visible. In the case there is no alpha value, the background will always be visible
+	 */
+	final byte[] 
+		darkerCheckeredBackground ,
+		lighterCheckeredBackground;
+	
+	public ArtboardPalette(int channelsPerPixel) {
 		
 		this.channelsPerPixel = channelsPerPixel;
-				
+		darkerCheckeredBackground = new byte[channelsPerPixel];
+		lighterCheckeredBackground = new byte[channelsPerPixel];
+		initializeCheckeredBackgroundColors();
+		
 	}
 		
 	public void initialize() {
 
 		FlexableGraphic graphic = new FlexableGraphic(paletteWidth , paletteHeight , 1 , channelsPerPixel , 0xff);
 		
-		initialize(graphic , ArtboardTexture.textureOptions);
+		initialize(graphic , IndexTexture.textureOptions);
 		graphic.shutDown();
 		
 		pixelSizeBytes = channelsPerPixel;
 		
-		glDataFormat = switch(channelsPerPixel) {		
+		glDataFormat = switch(channelsPerPixel) {
 			case 1 -> GL_RED;
 			case 2 -> GL_RG;
 			case 3 -> GL_RGB;
@@ -83,8 +93,8 @@ public class ArtboardPalette extends CSTexture {
 				
 		paletteMemory = BufferUtils.createByteBuffer(paletteHeight * paletteWidth * channelsPerPixel);
 		
-		put(this.new PalettePixel(transparentBackgroundDarkerPixel));
-		put(this.new PalettePixel(transparentBackgroundLighterPixel));
+		put(new PalettePixel(darkerCheckeredBackground));
+		put(new PalettePixel(lighterCheckeredBackground));
 		
 	}
 	
@@ -102,16 +112,60 @@ public class ArtboardPalette extends CSTexture {
 		}
 		
 		if(currentRow == paletteHeight) {
+
+			paletteHeight += resizeInterval;
+			resizeInterval <<= 1;
 			
-			//TODO: handle this by resizing the palette and image texture.
-			System.err.println("Palette is too large: " + (255 * 255) + " colors is max amount allowed.");
-			currentRow = 0;
+			resizeAndCopy(paletteWidth , paletteHeight);
 			
 		}
 		
 	}
 	
-	void put(final int xIndex , final int yIndex , final PalettePixel writeThis) {
+	void setPaletteMemory(ByteBuffer texels , int width , int height) {
+		
+		activate();
+		glTexSubImage2D(GL_TEXTURE_2D , 0 , 0 , 0 , width , height , glDataFormat , glChannelType , texels);
+		deactivate();
+		
+	}
+	
+	void resizeAndCopy(int newWidth , int newHeight) {
+		
+		syserr("Resizing, new palette is " + paletteWidth + " x " + paletteHeight);
+		
+		ByteBuffer newPaletteMemory = BufferUtils.createByteBuffer(paletteHeight * paletteWidth * channelsPerPixel);
+		int palettePosition = paletteMemory.position();
+		paletteMemory.position(0);
+		memCopy(paletteMemory , newPaletteMemory);
+		
+		activate();			
+		glTexImage2D(
+			GL_TEXTURE_2D , 
+			0 , 
+			glDataFormat , 
+			paletteWidth , 
+			paletteHeight , 
+			0 , 
+			glDataFormat , 
+			glChannelType , 
+			newPaletteMemory
+		);
+		
+		newPaletteMemory.position(palettePosition);
+		paletteMemory = newPaletteMemory;
+		
+		deactivate();
+		
+	}
+	
+	/**
+	 * 
+	 * @param xIndex
+	 * @param yIndex
+	 * @param writeThis
+	 */
+	public void put(final int xIndex , final int yIndex , final PalettePixel writeThis) {
 
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 
@@ -124,7 +178,7 @@ public class ArtboardPalette extends CSTexture {
 			writeThis.buffer(paletteMemory);
 			paletteMemory.position(position);
 			
-			imageDataAsPtr.rewind();
+			imageDataAsPtr.flip();
 			
 			activate();
 			glTexSubImage2D(GL_TEXTURE_2D , 0 , xIndex , yIndex , 1 , 1 , glDataFormat , glChannelType , imageDataAsPtr);
@@ -176,7 +230,7 @@ public class ArtboardPalette extends CSTexture {
 		}
 				  	
 		short[] result;
-				
+		
 		if(!foundMatch) {
 			
 			put(colors);
@@ -205,10 +259,90 @@ public class ArtboardPalette extends CSTexture {
 		
 	}
 
-	public void toPNG(String filePathAndName) {
+	public int width() {
+		
+		return paletteWidth;
+		
+	}
+	
+	public int height() {
+		
+		return paletteHeight;
+		
+	}
+	
+	public int currentCol() {
+		
+		return currentCol;
+		
+	}
 
-		stbi_write_png(filePathAndName , paletteWidth , paletteHeight , channelsPerPixel , texelData() , 0);
+	public int currentRow() {
+		
+		return currentRow;
+		
+	}
+	
+	/**
+	 * Exports this palette as a standalone image.
+	 * 
+	 * @param folder — folder this will export to
+	 * @param fileName — name this file will be
+	 * @param extension — what type of file should be exported
+	 * @param quality — quality value, only used if {@code extension == ExtensionType.JPEG}
+	 */
+	public void exportAsStandaloneImage(CSFolder folder , String fileName , ExportFileTypes extension , int quality) {
+	
+		String name = folder.getRealPath() + CSFolder.separator + fileName + extension.ending;
+		extension.callbackOf().export(name, paletteMemory, paletteWidth, paletteHeight, channelsPerPixel);
+		
+	}
+	
+	public void hideCheckeredBackground() {
+		
+		if(channelsPerPixel == 1 || channelsPerPixel == 3) return;
+		
+		lighterCheckeredBackground[channelsPerPixel - 1] = 0;
+		darkerCheckeredBackground[channelsPerPixel - 1] = 0;
+		
+		put(0 , 0 , new PalettePixel(darkerCheckeredBackground));
+		put(1 , 0 , new PalettePixel(lighterCheckeredBackground));
+		
+	}
+	
+	public void showCheckeredBackground() {
+
+		if(channelsPerPixel == 1 || channelsPerPixel == 3) return;
+		
+		lighterCheckeredBackground[channelsPerPixel - 1] = -1;
+		darkerCheckeredBackground[channelsPerPixel - 1] = -1;
+		
+		put(0 , 0 , new PalettePixel(darkerCheckeredBackground));
+		put(1 , 0 , new PalettePixel(lighterCheckeredBackground));
+		
+	}
+	
+	private void initializeCheckeredBackgroundColors() {
+	
+		if(channelsPerPixel == 2 || channelsPerPixel == 4) {
+			
+			for(int i = 0 ; i < channelsPerPixel - 1; i++) {
 				
+				darkerCheckeredBackground[i] = 77;
+				lighterCheckeredBackground[i] = 115;
+				
+			}
+			
+			darkerCheckeredBackground[channelsPerPixel - 1] = -1;
+			lighterCheckeredBackground[channelsPerPixel - 1] = -1;
+			
+		} else for(int i = 0 ; i < channelsPerPixel ; i++) {
+			
+			darkerCheckeredBackground[i] = 77;
+			lighterCheckeredBackground[i] = 115;
+			
+		}
+		
 	}
 	
 	/**
@@ -241,9 +375,18 @@ public class ArtboardPalette extends CSTexture {
 		}
 		
 		PalettePixel(byte[] channelValues) {
-			
+		
 			for(int i = 0 ; i < channelsPerPixel ; i++) setByIndex(channelValues[i] , i);
 									
+		}
+		
+		PalettePixel(byte red , byte green , byte blue , byte alpha) {
+			
+			setByIndex(red , 0);
+			setByIndex(green , 1);
+			setByIndex(blue , 2);
+			setByIndex(alpha , 3);
+			
 		}
 		
 		public void buffer(ByteBuffer buffer) {
@@ -331,45 +474,6 @@ public class ArtboardPalette extends CSTexture {
 			Number[] array = new Number[channelsPerPixel];
 			for(int i = 0 ; i < array.length ; i++) array[i] = index(i);
 			return array;
-			
-		}
-		
-	}
-	
-	public class PalettePosition extends PalettePixel {
-
-		private int 	
-			xIndex ,
-			yIndex
-		;
-		
-		PalettePosition(byte[] channelValues , int xIndex , int yIndex) {
-			
-			super(channelValues);
-			
-			this.xIndex = xIndex;
-			this.yIndex = yIndex;
-			
-		}
-		
-		PalettePosition(ByteBuffer container , int xIndex , int yIndex) {
-			
-			super(container , xIndex , yIndex);			
-			
-			this.xIndex = xIndex;
-			this.yIndex = yIndex;
-			
-		}
-		
-		public int xIndex() {
-			
-			return xIndex;
-			
-		}
-
-		public int yIndex() {
-			
-			return yIndex;
 			
 		}
 		

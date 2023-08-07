@@ -10,24 +10,23 @@ import static org.lwjgl.util.lz4.LZ4.LZ4_decompress_safe;
 
 import static cs.core.utils.CSUtils.require;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.function.Consumer;
 
 import cs.core.utils.data.CSCHashMap;
-import cs.csss.core.Engine;
 
 /**
  * 
  * Layers are containers of modifications of the Artboard. This class is the base class for all layer types.
+ * 
+ * <p>
+ * 	All layers in Sprite Studio are purely-CPU, Java objects. They do not interact with native memory or VRAM at all. One extender of 
+ * 	{@code Layer} can be 'active' at a time. When any attempt to modify the current artboard is made, the active layer stores the 
+ * 	modification. From there, if by the semantics of the layer, a visual change of the artboard should be made, the textures of the artboard
+ * 	are updated.
+ * </p>
  * 
  * @author Chris Brown
  *
@@ -208,6 +207,28 @@ public abstract class Layer {
 	}
 	
 	/**
+	 * Sets the locked value of this layer directly, doing nothing else.
+	 * 
+	 * @param locked — whether this layer is locked
+	 */
+	void setLock(boolean locked) {
+		
+		this.locked = locked;
+		
+	}
+	
+	/**
+	 * Sets the hiding value of this layer directly, doing nothing else.
+	 * 
+	 * @param hiding — whether this layer is hiding
+	 */
+	void setHiding(boolean hiding) {
+		
+		this.hiding = hiding;
+		
+	}
+	
+	/**
 	 * Hides this layer, making all modifications it makes which are currently visible invisible. 
 	 * 
 	 * @param artboard — the owning artboard
@@ -282,21 +303,26 @@ public abstract class Layer {
 	
 	public abstract  <T extends Layer> void copy(T otherLayer);
 	
+	public final ByteBuffer toByteBuffer() {
+		
+		ByteBuffer buffer = memAlloc(mods() * 10);
+		forEachModification(px -> buffer.putInt(px.textureX).putInt(px.textureY).put((byte) px.lookupX).put((byte) px.lookupY));
+		buffer.flip();
+		return buffer;
+		
+	}
+	
 	public final ByteBuffer encode() {
 		
 		//the buffer sizes are based on the fact that layer pixels are 10 bytes, 8 for position, and 2 for lookup
 		ByteBuffer 	
-			buffer = memAlloc(mods() * 10) ,
+			buffer = toByteBuffer() ,
 			compress = memAlloc(mods() * 10)
 		;
 
-		forEachModification(px -> buffer.putInt(px.textureX).putInt(px.textureY).put((byte) px.lookupX).put((byte) px.lookupY));
-		
-		buffer.flip();
-		
 		int bytes = LZ4_compress_default(buffer , compress);
 		compress.limit(bytes);
-
+		
 		memFree(buffer);
 		
 		return compress;
@@ -305,109 +331,16 @@ public abstract class Layer {
 	
 	public final ByteBuffer decode(ByteBuffer compressed) {
 
-		ByteBuffer decompressed = memAlloc(mods() * 10);
+		ByteBuffer decompressed = memAlloc((width * height) * 10);
 		
 		int bytes = LZ4_decompress_safe(compressed , decompressed);
-
+				
 		require(bytes > 0);
 		
 		decompressed.limit(bytes);
-		
+				
 		return decompressed;
 				
 	}
 		
-	public LayerMeta meta() {
-		
-		return new LayerMeta().bindLocked(locked).bindHiding(hiding).bindName(name);
-		
-	}
-	
-	public void compressToFile(final String filepathToLayerFolder) {
-				
-		Engine.THE_THREADS.async(() -> {
-
-			if(!Files.exists(Paths.get(filepathToLayerFolder))) try {
-			
-				Files.createDirectories(Paths.get(filepathToLayerFolder));
-						
-			} catch (IOException e1) {
-			
-				e1.printStackTrace();
-				throw new IllegalStateException();
-				
-			}
-		
-			ByteBuffer 
-				buffer = memAlloc(width * height * 2) ,
-				compress = memAlloc(width * height * 2)
-			;
-			
-			layerDataStore.forEach(pixel -> buffer.put((byte)pixel.lookupX).put((byte)pixel.lookupY));
-			
-			buffer.flip();
-			
-			int bytes = LZ4_compress_default(buffer , compress);
-			compress.limit(bytes);
-
-			//I use channels because we can write byte buffers directly with them, including offheap ones
-			try(FileChannel writer = new FileOutputStream(filepathToLayerFolder + "/" + name).getChannel()) {
-								
-				writer.write(compress);
-				
-			} catch (FileNotFoundException e) {} catch (IOException e) {
-				
-				e.printStackTrace();
-				throw new IllegalStateException();
-				
-			} finally {
-				
-				memFree(buffer);
-				memFree(compress);
-				
-			}
-			
-		});
-		
-	}
-	
-	public void decompressFromFile(String layerFilePath) {
-		
-		require(Files.exists(Paths.get(layerFilePath)));
-		
-		ByteBuffer 
-			compressed = null ,
-			decompressed = null 
-		;
-		
-		//I use channels because we can write byte buffers directly with them, including offheap ones
-		try(FileChannel reader = new FileInputStream(layerFilePath).getChannel()) {
-			
-			compressed = memAlloc((int)reader.size());
-			decompressed = memAlloc(width * height * 2);
-			
-			reader.read(compressed);
-			
-			compressed.flip();
-			
-			int bytes = LZ4_decompress_safe(compressed , decompressed);
-
-			require(bytes > 0);
-			
-			decompressed.limit(bytes);
-			
-		} catch (FileNotFoundException e) {} catch (IOException e) {
-
-			e.printStackTrace();
-			throw new IllegalStateException();
-			
-		} finally {
-			
-			memFree(compressed);
-			memFree(decompressed);
-			
-		}
-		
-	}
-	
 }

@@ -2,13 +2,12 @@ package cs.csss.misc.files;
 
 import static cs.core.utils.CSUtils.require;
 import static cs.core.utils.CSUtils.specify;
-import static cs.csss.utils.UIUtils.toByte;
+import static cs.csss.ui.utils.UIUtils.toByte;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.function.BiConsumer;
@@ -26,42 +25,18 @@ import cs.core.utils.ShortSupplier;
 
 /**
  * Used to define a file format which can be written to or read in according to the specification defined by the {@code add} methods.
- * <br><br>
+ * <p>
  * Instances of this class are made of up of entries. These entries contain all that is needed to write an object to a file as binary.
  * {@code FileComposition}s can be used for writing files, but they can also be used to read files that were written with a 
  * {@code FileComposition}. This is why you can add entries to instances of this class without providing any other data in some cases. 
  * Depending on the type of data wrapped by the entry, it can be written or read automatically because this class provides standard ways to
  * write primitive types, the {@code String} type, and arrays of the primitive types and {@code String} type.
- * <br><br>
- * Instances of this class can also enforce an access mode. The can be one of: 
- * <ul>
- * 	<li>
- * 		{@code MODE_READ_WRITE}
- * 	</li>
- * 	<li>
- * 		{@code MODE_WRITE}
- * 	</li>
- * 	<li>
- * 		{@code MODE_READ}
- * 	</li>
- * </ul>
- *  
- *  If an operation that does not comport with the access mode is attempted, an error is thrown.
+ * </p>
  *  
  * @author Chris Brown
  *
  */
-public class FileComposition implements Iterable<cs.csss.misc.files.FileComposition.FileEntry> {
-
-	/**
-	 * Modes of this file composition. 
-	 * 
-	 */
-	public static final int
-		MODE_READ_WRITE = 0b11 ,
-		MODE_WRITE		= 0b01 ,
-		MODE_READ		= 0b10
-	;
+public class FileComposition implements Iterable<FileEntry> {
 
 	/*
 	 * Used for list prefix size calculations.
@@ -242,8 +217,9 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	/*
 	 * The following 3 methods are used to compute the number of bytes to precede a list notating the list's size. File Composition stores
 	 * list lengths preceding their contents in files. Instead of using a flat 4 byte size value, we choose a size as a function of the 
-	 * number of elements in the list. This means the preceding size is [1 , 4]. This also means that we lose out on a significant number
-	 * of elements a single list can store because the highest two bits are used to store the number of bytes the size will take up.
+	 * number of elements in the list. This means the number of bytes preceding a list, which contains that list's sizesize is [1 , 4]. 
+	 * This also means that we lose out on a significant number of elements a single list can store because the highest two bits are used 
+	 * to store the number of bytes the size will take up.
 	 * 
 	 * With two bits, the greatest value we can store is 3. So at least one byte is always used to store the list size. The last two bits
 	 * of this number contain the amount of bytes to read forward and compose into a list size in elements. Since the user will know the
@@ -330,26 +306,16 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	
 	private final LinkedList<FileEntry> data = new LinkedList<>(); 
 	
-	public int mode = MODE_READ_WRITE;
-	
 	private int fileSizeBytes = 0;
 	
 	protected FileComposition(FileComposition source) {
 		
 		source.data.forEach(entry -> data.add(new FileEntry(entry)));
-		this.mode = source.mode;
 		this.fileSizeBytes = source.fileSizeBytes;
 		
 	}
 	
 	public FileComposition() {}
-	
-	public FileComposition(int mode) {
-		
-		specify(mode <= MODE_READ_WRITE && mode > 0 , "Invalid Mode Parameter");
-		this.mode = mode;
-		
-	}
 	
 	/**
 	 * Adds a byte and binds its value for writing.
@@ -360,7 +326,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addByte(String name , byte value) { 
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);		
+		verifyName(name);		
 		fileSizeBytes += 1;		
 		data.add(new FileEntry(value , 1 , name , writeByte , readByte));	
 		return this;
@@ -376,7 +342,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addByte(String name , ByteSupplier byteGetter) { 
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);		
+		verifyName(name);		
 		fileSizeBytes += 1;		
 		data.add(new FileEntry(1 , () -> byteGetter.getAsByte() , name , writeByte , readByte));	
 		return this;
@@ -391,7 +357,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addByte(String name) {
 
-		verifyMode(MODE_READ) ; verifyName(name);		
+		verifyName(name);		
 		data.add(new FileEntry(name , writeByte, readByte));		
 		return this;
 		
@@ -406,7 +372,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addShort(String name , short value) {
 
-		verifyMode(MODE_WRITE) ; verifyName(name);		
+		verifyName(name);		
 		fileSizeBytes += 2;		
 		data.add(new FileEntry(value , 2 , name , writeShort , readShort));
 		return this;
@@ -422,7 +388,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addShort(String name , ShortSupplier shortGetter) {
 
-		verifyMode(MODE_WRITE) ; verifyName(name);		
+		verifyName(name);		
 		fileSizeBytes += 2;		
 		data.add(new FileEntry(2 , () -> shortGetter.getAsShort() , name , writeShort , readShort));
 		return this;
@@ -437,7 +403,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addShort(String name) {
 
-		verifyMode(MODE_READ) ; verifyName(name);	
+		verifyName(name);	
 		data.add(new FileEntry(name , writeShort , readShort));		
 		return this;
 		
@@ -452,7 +418,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addInt(String name , int value) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);		
+		verifyName(name);		
 		fileSizeBytes += 4;		
 		data.add(new FileEntry(value , 4 , name , writeInt , readInt));
 		return this;
@@ -468,7 +434,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addInt(String name , IntSupplier intGetter) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);		
+		verifyName(name);		
 		fileSizeBytes += 4;		
 		data.add(new FileEntry(4 , () -> intGetter.getAsInt() , name , writeInt , readInt));
 		return this;
@@ -483,7 +449,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addInt(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);		
+		verifyName(name);		
 		data.add(new FileEntry(name , writeInt , readInt));		
 		return this;
 		
@@ -498,7 +464,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addLong(String name , long value) {
 
-		verifyMode(MODE_WRITE) ; verifyName(name);
+		verifyName(name);
 		fileSizeBytes += 8;
 		data.add(new FileEntry(value , 8 , name , writeLong , readLong));
 		return this;
@@ -514,7 +480,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addLong(String name , LongSupplier longGetter) {
 
-		verifyMode(MODE_WRITE) ; verifyName(name);
+		verifyName(name);
 		fileSizeBytes += 8;
 		data.add(new FileEntry(8 , () -> longGetter.getAsLong() , name , writeLong , readLong));
 		return this;
@@ -529,7 +495,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addLong(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);
+		verifyName(name);
 		data.add(new FileEntry(name , writeLong , readLong));
 		return this;
 		
@@ -544,7 +510,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addFloat(String name , float value) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);		
+		verifyName(name);		
 		fileSizeBytes += 4;				
 		data.add(new FileEntry(value , 4 , name , writeFloat , readFloat));
 		return this;
@@ -560,7 +526,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addFloat(String name , FloatSupplier floatGetter) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);		
+		verifyName(name);		
 		fileSizeBytes += 4;				
 		data.add(new FileEntry(4 , () -> floatGetter.getAsFloat() , name , writeFloat , readFloat));
 		return this;
@@ -575,7 +541,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addFloat(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);
+		verifyName(name);
 		data.add(new FileEntry(name , writeFloat , readFloat));
 		return this;
 		
@@ -590,7 +556,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addDouble(String name , double value) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);
+		verifyName(name);
 		fileSizeBytes += 8;				
 		data.add(new FileEntry(value , 8 , name , writeDouble , readDouble));
 		return this;
@@ -606,7 +572,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addDouble(String name , DoubleSupplier doubleGetter) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);
+		verifyName(name);
 		fileSizeBytes += 8;				
 		data.add(new FileEntry(8 , () -> doubleGetter.getAsDouble() , name , writeDouble , readDouble));
 		return this;
@@ -621,7 +587,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addDouble(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);
+		verifyName(name);
 		data.add(new FileEntry(name , writeDouble , readDouble));
 		return this;
 	
@@ -636,7 +602,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addBoolean(String name , boolean value) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);		
+		verifyName(name);		
 		fileSizeBytes += 1;		
 		data.add(new FileEntry(value , 1 , name , writeBoolean , readBoolean));		
 		return this;
@@ -652,7 +618,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addBoolean(String name , BooleanSupplier booleanGetter) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);		
+		verifyName(name);		
 		fileSizeBytes += 1;		
 		data.add(new FileEntry(1 , () -> booleanGetter.getAsBoolean() , name , writeBoolean , readBoolean));		
 		return this;
@@ -667,7 +633,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addBoolean(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);		
+		verifyName(name);		
 		data.add(new FileEntry(name , writeBoolean , readBoolean));		
 		return this;
 		
@@ -682,7 +648,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addCharacter(String name , char value) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);		
+		verifyName(name);		
 		fileSizeBytes += 2;				
 		data.add(new FileEntry(value , 2 , name , writeChar , readChar));		
 		return this;
@@ -698,7 +664,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addCharacter(String name , CharSupplier charGetter) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);		
+		verifyName(name);		
 		fileSizeBytes += 2;				
 		data.add(new FileEntry(2 , () -> charGetter.getAsChar() , name , writeChar , readChar));		
 		return this;
@@ -713,7 +679,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addCharacter(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);		
+		verifyName(name);		
 		data.add(new FileEntry(name , writeChar , readChar));		
 		return this;
 		
@@ -728,7 +694,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addString(String name , String value) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);	
+		verifyName(name);	
 		int prefixSize = listSizePrefixSize(value.length());
 		int dataSize = (value.length() + prefixSize); 		
 		fileSizeBytes += dataSize;		
@@ -745,7 +711,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addString(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);
+		verifyName(name);
 		data.add(new FileEntry(name , writeString , readString));
 		return this;
 		
@@ -790,7 +756,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addByteArray(String name , byte[] array) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);
+		verifyName(name);
 		int prefixSize = listSizePrefixSize(array.length);
 		fileSizeBytes += prefixSize + array.length;
 		data.add(new FileEntry(array , prefixSize + array.length , name , writeByteArray , readByteArray));
@@ -806,7 +772,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addByteArray(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);
+		verifyName(name);
 		data.add(new FileEntry(name , writeByteArray , readByteArray));
 		return this;
 		
@@ -821,7 +787,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addShortArray(String name , short[] array) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);
+		verifyName(name);
 		int arraySize = listSizePrefixSize(array.length) + (array.length * 2); 
 		fileSizeBytes += arraySize;
 		data.add(new FileEntry(array , arraySize , name , writeShortArray , readShortArray));
@@ -837,7 +803,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addShortArray(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);
+		verifyName(name);
 		data.add(new FileEntry(name , writeShortArray , readShortArray));
 		return this;
 		
@@ -852,7 +818,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addIntArray(String name , int[] array) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);
+		verifyName(name);
 		int arraySize = listSizePrefixSize(array.length) + (array.length * 4); 
 		fileSizeBytes += arraySize;
 		data.add(new FileEntry(array , arraySize , name , writeIntArray , readIntArray));
@@ -868,7 +834,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addIntArray(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);
+		verifyName(name);
 		data.add(new FileEntry(name , writeIntArray , readIntArray));
 		return this;
 		
@@ -883,7 +849,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addLongArray(String name , long[] array) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);
+		verifyName(name);
 		int arraySize = listSizePrefixSize(array.length) + (array.length * 8); 
 		fileSizeBytes += arraySize;
 		data.add(new FileEntry(array , arraySize , name , writeLongArray , readLongArray));
@@ -899,7 +865,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addLongArray(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);
+		verifyName(name);
 		data.add(new FileEntry(name , writeLongArray , readLongArray));
 		return this;
 		
@@ -914,7 +880,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addFloatArray(String name , float[] array) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);
+		verifyName(name);
 		int arraySize = listSizePrefixSize(array.length) + (array.length * 4); 
 		fileSizeBytes += arraySize;
 		data.add(new FileEntry(array , arraySize , name , writeFloatArray , readFloatArray));
@@ -930,7 +896,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addFloatArray(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);
+		verifyName(name);
 		data.add(new FileEntry(name , writeFloatArray , readFloatArray));
 		return this;
 		
@@ -945,7 +911,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addDoubleArray(String name , double[] array) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);
+		verifyName(name);
 		int arraySize = listSizePrefixSize(array.length) + (array.length * 8); 
 		fileSizeBytes += arraySize;
 		data.add(new FileEntry(array , arraySize , name , writeDoubleArray , readDoubleArray));
@@ -961,7 +927,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addDoubleArray(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);
+		verifyName(name);
 		data.add(new FileEntry(name , writeDoubleArray , readDoubleArray));
 		return this;
 		
@@ -976,7 +942,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addBooleanArray(String name , boolean[] array) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);
+		verifyName(name);
 		int arraySize = listSizePrefixSize(array.length) + (array.length); 
 		fileSizeBytes += arraySize;
 		data.add(new FileEntry(array , arraySize , name , writeBooleanArray , readBooleanArray));
@@ -992,7 +958,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addBooleanArray(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);
+		verifyName(name);
 		data.add(new FileEntry(name , writeBooleanArray , readBooleanArray));
 		return this;
 		
@@ -1007,7 +973,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addCharArray(String name , char[] array) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name);
+		verifyName(name);
 		int arraySize = listSizePrefixSize(array.length) + (array.length * 2); 
 		fileSizeBytes += arraySize;
 		data.add(new FileEntry(array , arraySize , name , writeCharArray , readCharArray));
@@ -1023,7 +989,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addCharArray(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);
+		verifyName(name);
 		data.add(new FileEntry(name , writeCharArray , readCharArray));
 		return this;
 		
@@ -1038,7 +1004,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addStringArray(String name , String[] array) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name); 
+		verifyName(name); 
 		int arraySize = listSizePrefixSize(array.length);
 		for(String x : array) arraySize += listSizePrefixSize(x.length()) + x.length();
 		fileSizeBytes += arraySize;
@@ -1055,7 +1021,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addStringArray(String name) {
 		
-		verifyMode(MODE_READ) ; verifyName(name);
+		verifyName(name);
 		data.add(new FileEntry(name , writeStringArray , readStringArray));
 		return this;
 		
@@ -1079,7 +1045,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 		Function<ByteBuffer , Object> read
 	) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name) ; require(write) ; require(read);		
+		verifyName(name) ; require(write) ; require(read);		
 		fileSizeBytes += sizeBytes;		
 		this.data.add(new FileEntry(data , sizeBytes , name , write , read));		
 		return this;
@@ -1096,7 +1062,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition addData(String name , BiConsumer<Object , ByteBuffer> write, Function<ByteBuffer , Object> read) {
 		
-		verifyMode(MODE_READ) ; verifyName(name) ; require(write) ; require(read);		
+		verifyName(name) ; require(write) ; require(read);		
 		data.add(new FileEntry(name , write, read));
 		return this;
 	
@@ -1118,7 +1084,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 		Function<ByteBuffer , Object> read
 	) {
 		
-		verifyMode(MODE_WRITE) ; verifyName(name) ; require(write) ; require(read);		
+		verifyName(name) ; require(write) ; require(read);		
 		data.add(new FileEntry(sizeBytes , name , write, read));
 		return this;
 	
@@ -1133,7 +1099,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindByte(String name , byte value) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , value , 1);
 		
 	}
@@ -1147,7 +1113,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindShort(String name , short value) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , value , 2);
 		
 	}
@@ -1161,7 +1127,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindInt(String name , int value) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , value , 4);
 		
 	}
@@ -1175,7 +1141,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindLong(String name , long value) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , value , 8);
 		
 	}
@@ -1189,7 +1155,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindFloat(String name , float value) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , value , 4);
 		
 	}
@@ -1203,7 +1169,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindDouble(String name , double value) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , value , 8);
 		
 	}
@@ -1217,7 +1183,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindBoolean(String name , boolean value) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , value , 1);
 		
 	}
@@ -1231,7 +1197,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindChar(String name , char value) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , value , 2);
 		
 	}
@@ -1245,7 +1211,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindString(String name , String value) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , value , value.length() + listSizePrefixSize(value.length()));
 		
 	}
@@ -1259,7 +1225,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindByteArray(String name , byte[] array) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , array , listSizePrefixSize(array.length) + array.length);
 		
 	}
@@ -1273,7 +1239,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindShortArray(String name , short[] array) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , array , listSizePrefixSize(array.length) + (array.length * 2));
 		
 	}
@@ -1287,7 +1253,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindIntArray(String name , int[] array) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , array , listSizePrefixSize(array.length) + (array.length * 4));
 		
 	}
@@ -1301,7 +1267,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindLongArray(String name , long[] array) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , array , listSizePrefixSize(array.length) + (array.length * 8));
 		
 	}
@@ -1315,7 +1281,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindFloatArray(String name , float[] array) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , array , listSizePrefixSize(array.length) + (array.length * 4));
 		
 	}
@@ -1329,7 +1295,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindDoubleArray(String name , double[] array) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , array , listSizePrefixSize(array.length) + (array.length * 8));
 		
 	}
@@ -1343,7 +1309,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindBooleanArray(String name , boolean[] array) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , array , listSizePrefixSize(array.length) + (array.length));
 		
 	}
@@ -1357,7 +1323,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindCharArray(String name , char[] array) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		return bindData(name , array , listSizePrefixSize(array.length) + (array.length * 2));
 		
 	}
@@ -1371,7 +1337,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindStringArray(String name , String[] array) {
 		
-		verifyMode(MODE_WRITE); 
+		
 		int size = listSizePrefixSize(array.length);
 		for(String x : array) size += listSizePrefixSize(x.length()) + x.length();		
 		return bindData(name , array , size);
@@ -1388,7 +1354,6 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public FileComposition bindData(String name , Object data , int sizeBytes) {
 		
-		verifyMode(MODE_WRITE); 
 		fileSizeBytes += sizeBytes;
 		
 		for(FileEntry x : this.data) if(x.name.equals(name)) { 
@@ -1404,7 +1369,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 		return this;
 	
 	}
-		
+	
 	/**
 	 * Writes this File Composition to the file located at {@code filepath}.
 	 * 
@@ -1413,8 +1378,6 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public void write(String filePath) throws IOException {
 
-		verifyMode(MODE_WRITE);
-		
 		try(FileOutputStream writer = new FileOutputStream(filePath)) {
 			
 			write(writer);
@@ -1422,7 +1385,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 		}
 		
 	}
-	
+		
 	/**
 	 * Writes this File Composition to the file open by {@code writer}.
 	 * 
@@ -1431,9 +1394,9 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	 */
 	public void write(final FileOutputStream writer) throws IOException {
 
-		verifyMode(MODE_WRITE);
-		
-		ByteBuffer space = ByteBuffer.allocate(fileSizeBytes);
+		int finalFileSize = fileSizeBytes;
+				
+		ByteBuffer space = ByteBuffer.allocate(finalFileSize);		
 		for(FileEntry x : data) x.write(space);
 		
 		if(space.hasArray()) writer.write(space.array());
@@ -1475,8 +1438,7 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 		
 		byte[] buffer = reader.readAllBytes();
 		fileSizeBytes = buffer.length;
-		ByteBuffer space = ByteBuffer.allocate(fileSizeBytes).put(buffer);
-		space.flip();		
+		ByteBuffer space = ByteBuffer.wrap(buffer);
 		for(FileEntry x : data) x.read(space);
 		
 	}
@@ -1513,6 +1475,12 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 				
 	}
 	
+	/**
+	 * Returns the entry of the given name's object.
+	 * 
+	 * @param name — name of an entry
+	 * @return Object reference to data located within the entry.
+	 */
 	public Object get(String name) {
 
 		for(FileEntry x : data) if(x.name.equals(name)) return x.object;		
@@ -1521,23 +1489,23 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 		
 	}
 		
+	/**
+	 * Finds a file entry by the given name.
+	 * 
+	 * @param name — name of an entry within this File Composition
+	 * @return The File Entry whose name is {@code name}.
+	 */
 	public FileEntry getEntry(String name) {
 		
 		for(FileEntry x : data) if(x.name.equals(name)) return x;		
-		return null;
+		throw new IllegalArgumentException(name + " does not name an entry in this File Composition.");
 		
 	}
-	
+
 	private void verifyName(final String name) {
 		
 		specify(name , "The name of a data entry on a File Specification must not be null.");
 		ensureNoDuplicates(name);
-		
-	}
-	
-	private void verifyMode(int requiredMode) {
-		
-		specify((mode & requiredMode) == requiredMode , "The requested action requires a different access mode.");
 		
 	}
 	
@@ -1548,9 +1516,9 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 	}
 	
 	/**
-	 * Returns the exact size in bytes the file written by this FileComposition will occupy.
+	 * Returns the exact size in bytes the file written by this FileComposition will occupy, including the header if it is enabled.
 	 * 
-	 * @return
+	 * @return Exact size in bytes of a file written using this file composition.
 	 */
 	public int fileSizeBytes() {
 		
@@ -1566,174 +1534,49 @@ public class FileComposition implements Iterable<cs.csss.misc.files.FileComposit
 		return data.iterator();
 		
 	}
-		
-	/**
-	 * Container for individual data entries of the file.
-	 */
-	public class FileEntry {
-		
-		//object to compose 
-		private Object object;
-		//name of this entry
-		public final String name;
-		//size of this entry in bytes
-		private int sizeBytes = -1;
 
-		//read and write functions
-		private BiConsumer<Object , ByteBuffer> write;
-		private Function<ByteBuffer , Object> read;
+	static byte byteByIndex(long number , int byteIndex) {
 		
-		//getter of object. This is prioritized over the object member of this class.
-		private Supplier<Object> getter = null;
+		return (byte) (number >> (byteIndex << 3));
 		
-		private FileEntry(FileEntry copyThis) {
-			
-			this.object = copyThis.object;
-			this.name = copyThis.name;
-			this.sizeBytes = copyThis.sizeBytes;
-			this.write = copyThis.write;
-			this.read = copyThis.read;
-			this.getter = copyThis.getter;
-			
-		}
-		
-		private FileEntry(
-			final String name , 
-			final BiConsumer<Object , ByteBuffer> write , 
-			final Function<ByteBuffer , Object> read
-		) {
-			
-			this.name = name;
-			this.write = write;
-			this.read = read;
-			
-		}
-
-		private FileEntry(
-			Object object , 
-			int sizeBytes ,
-			final String name , 
-			final BiConsumer<Object , ByteBuffer> write , 
-			final Function<ByteBuffer , Object> read
-		) {
-			
-			this.sizeBytes = sizeBytes;
-			this.object = object;
-			this.name = name;
-			this.write = write;
-			this.read = read;
-			
-		}
-
-		private FileEntry(
-			int sizeBytes ,
-			Supplier<Object> getter , 
-			final String name , 
-			final BiConsumer<Object , ByteBuffer> write , 
-			final Function<ByteBuffer , Object> read
-		) {
-			
-			this.sizeBytes = sizeBytes;
-			this.getter = getter;
-			this.name = name;
-			this.write = write;
-			this.read = read;
-			
-		}
-
-		private FileEntry(
-			int sizeBytes ,
-			final String name , 
-			final BiConsumer<Object , ByteBuffer> write , 
-			final Function<ByteBuffer , Object> read
-		) {
-			
-			this.sizeBytes = sizeBytes;			
-			this.name = name;
-			this.write = write;
-			this.read = read;
-			
-		}
-		
-		private FileEntry(String name , Composable composable) {
-			
-			this(composable , composable.sizeBytes() , name , (obj , buffer) -> composable.write(buffer) , composable::read);
-			
-		}
-		
-		private FileEntry(String name , Supplier<Composable> getter) {
-			
-			this(getter , getter.get().sizeBytes() , name , (obj , buffer) ->  getter.get().write(buffer) , getter.get()::read);
-			
-		}
-				
-		/**
-		 * Gets the object contained within this file entry. Note that the returned object will be the one gotten from this object's getter
-		 * if the getter is not null and the mode's {@code WRITE} bit is set, otherwise it will return the object.
-		 * 
-		 * @return The object contained within this file entry.
-		 */
-		public Object object() {
-			
-			return getter != null && (mode & MODE_WRITE) != 0 ? getter.get() : object;
-			
-		}
-		
-		public void write(ByteBuffer buffer) {
-
-			if(getter != null) object = getter.get();
-			
-			specify(object , "Data must be bound before writing a component of a File Composition.");
-			
-			int bufferInitialPosition = buffer.position();
-			write.accept(object, buffer);
-			
-			specify(
-				bufferInitialPosition + sizeBytes == buffer.position() , 
-				"Invalid write operation: " + sizeBytes + " is " + name + "'s size in bytes, but " + 
-				(buffer.position() - bufferInitialPosition) + " bytes were written by " + name + "'s write function."
-			);
-			
-		}
-		
-		public void read(ByteBuffer buffer) {
-		
-			int bufferInitialPosition = buffer.position();			
-			object = read.apply(buffer);
-			sizeBytes = buffer.position() - bufferInitialPosition;
-
-		}
-		
-		/**
-		 * Attempts to return a string representation of the object this FileData contains as accurately as possible.
-		 */
-		@Override public String toString() {
-			
-			String objectString;
-			
-			if(object != null) {
-				
-				if(!object.getClass().isArray()) objectString = object.toString();
-				else {
-					
-					if(object instanceof byte[]) objectString = Arrays.toString((byte[]) object);
-					else if (object instanceof short[]) objectString = Arrays.toString((short[]) object);
-					else if (object instanceof int[]) objectString = Arrays.toString((int[]) object);
-					else if (object instanceof long[]) objectString = Arrays.toString((long[]) object);
-					else if (object instanceof float[]) objectString = Arrays.toString((float[]) object);
-					else if (object instanceof double[]) objectString = Arrays.toString((double[]) object);
-					else if (object instanceof boolean[]) objectString = Arrays.toString((boolean[]) object);
-					else if (object instanceof char[]) objectString = Arrays.toString((char[]) object);
-					else objectString = Arrays.toString((Object[]) object);
-					
-				}
-				
-			} else objectString = "Null";
-			
-			return name + " => " + objectString;
-			
-		}
-				
 	}
 
+	protected static short ofBytes(byte high , byte low) {
+		
+		short asShort = (short) (((short)high << 8) | low);
+		return asShort;
+		
+	}
+
+	protected static int ofBytes(byte high , byte second , byte third , byte low) {
+		
+		int composed = (((int)high << 24) | ((int)second << 16) | ((int)third << 8) | low);
+		return composed;
+		
+	}
+	
+	public static void main(String[] args) {
+		//01101001010101000111101010111011
+		//01101001
+		//01010100
+		//01111010
+		//10111011
+		
+		byte x = 0b01101001;
+		byte y = 0b01010100;
+		byte z = 0b01111010;
+		byte w = (byte) 0b10111011;
+		
+		System.out.println("source: " + 0b01101001010101000111101010111011);
+		
+		int asshort = ofBytes(x , y , z , w);
+		
+		System.out.println(Integer.toBinaryString(-1 & asshort));
+		System.out.println(Integer.toBinaryString(255 & x));
+		System.out.println(Integer.toBinaryString(255 & y));
+		
+		System.out.println(asshort);
+		
+	}
+	
 }

@@ -9,7 +9,7 @@ public class HideLayerEvent extends CSSSEvent {
 	
 	public HideLayerEvent(final Artboard artboard , final int layerToHide) {
 		
-		super(true);
+		super(true , false);
 		
 		this.artboard = artboard;
 		this.layerToHide = layerToHide;

@@ -15,7 +15,7 @@ public class SetActiveColorEvent extends CSSSEvent {
 	
 	public SetActiveColorEvent(final Editor editor , Artboard artboard , final PalettePixel pixel) {
 
-		super(true);
+		super(true , false);
 
 		this.pixel = pixel;
 		this.previous = editor.selectedColors(artboard);

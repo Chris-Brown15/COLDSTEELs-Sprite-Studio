@@ -1,6 +1,6 @@
 package cs.csss.editor.brush;
 
-import static cs.csss.utils.UIUtils.textLength;
+import static cs.csss.ui.utils.UIUtils.textLength;
 
 import static cs.core.ui.CSUIConstants.HOVERING;
 import static cs.core.ui.CSUIConstants.MOUSE_PRESSED;
@@ -9,7 +9,6 @@ import static cs.core.ui.CSUIConstants.MOUSE_RIGHT;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import org.lwjgl.nuklear.NkTextWidthCallbackI;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSElement;
 import cs.csss.editor.Editor;
 import cs.csss.editor.events.CSSSEvent;
@@ -80,11 +79,10 @@ public abstract class CSSSBrush {
 	 * Sets up the toolTip associated with this Brush.
 	 * 
 	 * @param thisBrushsElement — a UI element representing this brush's selector
-	 * @param widthCalc — the width calculating function the current {@code CSNuklear} is using
 	 */
-	public void setupToolTip(CSElement thisBrushsElement , final NkTextWidthCallbackI widthCalc) {
+	public void setupToolTip(CSElement thisBrushsElement) {
 		
-		thisBrushsElement.initializeToolTip(HOVERING|MOUSE_PRESSED, MOUSE_RIGHT , 0 , textLength(widthCalc , toolTip));
+		thisBrushsElement.initializeToolTip(HOVERING|MOUSE_PRESSED, MOUSE_RIGHT , 0 , textLength(toolTip));
 		thisBrushsElement.toolTip.new CSDynamicRow(20).new CSText(toolTip);
 		
 	}

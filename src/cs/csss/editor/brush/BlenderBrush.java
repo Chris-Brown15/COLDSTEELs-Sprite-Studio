@@ -5,7 +5,7 @@ import cs.csss.editor.events.BlendPixelsEvent;
 import cs.csss.editor.events.CSSSEvent;
 import cs.csss.project.Artboard;
 import cs.csss.project.ArtboardPalette.PalettePixel;
-import cs.csss.project.ArtboardTexture.IndexPixel;
+import cs.csss.project.IndexTexture.IndexPixel;
 
 public class BlenderBrush extends CSSSModifyingBrush {
 

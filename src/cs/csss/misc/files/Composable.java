@@ -16,7 +16,7 @@ public interface Composable {
 	 * 
 	 * @param writeTo — buffer to write to
 	 */
-	public void write(ByteBuffer writeTo);
+	public void put(ByteBuffer writeTo);
 	
 	/**
 	 * Reads the bytes of {@code readFrom} to parse an object, returning it.
@@ -24,7 +24,7 @@ public interface Composable {
 	 * @param readFrom — buffer to read from
 	 * @return Instance of an implementor of this.
 	 */
-	public Object read(ByteBuffer readFrom);
+	public Object retrieve(ByteBuffer readFrom);
 	
 	/**
 	 * Returns the exact number of bytes a call to {@code write(this , buffer)} would advance the buffer's position at the current moment.

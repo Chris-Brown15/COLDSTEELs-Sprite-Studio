@@ -3,33 +3,57 @@ package cs.csss.misc.files;
 import static cs.core.utils.CSUtils.specify;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
-public class CSFile extends FileComposition {
+public class CSFile {
 
-	protected String name;
-	protected final Directory location;
+	public static File makeFile(CSFolder location , String name) {
 
-	CSFile(Directory location , File source) {
+		try {
+			
+			Path filePath = Paths.get(location.getRealPath() + CSFolder.separator + name);
+			if(!Files.exists(filePath)) return Files.createFile(filePath).toFile();
+			else return filePath.toFile();
+			
+		} catch (IOException e) {
+			
+			e.printStackTrace();
+			throw new IllegalStateException();
+			
+		}
 		
-		this(location , source.getName() , new FileComposition());
-				
 	}
 	
-	public CSFile(final Directory location , final String name , FileComposition composition) {
+	protected String name;
+	protected final CSFolder location;
+	protected FileComposition composition;
+	
+	public CSFile(final CSFolder location , final String name , FileComposition composition)  {
 
-		super(composition);
+		this(location , name);
+		specify(composition , "File compositions cannot be null");
+		this.composition = composition;
+		makeFile(location , name);
+		
+	}
+
+	public CSFile(final CSFolder location , final String name) {
+
+		this.composition = null;
 		name(name);
 		specify(location , "Parent directory cannot be null");
 		this.location = location;
-		
+				
 	}
-
+	
 	public void name(String newName) {
 		
-		specify(newName , "CSFiles must have a name.");
-		
+		specify(newName , "CSFiles must have a name.");		
 		this.name = newName;
 		
 	}
@@ -42,7 +66,7 @@ public class CSFile extends FileComposition {
 	
 	public String getRealPath() {
 		
-		return location.getRealPath() + Directory.separator + name;
+		return location.getRealPath() + CSFolder.separator + name;
 		
 	}
 	
@@ -52,9 +76,9 @@ public class CSFile extends FileComposition {
 		
 	}
 	
-	public CSFile copyInto(Directory location) {
+	public CSFile copyInto(CSFolder location) {
 		
-		CSFile copy = new CSFile(location , this.name , this);
+		CSFile copy = new CSFile(location , this.name , composition);
 		write();
 		return copy;
 		
@@ -62,12 +86,26 @@ public class CSFile extends FileComposition {
 
 	public void write() {
 		
-		try(FileOutputStream writer = new FileOutputStream(location.getVirtualPath() + Directory.separator + name)) {
+		try(FileOutputStream writer = new FileOutputStream(location.getVirtualPath() + CSFolder.separator + name)) {
 			
-			write(writer);
+			composition.write(writer);
 			
 		} catch (IOException e) {
 			
+			e.printStackTrace();
+			
+		}
+		
+	}
+	
+	public void read() {
+		
+		try(FileInputStream reader = new FileInputStream(location.getVirtualPath() + CSFolder.separator + name)) {
+			
+			composition.read(reader);
+			
+		} catch (IOException e) {
+
 			e.printStackTrace();
 			
 		}

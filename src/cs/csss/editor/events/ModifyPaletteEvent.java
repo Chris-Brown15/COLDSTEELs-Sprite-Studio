@@ -19,7 +19,7 @@ public class ModifyPaletteEvent extends CSSSEvent {
 	
 	public ModifyPaletteEvent(Artboard artboard , int paletteXIndex , int paletteYIndex , PalettePixel newValue) {
 		
-		super(true);
+		super(true , false);
 		this.artboard = artboard;
 		this.xIndex = paletteXIndex;
 		this.yIndex = paletteYIndex;

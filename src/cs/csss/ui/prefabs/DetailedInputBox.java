@@ -10,7 +10,7 @@ import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
 import cs.core.ui.CSNuklear.CSUserInterface;
-import cs.csss.utils.UIUtils;
+import cs.csss.ui.utils.UIUtils;
 
 public class DetailedInputBox {
 
@@ -39,7 +39,7 @@ public class DetailedInputBox {
 		ui = nuklear.new CSUserInterface(title , xPositionRatio , yPositionRatio , widthRatio , heightRatio);
 		ui.options = UI_TITLED|UI_BORDERED;		
 
-		int length = UIUtils.textLength(nuklear.font().width(), description);
+		int length = UIUtils.textLength(description);
 				
 		int realHeight = ui.interfaceHeight();
 		

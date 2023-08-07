@@ -4,7 +4,7 @@ public class NonVisualLayer extends Layer {
 
 	private final int bytesPerPixel;
 	
-	public NonVisualLayer(Artboard artboard , ArtboardPalette palette , NonVisualLayerPrototype prototype) {
+	NonVisualLayer(Artboard artboard , ArtboardPalette palette , NonVisualLayerPrototype prototype) {
 
 		super(prototype.name() , palette , artboard.width() , artboard.height());
 		this.bytesPerPixel = prototype.sizeBytes();		

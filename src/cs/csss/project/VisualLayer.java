@@ -2,11 +2,17 @@ package cs.csss.project;
 
 import cs.csss.project.ArtboardPalette.PalettePixel;
 
+/**
+ * Visual layers are layers that contain visual data (pixels). This class implements {@link cs.csss.project.Layer Layer}, which has more 
+ * information.
+ * 
+ * @author Chris Brown
+ */
 public class VisualLayer extends Layer {
 
 	private int channels;
 	
-	public VisualLayer(Artboard artboard, ArtboardPalette palette , VisualLayerPrototype prototype) {
+	VisualLayer(Artboard artboard, ArtboardPalette palette , VisualLayerPrototype prototype) {
 
 		super(prototype.name() , palette , artboard.width() , artboard.height());		
 		channels = palette.channelsPerPixel();		

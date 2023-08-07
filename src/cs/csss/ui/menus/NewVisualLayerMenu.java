@@ -4,20 +4,17 @@ import static cs.core.ui.CSUIConstants.*;
 
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSCheckBox;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.CSRefInt;
 import cs.core.utils.Lambda;
 import cs.csss.project.CSSSProject;
-import cs.csss.project.VisualLayerPrototype;
 
 public class NewVisualLayerMenu {
 
 	private int channelsPerPixel = -1;
 
 	private volatile boolean isFinished = false;
-	private VisualLayerPrototype newPrototype;
 	private final Lambda onFinish;
 	
 	private final CSTextEditor nameInput;
@@ -39,14 +36,6 @@ public class NewVisualLayerMenu {
 		
 		this.project = project;
 
-		CSCheckBox box = ui.new CSDynamicRow(20).new CSCheckBox("Paletted Rendering" , project.paletted() , () -> {});
-		
-		ui.attachedLayout((context , stack) -> {
-			
-			if(project.paletted()) box.check();
-		
-		});
-		
 		channelsPerPixel = project.channelsPerPixel();
 		
 		CSDynamicRow bpcDisplay = ui.new CSDynamicRow();
@@ -89,7 +78,6 @@ public class NewVisualLayerMenu {
 		
 		if(doNamesMatch.intValue() == 1) return;
 		
-		newPrototype = new VisualLayerPrototype(nameInputString);
 		onFinish.invoke();
 		
 	}
@@ -100,9 +88,15 @@ public class NewVisualLayerMenu {
 		
 	}
 	
-	public VisualLayerPrototype get() {
+	public boolean canCreate() {
 		
-		return newPrototype;
+		return !nameInput.toString().equals("");
+		
+	}
+	
+	public String name() {
+		
+		return nameInput.toString();
 		
 	}
 

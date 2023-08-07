@@ -142,6 +142,16 @@ class ArtboardCopier {
 		
 	}
 	
+	void forEachCopy(Consumer<Artboard> callback) {
+		
+		copyEntries.forEach(entry -> {
+			
+			entry.copies.forEach(callback);
+			
+		});
+		
+	}
+	
 	/**
 	 * 
 	 * Record representing instances of sources and the copies they spawned.

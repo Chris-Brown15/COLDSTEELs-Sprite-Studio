@@ -5,14 +5,14 @@ import static cs.core.ui.CSUIConstants.*;
 import cs.core.ui.CSNuklear;
 import cs.csss.editor.Editor;
 import cs.csss.editor.events.ChangeBackgroundCheckerSizeEvent;
-import cs.csss.project.ArtboardTexture;
+import cs.csss.project.IndexTexture;
 import cs.csss.project.CSSSProject;
 
 public class TransparentBackgroundSettingsMenu extends OptionMenu {
 
 	private int 
-		backgroundWidth = ArtboardTexture.backgroundCheckerWidth ,
-		backgroundHeight = ArtboardTexture.backgroundCheckerHeight
+		backgroundWidth = IndexTexture.backgroundWidth ,
+		backgroundHeight = IndexTexture.backgroundHeight
 	;
 	
 	public TransparentBackgroundSettingsMenu(Editor editor , CSNuklear nuklear , CSSSProject project) {

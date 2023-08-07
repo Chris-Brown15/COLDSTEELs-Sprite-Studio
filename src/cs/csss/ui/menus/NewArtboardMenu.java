@@ -48,8 +48,8 @@ public class NewArtboardMenu {
 		
 	 	noVisualLayerWarning.colorFirst("Warning:" , 0xffee00ff);
 		
-	 	warningRow.doLayout = () -> currentProject.visualLayerPrototypeSize() == 0;
-	 	warningRow2.doLayout = () -> currentProject.visualLayerPrototypeSize() == 0;
+	 	warningRow.doLayout = () -> currentProject.numberVisualLayers() == 0;
+	 	warningRow2.doLayout = () -> currentProject.numberVisualLayers() == 0;
 	 	
 		CSDynamicRow 
 			widthRow = ui.new CSDynamicRow() ,
@@ -97,6 +97,8 @@ public class NewArtboardMenu {
 		
 		width = Integer.parseInt(widthInput);
 		height = Integer.parseInt(heightInput);
+
+		if(width < 0 || height < 0) return;
 		
 		onFinish.invoke();
 		

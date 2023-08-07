@@ -16,7 +16,7 @@ public class RunProjectScriptEvent extends CSSSEvent {
 	
 	public RunProjectScriptEvent(boolean isRenderEvent , CSFile file , CSSSProject project , Editor editor , List<String> arguments) {
 		
-		super(isRenderEvent);
+		super(isRenderEvent , false);
 		
 		this.file = file;
 		this.project = project;

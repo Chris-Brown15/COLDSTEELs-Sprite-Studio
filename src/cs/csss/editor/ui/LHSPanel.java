@@ -3,6 +3,7 @@ package cs.csss.editor.ui;
 import static cs.core.utils.CSUtils.require;
 
 import static cs.core.ui.CSUIConstants.*;
+import static cs.csss.ui.utils.UIUtils.toolTip;
 
 import java.util.Iterator;
 import java.util.function.BooleanSupplier;
@@ -14,13 +15,16 @@ import org.joml.Vector4f;
 
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
+import cs.core.ui.CSNuklear.CSUI.CSLayout.CSButton;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSColorPicker;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
-import cs.csss.core.Engine;
 import cs.csss.editor.Editor;
 import cs.csss.editor.brush.CSSSBrush;
 import cs.csss.editor.brush.CSSSModifyingBrush;
+import cs.csss.engine.Engine;
+import cs.csss.misc.files.CSFolder;
 import cs.csss.project.ArtboardPalette.PalettePixel;
+import cs.csss.project.io.ExportFileTypes;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.ui.prefabs.InputBox;
 import cs.core.utils.CSUtils;
@@ -77,7 +81,7 @@ public class LHSPanel {
 				CSDynamicRow row = ui.new CSDynamicRow(25);
 				CSRadio newRadio = row.new CSRadio(uiText , false , () -> editor.setBrushTo(finalIter));
 				
-				iter.setupToolTip(newRadio, nuklear.font().width());
+				toolTip(newRadio , iter.toolTip);
 				
 				brushRadios[next++] = newRadio;
 				
@@ -120,6 +124,12 @@ public class LHSPanel {
 			
 			ui.new CSDynamicRow().new CSButton("Arrange Animations" , () -> editor.project().arrangeArtboards());
 			
+			ui.new CSDynamicRow().new CSButton("Export palette" , () -> {
+				
+				editor.project().palette().exportAsStandaloneImage(CSFolder.getRoot("debug") , "visual palette" , ExportFileTypes.BMP , 0);
+				
+			});
+			
 		}
 		
 	}	
@@ -130,7 +140,7 @@ public class LHSPanel {
 		
 		row.doLayout = doLayout;
 		
-		row.new CSButton("Input " + color , () -> {
+		CSButton button = row.new CSButton("Input " + color , () -> {
 			
 			new InputBox(nuklear , "Input " + color + " Value As Hex" , .4f , 0.4f , 9 , CSNuklear.HEX_FILTER , res -> {
 				
@@ -146,6 +156,9 @@ public class LHSPanel {
 			});
 			
 		});
+		
+		if(!color.equals("Alpha")) toolTip(button , "Input a " + color + " value directly, in hex.");
+		else toolTip(button , "Input an " + color + " value directly, in hex.");					
 		
 	}
 	

@@ -17,7 +17,7 @@ public class SwitchToNonVisualLayerEvent extends CSSSEvent {
 	
 	public SwitchToNonVisualLayerEvent(Artboard artboard , CSSSProject project , NonVisualLayer nonVisualLayer) {
 		
-		super(true);
+		super(true , false);
 		
 		require(nonVisualLayer instanceof NonVisualLayer);
 		

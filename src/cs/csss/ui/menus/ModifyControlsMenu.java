@@ -1,6 +1,6 @@
 package cs.csss.ui.menus;
 
-import static cs.csss.utils.UIUtils.textLength;
+import static cs.csss.ui.utils.UIUtils.textLength;
 import static cs.core.ui.CSUIConstants.*;
 
 import java.util.Iterator;
@@ -11,8 +11,8 @@ import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
 import cs.core.ui.CSNuklear.CSUI.CSRow;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
-import cs.csss.core.Control;
-import cs.csss.core.Engine;
+import cs.csss.engine.Control;
+import cs.csss.engine.Engine;
 
 public class ModifyControlsMenu {
 
@@ -35,7 +35,7 @@ public class ModifyControlsMenu {
 			
 			CSText controlName = row.new CSText(next.name);
 			
-			controlName.initializeToolTip(MOUSE_PRESSED|HOVERING , MOUSE_RIGHT , 0, textLength(nuklear.font().width() , next.toolTip));
+			controlName.initializeToolTip(MOUSE_PRESSED|HOVERING , MOUSE_RIGHT , 0, textLength(next.toolTip));
 			controlName.toolTip.new CSDynamicRow(20).new CSText(next.toolTip);
 			
 			row.new CSText(() -> "(" + next.keyToString() + ")");

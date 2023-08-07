@@ -9,7 +9,6 @@ import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
 import cs.csss.project.CSSSProject;
-import cs.csss.project.NonVisualLayerPrototype;
 
 public class NewNonVisualLayerMenu {
 	
@@ -18,11 +17,10 @@ public class NewNonVisualLayerMenu {
 	private final Lambda onFinish;
 	
 	private int pixelSize = -1;
+	private String name;
 	
 	private final CSTextEditor nameInput;
-	
-	private NonVisualLayerPrototype prototype;
-	
+
 	public NewNonVisualLayerMenu(CSSSProject project , CSNuklear nuklear) {
 	
 		CSUserInterface ui = nuklear.new CSUserInterface("New Nonvisual Layer" , 0.5f - (0.33f / 2) , 0.5f - (0.25f / 2) , 0.33f , 0.25f);
@@ -57,20 +55,31 @@ public class NewNonVisualLayerMenu {
 	private void tryFinish() {
 		
 		if(pixelSize == -1) return;
-		String name = nameInput.toString();
+		name = nameInput.toString();
 		if(name.equals("")) return;
 		
-		prototype = new NonVisualLayerPrototype(pixelSize , name);
 		onFinish.invoke();
 		
 	}
 	
-	public NonVisualLayerPrototype get() {
+	public int pixelSize() {
 		
-		return prototype;
+		return pixelSize;
+		
+	}
+	
+	public String name() {
+		
+		return name;
 		
 	}
 
+	public boolean canCreate() {
+		
+		return pixelSize != -1 && !name.equals("");
+		
+	}
+	
 	public boolean isFinished() {
 		
 		return isFinished;

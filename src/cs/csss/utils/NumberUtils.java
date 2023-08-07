@@ -135,6 +135,12 @@ public final class NumberUtils {
 		
 	}
 	
+	/**
+	 * Returns the nearest power of two to the given number. The resulting number may or may not be greater to {@code nearestToThis}.
+	 * 
+	 * @param nearestToThis — a number whose nearest power of two is being queried
+	 * @return The number nearest to {@code nearestToThis} given by {@code 2^n}.
+	 */
 	public static int nearestPowerOfTwo(int nearestToThis) {
 		
 		specify(nearestToThis >= 0 , nearestToThis + " is out of bounds.");		
@@ -154,6 +160,26 @@ public final class NumberUtils {
 		if(iter == nearestToThis || iter - nearestToThis < nearestToThis - (iter >> 1)) return iter;
 		//otherwise return the next lowest
 		else return iter >> 1;		
+		
+	}
+	
+	/**
+	 * Returns the number nearest to {@code nearestToThis} that is a power of two. If {@code nearestToThis} is a power of two, it is 
+	 * returned.
+	 * 
+	 * @param nearestToThis — a value whose nearest power of two is being returned
+	 * @return A number given by {@code 2^n} nearest to or equal to {@code nearestToThis}.
+	 */
+	public static int nearestGreaterOrEqualPowerOfTwo(int nearestToThis) {
+
+		specify(nearestToThis >= 0 , nearestToThis + " is out of bounds.");		
+		
+		if(nearestToThis <= 2) return 2;
+		
+		int iter = 2;
+		while(iter < nearestToThis) iter <<= 1;
+		
+		return iter;
 		
 	}
 	

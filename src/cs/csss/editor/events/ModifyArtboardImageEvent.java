@@ -4,7 +4,7 @@ import cs.csss.project.Artboard;
 import cs.csss.project.Layer;
 import cs.csss.project.LayerPixel;
 import cs.csss.project.ArtboardPalette.PalettePixel;
-import cs.csss.project.ArtboardTexture.IndexPixel;
+import cs.csss.project.IndexTexture.IndexPixel;
 
 /**
  * Generic event for modifying an artboard index texture layers. This event will write to the index texture conditionally based on layer 
@@ -30,7 +30,7 @@ public class ModifyArtboardImageEvent extends CSSSEvent {
 
 	public ModifyArtboardImageEvent(Artboard artboard , int xIndex , int yIndex , int width , int height , PalettePixel color) {
 
-		super(true);
+		super(true , false);
 
 		if(xIndex < 0) { 
 			

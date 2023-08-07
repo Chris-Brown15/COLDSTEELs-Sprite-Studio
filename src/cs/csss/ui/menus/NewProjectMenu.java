@@ -5,39 +5,34 @@ import static cs.core.ui.CSUIConstants.*;
 import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
 import static org.lwjgl.nuklear.Nuklear.nk_text_wrap_colored;
 
-import java.io.File;
+import java.util.Iterator;
 import java.util.LinkedList;
 
 import org.lwjgl.nuklear.NkColor;
 
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSCheckBox;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
-import cs.csss.core.Engine;
-import cs.csss.project.CSSSProject;
+import cs.csss.engine.Engine;
+import cs.csss.misc.files.CSFile;
+import cs.csss.misc.files.CSFolder;
 
 public class NewProjectMenu {
 
-	private static final int 
-		ONE_CHANNEL 	= 1 ,
-		TWO_CHANNELS 	= 2 ,
-		THREE_CHANNELS 	= 3 ,
-		FOUR_CHANNELS 	= 4 
-	;
-	
 	private static final LinkedList<String> existingProjects = new LinkedList<>();
 	
 	static {
 		
 		Engine.THE_THREADS.async(() -> {
 			
-			File[] projects = new File(CSSSProject.dataDir).listFiles();
-			for(File x : projects) existingProjects.add(x.getName());			
-						
+			CSFolder projectsFolder = CSFolder.getRoot("data").getSubdirectory("projects");
+			projectsFolder.seekExistingFiles();
+		 	Iterator<CSFile> projects = projectsFolder.files();					
+		 	while(projects.hasNext()) existingProjects.add(projects.next().name());
+		 	
 		});
 		
 	}
@@ -48,8 +43,6 @@ public class NewProjectMenu {
 	private final CSUserInterface ui;
 	private final CSTextEditor textInput;
 
-	private final CSCheckBox palettedCheck;
-	
 	private final Lambda removeUIOnFinish;
 
 	private int channelsPerPixel = -1;
@@ -59,21 +52,18 @@ public class NewProjectMenu {
 		this.ui = nuklear.new CSUserInterface("New Project" , 0.5f - (0.33f / 2) , 0.5f - (0.35f / 2) , 0.33f , 0.35f);
 		ui.options = UI_TITLED|UI_BORDERED;
 
-		palettedCheck = ui.new CSDynamicRow(20).new CSCheckBox("Paletted Rendering" , false , () -> {});
-		
 		ui.new CSDynamicRow(20).new CSText("Select Number of Channels:");
 		CSDynamicRow channelsSelector = ui.new CSDynamicRow();
 		CSRadio 
-			oneChannel = channelsSelector.new CSRadio("Grayscale" , false , () -> channelsPerPixel = ONE_CHANNEL) ,
-			twoChannels = channelsSelector.new CSRadio("Grayscale + Alpha" , false , () -> channelsPerPixel = TWO_CHANNELS) ,
-			threeChannels = channelsSelector.new CSRadio("RGB" , false , () -> channelsPerPixel = THREE_CHANNELS) ,
-			fourChannels = channelsSelector.new CSRadio("RGB + Alpha" , true , () -> channelsPerPixel = FOUR_CHANNELS)
+			oneChannel = channelsSelector.new CSRadio("Grayscale" , false , () -> channelsPerPixel = 1) ,
+			twoChannels = channelsSelector.new CSRadio("Grayscale + Alpha" , false , () -> channelsPerPixel = 2) ,
+			threeChannels = channelsSelector.new CSRadio("RGB" , false , () -> channelsPerPixel = 3) ,
+			fourChannels = channelsSelector.new CSRadio("RGB + Alpha" , true , () -> channelsPerPixel = 4)
 		;
 		
+		channelsPerPixel = 4;
+		
 		CSRadio.groupAll(oneChannel , twoChannels , threeChannels , fourChannels);
-				
-		//not sure why the check is 
-		fourChannels.uncheck();
 		
 		CSDynamicRow nameRow = ui.new CSDynamicRow();
 		nameRow.new CSText("Project Name:");
@@ -85,11 +75,8 @@ public class NewProjectMenu {
 	 			
 	 			nk_layout_row_dynamic(context , 40 , 1);
 	 			NkColor red = NkColor.malloc(stack).set((byte)-1 , (byte)0 , (byte)0 , (byte)-1);
-	 			nk_text_wrap_colored(
-	 				context , 
-	 				x + " already names a project. Overwrites and errors may occur if this name is chosen." , 
-	 				red
-	 			);
+	 			String warningText = x + " already names a project. Overwrites and errors may occur if this name is chosen." ;
+	 			nk_text_wrap_colored(context , warningText, red);
 	 			
 	 		}
 	 		
@@ -114,7 +101,7 @@ public class NewProjectMenu {
 	private void finish() {
 		
 		String input = textInput.toString();
-		if(CSSSProject.isValidProjectName(input) && channelsPerPixel != -1) {
+		if(channelsPerPixel != -1) {
 			
 			projectName = input;
 			removeUIOnFinish.invoke();
@@ -135,12 +122,6 @@ public class NewProjectMenu {
 		
 		canFinish = true;
 		removeUIOnFinish.invoke();
-		
-	}
-	
-	public boolean paletted() {
-		
-		return palettedCheck.checked();
 		
 	}
 	

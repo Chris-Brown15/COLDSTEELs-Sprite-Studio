@@ -4,6 +4,7 @@ import static cs.core.ui.CSUIConstants.*;
 
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUserInterface;
+import cs.csss.ui.utils.UIUtils;
 
 public class NotificationBox {
 
@@ -18,7 +19,7 @@ public class NotificationBox {
 		
 		ui.options = UI_BORDERED|UI_TITLED;
 		
-		int length = UIUtils.textLength(nuklear.font().width(), message);
+		int length = UIUtils.textLength(message);
 				
 		int realHeight = height;
 		

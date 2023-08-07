@@ -5,9 +5,12 @@ import static cs.core.utils.CSUtils.specify;
 /**
  * Store of information for producing layers.
  */
-public record NonVisualLayerPrototype(int sizeBytes , String name){
+public class NonVisualLayerPrototype {
 
 	public static final int MAX_SIZE_BYTES = 4;
+	
+	private final int sizeBytes;
+	private final String name;
 	
 	public static boolean isValidName(final String potentialName) {
 		
@@ -15,7 +18,7 @@ public record NonVisualLayerPrototype(int sizeBytes , String name){
 				
 	}
 	
-	public NonVisualLayerPrototype(int sizeBytes , String name) {
+	NonVisualLayerPrototype(int sizeBytes , String name) {
 		
 		specify(sizeBytes > 0 && sizeBytes < 5 , sizeBytes + " is not a valid number of bytes per pixel. Must be between [1 , 4].");
 		specify(name , "Must enter a name for a layer.");
@@ -25,6 +28,18 @@ public record NonVisualLayerPrototype(int sizeBytes , String name){
 		
 	}
 
+	public int sizeBytes() {
+		
+		return sizeBytes;
+		
+	}
+	
+	public String name() {
+		
+		return name;
+		
+	}
+	
 	@Override public String toString() {
 		
 		StringBuilder builder = new StringBuilder();

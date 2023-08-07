@@ -14,13 +14,19 @@ public abstract class CSSSEvent {
 	public final boolean isRenderEvent;
 
 	/**
+	 * If true, this event is not undoable or redoable.
+	 */
+	public final boolean isTransientEvent;
+	
+	/**
 	 * Creates an event and assigns its {@code isRenderEvent} value.
 	 * 
 	 * @param isRenderEvent
 	 */
-	public CSSSEvent(final boolean isRenderEvent) {
+	public CSSSEvent(final boolean isRenderEvent , final boolean isTransientEvent) {
 		
 		this.isRenderEvent = isRenderEvent;
+		this.isTransientEvent = isTransientEvent;
 		
 	}
 	

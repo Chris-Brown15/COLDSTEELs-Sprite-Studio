@@ -2,7 +2,7 @@ package cs.csss.editor.ui;
 
 import static cs.core.ui.CSUIConstants.*;
 
-import static cs.csss.utils.UIUtils.*;
+import static cs.csss.ui.utils.UIUtils.*;
 
 import static org.lwjgl.nuklear.Nuklear.NK_STATIC;
 import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
@@ -25,12 +25,11 @@ import org.lwjgl.system.MemoryStack;
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
-import cs.csss.core.Engine;
 import cs.csss.editor.Editor;
 import cs.csss.editor.events.HideLayerEvent;
 import cs.csss.editor.events.SwitchToNonVisualLayerEvent;
 import cs.csss.editor.events.SwitchToVisualLayerEvent;
-import cs.csss.project.Artboard;
+import cs.csss.engine.Engine;
 import cs.csss.project.CSSSProject;
 import cs.csss.utils.ConfirmationBox;
 import cs.csss.utils.NotificationBox;
@@ -46,8 +45,7 @@ public class RHSPanel {
 		TIER_THREE_PADDING = 90 ,
 		TIER_FOUR_PADDING = 120 ,
 		TIER_FIVE_PADDING = 150 ,
-		OPTION_TEXT = TEXT_RIGHT|TEXT_MIDDLE
-	;
+		OPTION_TEXT = TEXT_RIGHT|TEXT_MIDDLE;
 	
 	/**
 	 * Denotes whether the user has expanded the specific part of the project heirarchy.
@@ -101,8 +99,8 @@ public class RHSPanel {
 				toMenuSymbol(expandProject) , 
 				current.name() , 
 				TEXT_MIDDLE , 
-				toByte(stack , expandProject))
-			) expandProject = !expandProject;
+				toByte(stack , expandProject)
+			)) expandProject = !expandProject;
 			
 			if(!expandProject) return;
 			
@@ -181,7 +179,7 @@ public class RHSPanel {
 					
 					button(context , TIER_THREE_PADDING , "Delete" , () -> {
 						
-						if(current.visualLayerPrototypeSize() == 1) new NotificationBox(
+						if(current.numberVisualLayers() == 1) new NotificationBox(
 							"Cannot Delete Layer" , 
 							"You cannot delete this layer because at least one visual layer must always be present." ,
 							nuklear
@@ -272,17 +270,7 @@ public class RHSPanel {
 				pad(context , TIER_THREE_PADDING);
 				int rowWidth = (ui.interfaceWidth() - TIER_THREE_PADDING - 54) / 2;
 				nk_layout_row_push(context , rowWidth);
-				if(nk_button_text(context , "Copy")) {
-					
-					editor.rendererPost(() -> {
-						
-						Artboard copy = Artboard.deepCopy(String.valueOf(current.numberNonCopiedArtboards() + 1) , artboard , current);
-						current.addArtboard(copy);						
-						editor.addRender(copy.render());
-						
-					});
-									
-				}
+				if(nk_button_text(context , "Copy")) editor.rendererPost(() -> editor.addRender(current.deepCopy(artboard).render()));
 				
 				nk_layout_row_push(context , rowWidth);
 				if(nk_button_text(context , "Remove")) Engine.THE_TEMPORAL.onTrue(() -> true , () -> editor.rendererPost(() -> {
@@ -292,12 +280,6 @@ public class RHSPanel {
 				}));
 				
 				nk_layout_row_end(context);
-				
-				if(Engine.isDebug()) button(context , TIER_THREE_PADDING , "Write to File" , () -> {
-					
-					artboard.writeToFile("debug/" + editor.project().name() + "/");
-					
-				});
 				
 				//visual layers
 				
@@ -350,15 +332,7 @@ public class RHSPanel {
 						//debug dump to file button
 						
 						if(!Engine.isDebug()) return;
-						
-						button(context , TIER_FIVE_PADDING , "Dump To File" , () -> layer.compressToFile("debug/layers/" + layer.name));
-					
-						button(context , TIER_FIVE_PADDING , "Load From File" , () -> {
-							
-							layer.decompressFromFile("debug/layers/" + layer.name + "/" + layer.name);
-						
-						});
-						
+												
 					}
 
 				});

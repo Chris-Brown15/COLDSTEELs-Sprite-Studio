@@ -1,8 +1,7 @@
 package cs.csss.editor.events;
 
 import static cs.core.utils.CSUtils.specify;
-import static cs.csss.core.Logging.*;
-
+import static cs.csss.engine.Logging.*;
 import static java.lang.Math.min;
 import static java.lang.Math.max;
 
@@ -11,7 +10,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Stack;
 
-import cs.csss.core.Engine;
+import cs.csss.engine.Engine;
 import cs.csss.project.Artboard;
 import cs.csss.project.ArtboardPalette.PalettePixel;
 
@@ -83,7 +82,7 @@ public class FloodFillEvent extends CSSSEvent {
 	
 	public FloodFillEvent(Artboard artboard , PalettePixel activeColor , int clickedX , int clickedY ) {
 
-		super(true);
+		super(true , false);
 		
 		this.artboard = artboard;
 		
@@ -341,21 +340,6 @@ public class FloodFillEvent extends CSSSEvent {
 		addMod(western , startingY , (eastern - western) + 1 , 1);
 		
 	}
-	
-	@Override public void _do() {
-
-		Engine.THE_THREADS.fork(
-			3, 
-			() -> initialRow(clickedX , clickedY) , 
-			() -> startNorthernIteration(clickedX , clickedY) , 
-			() -> startSouthernIteration(clickedX , clickedY)
-		).await();
-		
-//		stackApproach();
-		
-		handleMods();
-		
-	}
 
 	private void handleMods() {
 
@@ -375,6 +359,21 @@ public class FloodFillEvent extends CSSSEvent {
 		
 	}
 	
+	@Override public void _do() {
+
+		Engine.THE_THREADS.fork(
+			3, 
+			() -> initialRow(clickedX , clickedY) , 
+			() -> startNorthernIteration(clickedX , clickedY) , 
+			() -> startSouthernIteration(clickedX , clickedY)
+		).await();
+		
+//		stackApproach();
+		
+		handleMods();
+		
+	}
+
 	@Override public void undo() {
 		
 	}

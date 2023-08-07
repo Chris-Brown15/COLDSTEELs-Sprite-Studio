@@ -13,12 +13,6 @@ public class UndoRedoQueue {
 
 	protected CSLinkedRingBuffer<CSSSEvent> queue;
 	
-	public UndoRedoQueue() {
-		
-		queue = new CSLinkedRingBuffer<>(120);
-	
-	}
-
 	public UndoRedoQueue(final int size) {
 		
 		queue = new CSLinkedRingBuffer<>(size);

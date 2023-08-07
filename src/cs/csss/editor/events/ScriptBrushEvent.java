@@ -2,9 +2,9 @@ package cs.csss.editor.events;
 
 public class ScriptBrushEvent extends CSSSEvent {
 
-	public ScriptBrushEvent(boolean isRenderEvent) {
+	public ScriptBrushEvent(boolean isRenderEvent , boolean isTransientEvent) {
 	
-		super(isRenderEvent);
+		super(isRenderEvent , isTransientEvent);
 
 	}
 

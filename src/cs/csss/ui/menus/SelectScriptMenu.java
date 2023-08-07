@@ -14,7 +14,7 @@ import cs.core.ui.CSNuklear.CSUI.CSRow;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
 import cs.csss.misc.files.CSFile;
-import cs.csss.misc.files.Directory;
+import cs.csss.misc.files.CSFolder;
 
 public class SelectScriptMenu {
 
@@ -26,7 +26,7 @@ public class SelectScriptMenu {
 		ui = nuklear.new CSUserInterface("Select a script" , 0.5f - (0.33f / 2) , 0.5f - (0.33f / 2) , 0.33f , 0.33f);
 		ui.options = UI_TITLED|UI_BORDERED;
 		
-		Directory scriptsDir = Directory.getRoot("program").getSubdirectory("scripts").getSubdirectory(scriptDirectory);
+		CSFolder scriptsDir = CSFolder.getRoot("program").getSubdirectory("scripts").getSubdirectory(scriptDirectory);
 		
 		scriptsDir.seekExistingFiles();
 		
