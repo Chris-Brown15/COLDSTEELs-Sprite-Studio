@@ -201,7 +201,7 @@ public class AnimationPanel implements ShutDown {
 			
 			CSRefInt currentAnimationFrameIndex = new CSRefInt(0);
 			
-			animation().forAllFrames(artboard -> {
+			animation().forAllArtboards(artboard -> {
 				
 				int current = currentAnimationFrameIndex.intValue();
 				

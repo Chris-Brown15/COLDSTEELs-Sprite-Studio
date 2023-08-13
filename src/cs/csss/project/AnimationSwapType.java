@@ -18,9 +18,17 @@ package cs.csss.project;
  */
 public enum AnimationSwapType {
 
-	SWAP_BY_TIME ,
-	SWAP_BY_UPDATES ,
+	SWAP_BY_TIME((byte) 0) ,
+	SWAP_BY_UPDATES((byte) 1) ,
 	;
+	
+	public final byte byteValue;
+	
+	AnimationSwapType(byte byteValue) {
+		
+		this.byteValue = byteValue;
+		
+	}
 	
 	/**
 	 * Used in the UI to display the name of the swap type.

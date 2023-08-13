@@ -4,7 +4,7 @@ import static cs.core.utils.CSUtils.specify;
 
 import static org.lwjgl.system.MemoryUtil.memFree;
 
-import static cs.csss.misc.files.FileFormat.*;
+import static cs.csss.misc.files.FileOperations.*;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;

@@ -17,6 +17,7 @@ import cs.core.utils.CSRefInt;
 import cs.core.utils.ShutDown;
 import cs.csss.engine.Engine;
 import cs.csss.project.io.CTSPFile;
+import cs.csss.project.io.ProjectSizeAndPositions;
 import cs.csss.project.io.CTSPFile.AnimationChunk;
 import cs.csss.project.io.CTSPFile.AnimationFrameChunk;
 import cs.csss.project.io.CTSPFile.ArtboardChunk;
@@ -1151,7 +1152,7 @@ public class CSSSProject implements ShutDown {
 				int deltaX = (int) (cursorWorldCoords[0] - animationMidX);
 				int deltaY = (int) (cursorWorldCoords[1] - animationMidY);
 				
-				animation.forAllFrames(artboard -> artboard.translate(deltaX, deltaY));
+				animation.forAllArtboards(artboard -> artboard.translate(deltaX, deltaY));
 				
 				/*
 				 * Resolves collisions between animations and other artboards by iterating over the boards of the animation and all 
@@ -1166,7 +1167,7 @@ public class CSSSProject implements ShutDown {
 					for(Artboard other : allArtboards) if(!animation.hasArtboard(other)) if(ProjectExporter.colliding(artboard, other)) {
 
 						int[] deltas = ProjectExporter.collisionDeltas(artboard , other);
-						animation.forAllFrames(moveArtboard -> resolveCollision(moveArtboard , deltas[0] , deltas[1]));				
+						animation.forAllArtboards(moveArtboard -> resolveCollision(moveArtboard , deltas[0] , deltas[1]));				
 						continue ResolveCollisions;
 						
 					}
@@ -1223,7 +1224,47 @@ public class CSSSProject implements ShutDown {
  		freemoveCheckCollisions = !freemoveCheckCollisions;
  		
  	}
- 	
+
+	/**
+	 * Computes size and position data needed for exporting.
+	 * 
+	 * @return Record storing width, height, and midpoint information.
+	 */
+	public ProjectSizeAndPositions getProjectSizeAndPositions() {
+
+		//gather information about the state of the objects being saved
+		
+		//world coordinates notating the extreme points of the project
+		int 	
+			rightmostX = 0 ,
+			leftmostX = Integer.MAX_VALUE ,
+			uppermostY = 0 ,
+			lowermostY = Integer.MAX_VALUE;
+		
+	 	Iterator<Artboard> artboards = allArtboards();
+		
+	 	while(artboards.hasNext()) {
+			
+			Artboard x = artboards.next();
+			
+			//dont use else if's here because if there is only one artboard, we wont set all values, which we need to do.
+			if(x.rightX() > rightmostX) rightmostX = (int) x.rightX();
+			if(x.leftX() < leftmostX) leftmostX = (int) x.leftX();
+			if(x.topY() > uppermostY) uppermostY = (int) x.topY();
+			if(x.bottomY() < lowermostY) lowermostY = (int) x.bottomY();
+			
+		}
+		
+		int
+			width = rightmostX - leftmostX ,
+			height = uppermostY - lowermostY ,				
+			midpointX = rightmostX - (width / 2) ,
+			midpointY = uppermostY - (height / 2);
+		
+		return new ProjectSizeAndPositions(leftmostX , rightmostX , lowermostY , uppermostY , width , height , midpointX , midpointY);
+		
+	}
+
 	@Override public void shutDown() {
 
 		forEachArtboard(artboard -> engine.removeRender(artboard.render()));		

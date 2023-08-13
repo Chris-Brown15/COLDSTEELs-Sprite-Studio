@@ -22,9 +22,7 @@ import cs.csss.editor.Editor;
 import cs.csss.editor.brush.CSSSBrush;
 import cs.csss.editor.brush.CSSSModifyingBrush;
 import cs.csss.engine.Engine;
-import cs.csss.misc.files.CSFolder;
 import cs.csss.project.ArtboardPalette.PalettePixel;
-import cs.csss.project.io.ExportFileTypes;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.ui.prefabs.InputBox;
 import cs.core.utils.CSUtils;
@@ -123,12 +121,6 @@ public class LHSPanel {
 			debugProjectRow.doLayout = () -> editor.project() == null;
 			
 			ui.new CSDynamicRow().new CSButton("Arrange Animations" , () -> editor.project().arrangeArtboards());
-			
-			ui.new CSDynamicRow().new CSButton("Export palette" , () -> {
-				
-				editor.project().palette().exportAsStandaloneImage(CSFolder.getRoot("debug") , "visual palette" , ExportFileTypes.BMP , 0);
-				
-			});
 			
 		}
 		

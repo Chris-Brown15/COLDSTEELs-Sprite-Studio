@@ -13,8 +13,8 @@ import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
-import cs.csss.project.Animation;
 import cs.csss.project.CSSSProject;
+
 public class NewAnimationMenu {
 
 	private volatile boolean isFinished = false;
@@ -72,7 +72,7 @@ public class NewAnimationMenu {
 	private void attemptFinish() {
 		
 		String input = textInput.toString();
-		if(!nameInUse && Animation.isValidAnimationName(input)) {
+		if(!nameInUse) {
 			
 			animationName = input;
 			finish.invoke();

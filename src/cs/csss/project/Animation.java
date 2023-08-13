@@ -21,6 +21,7 @@ import cs.core.utils.FloatSupplier;
 import cs.core.utils.Timer;
 import cs.csss.editor.ui.AnimationPanel;
 import cs.csss.engine.CSSSCamera;
+import cs.csss.misc.utils.ThrowingConsumer;
 import cs.csss.utils.FloatReference;
 
 /**
@@ -44,12 +45,6 @@ import cs.csss.utils.FloatReference;
  * 
  */
 public class Animation {
-	
-	public static boolean isValidAnimationName(final String prospectiveName) {
-		
-		return true;
-		
-	}
 	
 	private String name;
 	final Vector<AnimationFrame> frames = new Vector<>();
@@ -406,12 +401,18 @@ public class Animation {
 		
 	}
 
-	public void forAllFrames(Consumer<Artboard> callback) {
+	public void forAllArtboards(Consumer<Artboard> callback) {
 		
-		frames.forEach(frame -> callback.accept(frame.board));
+		frames.stream().map(AnimationFrame::board).forEach(callback);
 		
 	}
 
+	public <ThrowType extends Throwable> void forAllFrames(ThrowingConsumer<ThrowType , AnimationFrame> callback) throws ThrowType {
+		
+		for(int i = 0 ; i < frames.size() ; i++) callback.acceptOrThrow(frames.get(i));
+		
+	}
+	
 	public AnimationSwapType defaultSwapType() {
 		
 		return defaultSwapType;
@@ -462,7 +463,7 @@ public class Animation {
 		return frameWidth() * numberFrames();
 		
 	}
-
+	
 	public int indexOf(Artboard artboard) {
 
 		for(int i = 0 ; i < frames.size() ; i++) if(frames.get(i).board == artboard) return i;
@@ -488,4 +489,39 @@ public class Animation {
 		
 	}
 
+	public float leftU(int projectLeftMostX , int projectRightMostX) {
+		
+		if(numberFrames() == 0) return -1f;				
+	 	AnimationFrame firstFrame = frames.get(0);
+	 	float offset = firstFrame.board.leftX() - projectLeftMostX;
+		return Math.abs(offset / (projectRightMostX - projectLeftMostX));
+		
+	}
+	
+	public float bottomV(int projectBottomY , int projectTopY) {
+		
+		if(numberFrames() == 0) return -1f;		
+		AnimationFrame firstFrame = frames.get(0);		
+		float offset = firstFrame.board.bottomY() - projectBottomY;
+		return Math.abs(offset / (projectTopY - projectBottomY));
+		
+	}
+	
+	public float topV(int projectBottomY , int projectTopY) {
+		
+		if(numberFrames() == 0) return -1f;		
+		AnimationFrame firstFrame = frames.get(0);
+		float offset = firstFrame.board.topY() - projectBottomY;
+		return Math.abs(offset / (projectTopY - projectBottomY));
+		
+	}
+	
+	public float widthU(int projectLeftMostX , int projectRightMostX) {
+
+		if(numberFrames() == 0) return -1f;	
+		float projectWidth = projectRightMostX - projectLeftMostX;
+		return Math.abs((float)frameWidth() / projectWidth);
+		
+	}
+	
 }

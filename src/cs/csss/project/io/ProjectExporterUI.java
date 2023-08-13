@@ -49,6 +49,7 @@ public class ProjectExporterUI {
 		exportHiddenLayers ,
 		hideCheckeredBackground ,
 		exportNonVisualLayers ,
+		exportAnimationFiles ,
 		powerOfTwoSizes
 	;
 	
@@ -102,7 +103,8 @@ public class ProjectExporterUI {
 		exportPalette = ui.new CSDynamicRow(25).new CSCheckBox("Export Palettes" , false , () -> {});
 		exportHiddenLayers = ui.new CSDynamicRow(25).new CSCheckBox("Export Hidden Layers" , false , () -> {});
 		exportNonVisualLayers = ui.new CSDynamicRow(25).new CSCheckBox("Export Nonvisual Layers" , false , () -> {});
-		hideCheckeredBackground = ui.new CSDynamicRow(25).new CSCheckBox("Hide Checkered Background" , false , () -> {});		
+		hideCheckeredBackground = ui.new CSDynamicRow(25).new CSCheckBox("Hide Checkered Background" , false , () -> {});
+		exportAnimationFiles = ui.new CSDynamicRow(25).new CSCheckBox("Export Animation Files" , false , () -> {});
 		powerOfTwoSizes = ui.new CSDynamicRow(25).new CSCheckBox("Power Of Two Sizes" , false , () -> {});
 		
 	 	CSDynamicRow freemoveRow = ui.new CSDynamicRow(25);
@@ -157,7 +159,8 @@ public class ProjectExporterUI {
 				hideCheckeredBackground.checked() ,
 				exportNonVisualLayers.checked() ,
 				powerOfTwoSizes.checked() ,
-				exportColor.checked()
+				exportColor.checked() ,
+				exportAnimationFiles.checked()
 			).export();
 			
 			onFinish.invoke();

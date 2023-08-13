@@ -12,6 +12,13 @@ import java.nio.file.Paths;
 
 public class CSFile {
 
+	/**
+	 * Creates a file at the given location of the given name, if none exists already, returning the result.
+	 * 
+	 * @param location — folder to create this file at
+	 * @param name — name of created file
+	 * @return {@link java.io.File File} representing this file. 
+	 */
 	public static File makeFile(CSFolder location , String name) {
 
 		try {

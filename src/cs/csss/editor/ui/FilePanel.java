@@ -2,6 +2,8 @@ package cs.csss.editor.ui;
 
 import static cs.core.utils.CSFileUtils.readAllCharacters;
 
+import java.io.IOException;
+
 import static cs.core.ui.CSUIConstants.*;
 
 import cs.core.ui.CSNuklear;
@@ -10,8 +12,12 @@ import cs.core.ui.CSNuklear.CSUI.CSLayout.CSMenuBar;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSMenuBar.CSMenu;
 import cs.csss.editor.DebugDisabledException;
 import cs.csss.editor.Editor;
+import cs.csss.misc.files.CSFolder;
+import cs.csss.project.Animation;
 import cs.csss.project.ArtboardPalette;
 import cs.csss.project.CSSSProject;
+import cs.csss.project.io.CTSAFile;
+import cs.csss.project.io.CTSAFile.FrameChunk;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
 import cs.core.ui.CSNuklear.CSUI.CSRow;
 import cs.core.ui.CSNuklear.CSUserInterface;
@@ -133,6 +139,46 @@ public class FilePanel {
 				readAllCharacters("assets/shaders/fragmentPaletteShader.glsl")
 			));
 						
+		});
+		
+		debugMenu.new CSDynamicRow().new CSButton("Export Animation" , () -> {
+			
+		 	Animation a = editor.project().currentAnimation();
+			CTSAFile animFile = new CTSAFile(a , editor.project());
+		 	try {
+		 		
+				animFile.write(CSFolder.getRoot("debug").getRealPath());
+				
+			} catch (IOException e) {
+				
+				e.printStackTrace();
+				
+			}
+			
+		});
+
+		debugMenu.new CSDynamicRow().new CSButton("Load Animation" , () -> {
+			
+			String filePath = CSFolder.getRoot("debug").getFile("Default Animation" + CTSAFile.FILE_EXTENSION).getRealPath();
+			CTSAFile animFile = new CTSAFile(filePath);
+			
+		 	try {
+		 		
+				animFile.read();
+				System.out.println(animFile.getAnimationName());		
+				System.out.println(animFile.getNumberFrames());
+				System.out.println(animFile.getLeftU());
+				System.out.println(animFile.getBottomV());
+				System.out.println(animFile.getTopV());
+				System.out.println(animFile.getWidthU());
+				for(FrameChunk x : animFile.getFrames()) System.out.println(x);
+				
+			} catch (IOException e) {
+				
+				e.printStackTrace();
+				
+			}
+			
 		});
 		
 	}

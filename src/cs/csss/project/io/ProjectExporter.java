@@ -11,9 +11,9 @@ import static org.lwjgl.system.MemoryUtil.memAlloc;
 
 import static cs.csss.utils.NumberUtils.nearestGreaterOrEqualPowerOfTwo;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import cs.core.graphics.CSOrthographicCamera;
@@ -219,8 +219,8 @@ public class ProjectExporter {
 		exportHiddenLayers ,		
 		hideCheckeredBackground ,
 		exportNonVisualLayers ,
-		powerOfTwoSizes ,
-		exportAsColor
+		exportAsColor ,
+		exportAnimations
 	;
 	
 	ProjectExporter(
@@ -235,7 +235,8 @@ public class ProjectExporter {
 		boolean hideCheckeredBackground , 
 		boolean exportNonVisualLayers ,
 		boolean powerOfTwoSizes ,
-		boolean exportAsColor
+		boolean exportAsColor ,
+		boolean exportAnimations
 	) {
 
 		this.renderer = renderer;
@@ -248,10 +249,10 @@ public class ProjectExporter {
 		this.exportHiddenLayers = exportHiddenLayers;
 		this.hideCheckeredBackground = hideCheckeredBackground;
 		this.exportNonVisualLayers = exportNonVisualLayers;
-		this.visualChannels = project.channelsPerPixel(); 
-		this.powerOfTwoSizes = powerOfTwoSizes;
+		this.visualChannels = project.channelsPerPixel();
 		this.exportAsColor = exportAsColor;
-		
+		this.exportAnimations = exportAnimations;
+				
 		framebuffer = renderer.make(() -> {
 			
 			Framebuffer newFramebuffer = new Framebuffer();
@@ -260,10 +261,19 @@ public class ProjectExporter {
 			
 		}).get();
 	
-		ExportSizeAndPositions exportInfo = getExportSizeAndPositions();
+		ProjectSizeAndPositions exportInfo = project.getProjectSizeAndPositions();
 
-		exportWidth = exportInfo.width();
-		exportHeight = exportInfo.height();
+		if(powerOfTwoSizes) { 
+			
+			exportWidth = nearestGreaterOrEqualPowerOfTwo(exportInfo.width());
+			exportHeight = nearestGreaterOrEqualPowerOfTwo(exportInfo.height());
+			
+		} else { 
+			
+			exportWidth = exportInfo.width();
+			exportHeight = exportInfo.height();
+		
+		}
 					
 		camera = new CSOrthographicCamera(exportWidth / 2 , exportHeight / 2);
 		camera.translate(-exportInfo.midpointX(), -exportInfo.midpointY() , 0);
@@ -277,6 +287,7 @@ public class ProjectExporter {
 		exportVisual();
 		if(exportNonVisualLayers) exportNonVisualLayers();
 		if(exportPalettes) exportPalettes();
+		if(exportAnimations) exportAnimations();
 		
 		restoreFromExport();
 		
@@ -460,6 +471,29 @@ public class ProjectExporter {
 		exporter.callback().export(totalPath , palette.texelData(), palette.width(), palette.height() , palette.channelsPerPixel());
 		
 	}
+	
+	/**
+	 * Exports all animations of the project in the same directory as all other exported files. The resulting file format, {@code .ctsa},
+	 * is an uncompressed animation file format.
+	 */
+	private void exportAnimations() {
+		
+		project.forEachAnimation(animation -> {
+			
+			CTSAFile ctsaFile = new CTSAFile(animation , project);
+			try {
+				
+				ctsaFile.write(exportFolderPath);
+				
+			} catch (IOException e) {
+				
+				e.printStackTrace();
+				
+			}
+			
+		});
+		
+	}
 
 	/**
 	 * Creates a list of {@code Lambda} to be passed to the thread pool.
@@ -492,53 +526,6 @@ public class ProjectExporter {
 		
 	}
 	
-	/**
-	 * Computes size and position data needed for exporting.
-	 * 
-	 * @return Record storing width, height, and midpoint information.
-	 */
-	private ExportSizeAndPositions getExportSizeAndPositions() {
-
-		//gather information about the state of the objects being saved
-		
-		//world coordinates notating the extreme points of the project
-		int 	
-			rightmostX = 0 ,
-			leftmostX = Integer.MAX_VALUE ,
-			uppermostY = 0 ,
-			lowermostY = Integer.MAX_VALUE;
-		
-	 	Iterator<Artboard> artboards = project.allArtboards();
-		
-	 	while(artboards.hasNext()) {
-			
-			Artboard x = artboards.next();
-			
-			//dont use else if's here because if there is only one artboard, we wont set all values, which we need to do.
-			if(x.rightX() > rightmostX) rightmostX = (int) x.rightX();
-			if(x.leftX() < leftmostX) leftmostX = (int) x.leftX();
-			if(x.topY() > uppermostY) uppermostY = (int) x.topY();
-			if(x.bottomY() < lowermostY) lowermostY = (int) x.bottomY();
-			
-		}
-		
-		int
-			width = rightmostX - leftmostX ,
-			height = uppermostY - lowermostY ,				
-			midpointX = rightmostX - (width / 2) ,
-			midpointY = uppermostY - (height / 2);
-		
-		if(powerOfTwoSizes) { 
-			
-			width = nearestGreaterOrEqualPowerOfTwo(width);
-			height = nearestGreaterOrEqualPowerOfTwo(height);
-			
-		} 
-		
-		return new ExportSizeAndPositions(width , height , midpointX , midpointY);
-		
-	}
-
 	/**
 	 * Creates and initializes a render buffer.
 	 * 
