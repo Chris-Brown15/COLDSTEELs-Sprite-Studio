@@ -5,12 +5,19 @@ import static org.lwjgl.opengl.GL11C.glGetIntegerv;
 import static org.lwjgl.opengl.GL20.glDrawBuffers;
 import static org.lwjgl.opengl.GL30.GL_COLOR_ATTACHMENT0;
 import static org.lwjgl.opengl.GL30.GL_FRAMEBUFFER;
-import static org.lwjgl.opengl.GL30.GL_FRAMEBUFFER_COMPLETE;
+import static org.lwjgl.opengl.GL30.GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT;
+import static org.lwjgl.opengl.GL30.GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER;
+import static org.lwjgl.opengl.GL30.GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT;
+import static org.lwjgl.opengl.GL30.GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE;
+import static org.lwjgl.opengl.GL30.GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER;
+import static org.lwjgl.opengl.GL30.GL_FRAMEBUFFER_UNDEFINED;
+import static org.lwjgl.opengl.GL30.GL_FRAMEBUFFER_UNSUPPORTED;
 import static org.lwjgl.opengl.GL30.GL_MAX_COLOR_ATTACHMENTS;
 import static org.lwjgl.opengl.GL30.glBindFramebuffer;
 import static org.lwjgl.opengl.GL30.glGenFramebuffers;
 import static org.lwjgl.opengl.GL30C.glCheckFramebufferStatus;
 import static org.lwjgl.opengl.GL30C.glDeleteFramebuffers;
+import static org.lwjgl.opengl.GL32.GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS;
 
 import java.nio.IntBuffer;
 
@@ -95,8 +102,19 @@ public class Framebuffer implements ShutDown {
 			glDrawBuffers(drawBuffers);
 			
 		}
+
+		int status = glCheckFramebufferStatus(GL_FRAMEBUFFER); 
 		
-		if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) System.err.println("Framebuffer failure.");
+		switch(status) {
+			case GL_FRAMEBUFFER_UNDEFINED -> System.err.println("GL_FRAMEBUFFER_UNDEFINED");
+			case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT  -> System.err.println("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT ");
+			case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT  -> System.err.println("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT ");
+			case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER -> System.err.println("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER");
+			case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER  -> System.err.println("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER ");
+			case GL_FRAMEBUFFER_UNSUPPORTED  -> System.err.println("GL_FRAMEBUFFER_UNSUPPORTED ");
+			case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE  -> System.err.println("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE ");
+			case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS   -> System.err.println("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS ");
+		}
 		
 		deactivate();
 		

@@ -11,13 +11,12 @@ import static cs.core.utils.CSUtils.specify;
 import static org.lwjgl.opengl.GL30C.GL_RG;
 import static org.lwjgl.opengl.GL30C.GL_UNSIGNED_BYTE;
 import static org.lwjgl.opengl.GL30C.GL_TEXTURE_2D;
-import static org.lwjgl.opengl.GL30C.GL_UNSIGNED_SHORT;
 import static org.lwjgl.opengl.GL30C.glTexSubImage2D;
 import static org.lwjgl.opengl.GL30C.glGetTexImage;
 import static org.lwjgl.opengl.GL45C.glGetTextureSubImage;
-import static org.lwjgl.opengl.GL30C.glTexImage2D;
 import static org.lwjgl.system.MemoryUtil.memAlloc;
 import static org.lwjgl.system.MemoryUtil.memFree;
+
 import java.nio.ByteBuffer;
 
 import cs.core.graphics.CSTexture;
@@ -35,15 +34,14 @@ import cs.csss.misc.utils.FlexableGraphic;
  */
 public class IndexTexture extends CSTexture {
 
-	static int 
+	public static final int 
 		channelsPerPixel = 2 ,
 		bytesPerChannel = 1 ,
 		glDataFormat = GL_RG ,
 		glChannelType = GL_UNSIGNED_BYTE ,
-		pixelSizeBytes = 2		
-	;
+		pixelSizeBytes = 2;
 	
-	protected static final int 
+	public static final int 
 		/**
 		 * min and mag filter MUST be NEAREST!
 		 * <a href="https://stackoverflow.com/questions/73436422/how-to-palettetize-a-2d-texture-in-modern-opengl"></a>
@@ -51,13 +49,11 @@ public class IndexTexture extends CSTexture {
 		 */
 		textureOptions = MIN_FILTER_NEAREST|MAG_FILTER_NEAREST|S_WRAP_MIRRORED|T_WRAP_MIRRORED ,
 		zOffset = 0 , //always 0 for 2D texture as parameter into glGetTextureSubImage
-		depth = 1 //always 1 for 2D texture as parameter to glGetTextureSubImage
-	;
-	
+		depth = 1; //always 1 for 2D texture as parameter to glGetTextureSubImage
+		
 	public static volatile int
 		backgroundWidth = 8 ,
-		backgroundHeight = 8
-	;
+		backgroundHeight = 8;
 
 	public static int channels() {
 		
@@ -67,16 +63,14 @@ public class IndexTexture extends CSTexture {
 	
 	IndexPixel 
 		darkerTransparentBackground = new IndexPixel(0 , 0) ,
-		lighterTransparentBackground = new IndexPixel(1 , 0)
-	;
+		lighterTransparentBackground = new IndexPixel(1 , 0);
 	
 	int 
 		width ,
-		height
-	;
+		height;
 		
 	/**
-	 * Tracks some additional variables but does not modify the behavior of {@linkplain CSTexture#initialize(CSGraphic, int) initialize}.
+	 * Tracks some additional variables but does not modify the behavior of {@linkplain IndexTexture#initialize(CSGraphic, int) initialize}.
 	 */
 	void initialize(int width , int height) {
 
@@ -202,15 +196,23 @@ public class IndexTexture extends CSTexture {
 	}
 	
 	/**
-	 * Gets a {@code ByteBuffer} containing texels of this image.
+	 * Gets a {@code ByteBuffer} containing texels of this image. This method performs some reformatting of the buffer recieved from the 
+	 * GPU, but the caller will recieve a buffer containing the expected contents.
 	 * 
 	 * @param width — width of the region in pixels
 	 * @param height — height of the region in pixels
-	 * @param xOffset — x coordinate of the bottom left pixel to begin at
-	 * @param yOffset — y coordinate of the bottom left pixel to begin at
+	 * @param xIndex — x coordinate of the bottom left pixel to begin at
+	 * @param yIndex — y coordinate of the bottom left pixel to begin at
 	 * @return Buffer containing bytes of pixels at the region specified.
 	 */
-	ByteBuffer texelBuffer(int width , int height , int xOffset , int yOffset) {
+	ByteBuffer texelBufferWithReformat(int width , int height , int xIndex , int yIndex) {
+		
+		specify(width > 0 && width <= this.width , width + " is not a valid width.");
+		specify(height > 0 && height <= this.height, height + " is not a valid height.");
+		specify(xIndex >= 0 && xIndex < this.width , xIndex + " is not a valid x value.");
+		specify(yIndex >= 0 && yIndex < this.height , yIndex + " is not a valid y value.");
+		specify(xIndex + width <= this.width , (xIndex + width) + " is out of bounds x wise.");
+		specify(yIndex + height <= this.height , (yIndex + height) + " is out of bounds y wise.");
 		
 		ByteBuffer texels;
 
@@ -230,7 +232,7 @@ public class IndexTexture extends CSTexture {
 		//activates the texture we are sampling from (this class instance)
 		activate();		
 		//retreives a region of this texture into texels
-		glGetTextureSubImage(textureID , 0 , xOffset , yOffset , zOffset , width , height , depth , glDataFormat , glChannelType , texels);
+		glGetTextureSubImage(textureID , 0 , xIndex , yIndex , zOffset , width , height , depth , glDataFormat , glChannelType , texels);
 		//checks for GL errors
 		ThreadedRenderer.checkErrors();
 		//deactivates this texture
@@ -258,6 +260,46 @@ public class IndexTexture extends CSTexture {
 		memFree(texels);
 
 		return fixedTexels;
+
+	}
+	
+	/**
+	 * Gets a {@code ByteBuffer} containing texels of this image. This method does not reformat the buffer the GPU returns. This method is
+	 * not suitable for most purposes.
+	 * 
+	 * @param width — width of the region in pixels
+	 * @param height — height of the region in pixels
+	 * @param xOffset — x coordinate of the bottom left pixel to begin at
+	 * @param yOffset — y coordinate of the bottom left pixel to begin at
+	 * @return Buffer containing bytes of pixels at the region specified.
+	 */
+	ByteBuffer texelBuffer(int width , int height , int xOffset , int yOffset) {
+
+		specify(width > 0 && width <= this.width , width + " is not a valid width.");
+		specify(height > 0 && height <= this.height, height + " is not a valid height.");
+		specify(xOffset >= 0 && xOffset < this.width , xOffset + " is not a valid x value.");
+		specify(yOffset >= 0 && yOffset < this.height , yOffset + " is not a valid y value.");
+		specify(xOffset + width <= this.width , (xOffset + width) + " is out of bounds x wise.");
+		specify(yOffset + height <= this.height , (yOffset + height) + " is out of bounds y wise.");
+		
+		ByteBuffer texels = memAlloc(width * height * pixelSizeBytes);
+		
+		activate();
+		glGetTextureSubImage(textureID , 0 , xOffset , yOffset , zOffset , width , height , depth , glDataFormat , glChannelType , texels);
+		boolean errored = ThreadedRenderer.checkErrors();
+		
+		if(errored) { 
+			
+			System.err.printf("Values: [%d , %d , %d , %d]\n" , xOffset , yOffset , width , height);
+			
+			memFree(texels);
+			texels = null;
+			
+		}
+		
+		deactivate();
+		
+		return texels;		
 		
 	}
 	
@@ -285,7 +327,7 @@ public class IndexTexture extends CSTexture {
 	
 	IndexPixel getPixelByIndex(int xIndex , int yIndex) {
 		
-		ByteBuffer texelBuffer = texelBuffer(1 , 1 , xIndex , yIndex);
+		ByteBuffer texelBuffer = texelBufferWithReformat(1 , 1 , xIndex , yIndex);
 		IndexPixel pixelValue = getPixel(texelBuffer);		
 		freeTexelBuffer(texelBuffer);
 
@@ -296,86 +338,26 @@ public class IndexTexture extends CSTexture {
 	/**
 	 * Expands this texture by doubling its bytes per channel, allowing for a greater number of indices to be pointed to.
 	 */
-	void resize() {
-		
-		ByteBuffer current = allTexelData();
-		
-		ByteBuffer newTexelBuffer = memAlloc(current.limit() * 2);
-		while(newTexelBuffer.hasRemaining()) newTexelBuffer.put((byte)0).put(current.get());		
-		newTexelBuffer.flip();
-		
-		bytesPerChannel = 2;
-		glChannelType = GL_UNSIGNED_SHORT;
-		pixelSizeBytes = channelsPerPixel * bytesPerChannel;
-		
-		
-		activate();
-		glTexImage2D(GL_TEXTURE_2D , 0 , glDataFormat , width , height , 0 , glDataFormat , glChannelType , newTexelBuffer);
-		deactivate();
-		
-		freeTexelBuffer(current);
-		freeTexelBuffer(newTexelBuffer);
-		
-		
-	}
-	
-	/**
-	 * This class exists mainly because java does not have unsigned primitives. This means that code that wants a java {@code byte} to be 
-	 * unsigned, as it is in the GPU, may have errors which this class tries to fix. As well, there are basically different kinds of pixels
-	 * in this application, index pixels and palette pixels. Palette pixels are more complicated because their number of number of channels 
-	 * per pixel vary. This class attempts to make working with pixels as painless as possible.
-	 * 
-	 * @author Chris Brown
-	 *
-	 */
-	public class IndexPixel {
-	
-		public final short 
-			xIndex ,
-			yIndex
-		;
-		
-		IndexPixel(short xIndex , short yIndex) {
-		
-			specify(xIndex >= 0 , xIndex + " is an invalid x index") ; specify(yIndex >= 0 , yIndex + " is an invalid y index");
-			
-			this.xIndex = xIndex;
-			this.yIndex = yIndex;
-			
-		}	
+//	void resize() {
+//		
+//		ByteBuffer current = allTexelData();
+//		
+//		ByteBuffer newTexelBuffer = memAlloc(current.limit() * 2);
+//		while(newTexelBuffer.hasRemaining()) newTexelBuffer.put((byte)0).put(current.get());		
+//		newTexelBuffer.flip();
+//		
+//		bytesPerChannel = 2;
+//		glChannelType = GL_UNSIGNED_SHORT;
+//		pixelSizeBytes = channelsPerPixel * bytesPerChannel;
+//		
+//		activate();
+//		glTexImage2D(GL_TEXTURE_2D , 0 , glDataFormat , width , height , 0 , glDataFormat , glChannelType , newTexelBuffer);
+//		deactivate();
+//		
+//		freeTexelBuffer(current);
+//		freeTexelBuffer(newTexelBuffer);
+//		
+//	}
 
-		IndexPixel(int xIndex , int yIndex) {
-
-			specify(xIndex >= 0 , xIndex + " is an invalid x index") ; specify(yIndex >= 0 , yIndex + " is an invalid y index");
-			
-			this.xIndex = (short) xIndex;
-			this.yIndex = (short) yIndex;
-			
-		}	
-
-		private IndexPixel(ByteBuffer buffer) {
-			
-		 	xIndex = buffer.get();
-		 	yIndex = buffer.get();
-			
-		}
-
-		public void buffer(ByteBuffer buffer) {
-	
-			//2 is used because each pixel of the image is always two bytes.
-			require(buffer.remaining() >= 2);
-			
-			buffer.put((byte)xIndex);
-			buffer.put((byte)yIndex);
-			
-		}
-		
-		@Override public String toString() {
-			
-			return "Index Pixel -> (" + xIndex + ", " + yIndex + ")";
-			
-		}
-		
-	}
 
 }

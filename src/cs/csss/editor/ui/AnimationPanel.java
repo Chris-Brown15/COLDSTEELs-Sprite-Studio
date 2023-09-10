@@ -11,14 +11,17 @@ import static org.lwjgl.nuklear.Nuklear.nk_group_begin;
 import static org.lwjgl.nuklear.Nuklear.nk_group_end;
 import static org.lwjgl.nuklear.Nuklear.nk_propertyf;
 import static org.lwjgl.nuklear.Nuklear.nk_propertyi;
+import static org.lwjgl.nuklear.Nuklear.nk_selectable_symbol_text;
+import static org.lwjgl.nuklear.Nuklear.nk_spacer;
+
+import static cs.csss.ui.utils.UIUtils.toByte;
+import static cs.core.ui.CSUIConstants.*;
 
 import java.util.function.BooleanSupplier;
 
 import org.joml.Matrix4f;
 import org.lwjgl.nuklear.NkRect;
 import org.lwjgl.system.MemoryStack;
-
-import static cs.core.ui.CSUIConstants.*;
 
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
@@ -50,9 +53,7 @@ public class AnimationPanel implements ShutDown {
 
 	private static final int 
 		textOptions = TEXT_LEFT|TEXT_CENTERED ,
-		toolTipShow = HOVERING|MOUSE_PRESSED
-	;
-	
+		toolTipShow = HOVERING|MOUSE_PRESSED;
 	
 	private final CSNuklear nuklear;	
 	private CSUserInterface ui;
@@ -64,26 +65,23 @@ public class AnimationPanel implements ShutDown {
 	private CSRow topPartSections;	
 	private CSDynamicRow 
 		frameTimeRow ,
-		frameUpdatesRow
-	;
+		frameUpdatesRow;
 
 	private AnimationSwapType[] swapTypes = AnimationSwapType.values();
 	
 	private CSDynamicRow[] swapTypeRows = new CSDynamicRow[swapTypes.length];
-		
+	
 	private int 
 		framePanelX ,
 		framePanelY ,
 		framePanelWidth ,
-		framePanelHeight
-	;
+		framePanelHeight;
 
 	//controls the zoom and translations of the object within the ui panel
 	private float 
 		zoom = 0.3f ,
 		xTranslation = 0, 
-		yTranslation = 0
-	;
+		yTranslation = 0;
 	
 	private final Matrix4f moveToPoint = new Matrix4f().identity();
 	
@@ -139,14 +137,13 @@ public class AnimationPanel implements ShutDown {
 			
 			for(int i = 0 ; i < swapTypes.length ; i++) {
 				
-				int j = i;
-				
+				int j = i;				
 			  	swapTypeRadios[i] = swapTypeRows[i].new CSRadio(
 			  		swapTypes[i].formattedName() , 
 			  		swapTypes[i] == animation().defaultSwapType() , 
 			  		() -> animation().defaultSwapType(swapTypes[j])
 			  	);
-							  	
+			
 			}
 			
 			CSRadio.groupAll(swapTypeRadios);
@@ -200,38 +197,56 @@ public class AnimationPanel implements ShutDown {
 			if(!doLayout.getAsBoolean()) return;
 			
 			CSRefInt currentAnimationFrameIndex = new CSRefInt(0);
-			
+					
 			animation().forAllArtboards(artboard -> {
 				
 				int current = currentAnimationFrameIndex.intValue();
-				
-				nk_layout_row_begin(context , NK_DYNAMIC , 20 , 2);
-				nk_layout_row_push(context , .33f);
-				nk_text(context , "Artboard " + artboard.name , textOptions);
-				nk_layout_row_push(context , .66f);
-				nk_text(context , "Swaps by: " + animation().getFrame(current).swapType().shortenedName() , TEXT_RIGHT);					
-				nk_layout_row_end(context);
-				
-				nk_layout_row_begin(context , NK_DYNAMIC , 30 , 2);					
-				nk_layout_row_push(context , .5f);
-				if(nk_button_text(context , "Go To")) animation().currentFrameIndex(current);					
-				
-				nk_layout_row_push(context , .5f);
-				if(nk_button_text(context , "Custom Time")) editor.startAnimationFrameCustomTimeInput(current);
-				
-				nk_layout_row_end(context);
-				
-				nk_layout_row_begin(context , NK_DYNAMIC , 30 , 2);					
-				nk_layout_row_push(context , .5f);
-				if(nk_button_text(context , "Remove")) editor.eventPush(new ModifyArtboardInAnimationStatusEvent(project, artboard));
-				
-				nk_layout_row_push(context , .5f);
-				if(nk_button_text(context , "Swap Type")) editor.startSetAnimationFrameSwapType(current);
-				
-				nk_layout_row_end(context);
-			
 				currentAnimationFrameIndex.inc();
 				
+				boolean isActiveFrame = animation().currentFrameIndex() == current;
+				
+				int dropdownSymbol = isActiveFrame ? SYMBOL_TRIANGLE_DOWN : SYMBOL_TRIANGLE_RIGHT;
+				
+				nk_layout_row_begin(context , NK_DYNAMIC , 20 , 1);
+				nk_layout_row_push(context , .33f);
+				if(nk_selectable_symbol_text(
+					context , 
+					dropdownSymbol , 
+					"Artboard " + artboard.name , 
+					TEXT_RIGHT , 
+					toByte(stack , isActiveFrame))
+				) animation().currentFrameIndex(current);
+				
+				nk_layout_row_end(context);
+				
+				if(!isActiveFrame) return;
+				
+				nk_layout_row_begin(context , NK_DYNAMIC , 30 , 2);
+				nk_layout_row_push(context , .2f);
+				nk_spacer(context);
+				nk_layout_row_push(context , .4f);
+				nk_text(context , "Swaps by: " + animation().getFrame(current).swapType().shortenedName() , TEXT_LEFT|TEXT_CENTERED);
+				nk_layout_row_end(context);			
+				
+				nk_layout_row_begin(context , NK_DYNAMIC , 30 , 3);
+				nk_layout_row_push(context , .2f);
+				nk_spacer(context);
+				nk_layout_row_push(context , .4f);
+				if(nk_button_text(context , "Custom Time")) editor.startAnimationFrameCustomTimeInput(current);				
+				nk_layout_row_push(context , .4f);
+				if(nk_button_text(context , "Swap Type")) editor.startSetAnimationFrameSwapType(current);				
+				nk_layout_row_end(context);
+				
+				nk_layout_row_begin(context , NK_DYNAMIC , 30 , 3);
+				nk_layout_row_push(context , .2f);
+				nk_spacer(context);
+				nk_layout_row_push(context , .4f);
+				if(nk_button_text(context , "Set Position")) editor.startSetAnimationFramePosition(current);
+				nk_layout_row_push(context , .4f);
+				if(nk_button_text(context , "Remove")) editor.eventPush(new ModifyArtboardInAnimationStatusEvent(project, artboard));
+				nk_layout_row_end(context);
+				
+			
 			});
 			
 		});

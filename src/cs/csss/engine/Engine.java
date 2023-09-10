@@ -23,9 +23,14 @@ import static org.lwjgl.stb.STBImageWrite.stbi_flip_vertically_on_write;
 import static cs.core.utils.CSUtils.wrapTry;
 import static cs.csss.engine.Logging.*;
 
+import cs.coreext.nanovg.CoordinateSpace;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -42,14 +47,20 @@ import cs.core.ui.prefabs.InputBox;
 import cs.core.utils.CSRefInt;
 import cs.core.utils.ShutDown;
 import cs.core.utils.Timer;
+import cs.core.utils.files.TTF;
 import cs.core.utils.threads.Await;
 import cs.core.utils.threads.CSThreads;
+import cs.coreext.nanovg.NanoVG;
+import cs.coreext.nanovg.NanoVGFrame;
+import cs.coreext.nanovg.NanoVGTypeface;
 import cs.coreext.python.CSJEP;
 import cs.csss.editor.Editor;
+import cs.csss.editor.brush.CSSSSelectingBrush;
 import cs.csss.editor.events.MoveLayerRankEvent;
 import cs.csss.editor.events.ShutDownProjectEvent;
 import cs.csss.misc.files.CSFile;
 import cs.csss.misc.files.CSFolder;
+import cs.csss.misc.graphcs.memory.GPUMemoryViewer;
 import cs.csss.project.Animation;
 import cs.csss.project.AnimationFrame;
 import cs.csss.project.AnimationSwapType;
@@ -58,6 +69,7 @@ import cs.csss.project.CSSSProject;
 import cs.csss.project.VisualLayer;
 import cs.csss.project.io.CTSPFile;
 import cs.csss.project.io.ProjectExporterUI;
+import cs.csss.ui.menus.VectorTextMenu;
 import cs.csss.ui.menus.LoadProjectMenu;
 import cs.csss.ui.menus.ModifyControlsMenu;
 import cs.csss.ui.menus.NewAnimationMenu;
@@ -185,6 +197,10 @@ public final class Engine implements ShutDown {
 	
 	private final UserSettings settings = new UserSettings(programRoot);
 	
+	private final NanoVG nanoVG;
+	
+	public final List<NamedNanoVGTypeface> loadedFonts = Collections.synchronizedList(new ArrayList<>());
+	
 	/**
 	 * Constructs the engine and initializes its members.
 	 * <p>
@@ -203,6 +219,11 @@ public final class Engine implements ShutDown {
 		UIUtils.setFontWidthGetter(display.nuklear.font().width());
 		
 		initializeCamera();
+
+		nanoVG = display.renderer.make(() -> new NanoVG(display.window , camera , true)).get();
+		nanoVG.coordinateSpace(CoordinateSpace.WORLD_COORDINATE_SPACE);
+		
+		initializeNanoVGFonts();
 		
 		setControlCallback();
 				
@@ -216,9 +237,9 @@ public final class Engine implements ShutDown {
 		setOnScroll();	
 		setOnMouseInput();		
 		setOnFileDrop();
-		
-		enqueueRender();		
 
+		enqueueRender();	
+		
 	}
 	
 	/**
@@ -264,17 +285,23 @@ public final class Engine implements ShutDown {
 		
 		renderScene = display.renderer.post(() -> {
 			
-			glClearColor(0.15f , 0.15f , 0.15f , 1.0f);
-
 			glClear(GL_COLOR_BUFFER_BIT);
-			int[] framebufferSize = display.window.framebufferSize();
-			glViewport(0 , 0 , framebufferSize[0] , framebufferSize[1]);
-			
-			if(currentProject != null) {
+			//NanoVG modifies blending
+			glBlendFunc(GL_SRC_ALPHA , GL_ONE_MINUS_SRC_ALPHA);
 
-				CSSSProject.currentShader().updatePassVariables(camera.projection() , camera.viewTranslation());				
-				currentProject.renderAllArtboards();
-			
+			try(NanoVGFrame frame = nanoVG.frame()) {
+
+				if(currentProject != null) {
+	
+					CSSSProject.currentShader().updatePassVariables(camera.projection() , camera.viewTranslation());				
+					currentProject.renderAllArtboards();
+					currentProject.renderAllVectorTextBoxes(frame);
+						
+				}
+	
+				editor.renderSelectingBrushRender();				
+				editor.renderSelectingBrushBounder(frame);
+				
 			}
 			
 			//render UI
@@ -428,6 +455,12 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	public NanoVG nanoVG() {
+		
+		return nanoVG;
+		
+	}
+	
 	public CSStandardRenderer renderer() {
 		
 		return display.renderer;
@@ -576,16 +609,13 @@ public final class Engine implements ShutDown {
 	
 	public void startSelectScriptMenu(String scriptSubdirectory , Consumer<CSFile> onComplete) {
 		
-		if(currentProject == null) return;
-		
+		if(currentProject == null) return;		
 		SelectScriptMenu script = new SelectScriptMenu(display.nuklear , scriptSubdirectory);
 		
 		THE_TEMPORAL.onTrue(script::readyToFinish , () -> {
 			
-			CSFile selected;
-			
-			if((selected = script.selectedScript()) == null) return;
-			
+			CSFile selected;			
+			if((selected = script.selectedScript()) == null) return;			
 			onComplete.accept(selected);
 			
 		});
@@ -624,6 +654,39 @@ public final class Engine implements ShutDown {
 			}
 							
 		});
+		
+	}
+	
+	public void startSetAnimationFramePosition(int originalIndex) {
+		
+		Animation current = currentAnimation();
+		
+		new DetailedInputBox(
+			display.nuklear , 
+			"New Position For Frame " + originalIndex , 
+			"Set the new position of frame " + originalIndex + ", from 0 to " + current.numberFrames() ,
+			.5f - (.15f / 2f) ,
+			.5f - (.15f / 2f), 
+			.15f ,
+			.15f ,
+			CSNuklear.DECIMAL_FILTER ,
+			2 ,
+			result -> {
+				
+				try {
+					
+					Integer asInt = Integer.parseInt(result);
+					current.setFramePosition(originalIndex , asInt);
+
+				} catch(NumberFormatException e) {
+					
+					sysDebug(e);
+					
+				}
+								
+			}
+			
+		);
 		
 	}
 	
@@ -723,7 +786,6 @@ public final class Engine implements ShutDown {
 			try {
 				
 				file.read();
-				//TODO
 				display.renderer.post(() -> currentProject(new CSSSProject(this , file)));
 				
 			} catch (FileNotFoundException e) {
@@ -746,9 +808,26 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	public void startAddText() {
+		
+		if(currentProject == null) return;
+		VectorTextMenu menu = new VectorTextMenu(display.nuklear , this , currentProject);
+		
+		THE_TEMPORAL.onTrue(menu::finished, () -> {
+			
+			NamedNanoVGTypeface selected = menu.selectedTypeface();
+			if(selected == null) return;
+			String typed = menu.inputString();
+			
+			currentProject.addVectorTextBox(selected.typeface() , typed);
+			
+		});
+		
+	}
+	
 	public void startProjectSaveAs() {
 
-		new InputBox(display.nuklear , "Save As" , .4f , .4f , 10 , CSNuklear.NO_FILTER , result -> {
+		new InputBox(display.nuklear , "Save As" , .4f , .4f , 999 , CSNuklear.NO_FILTER , result -> {
 			
 			if(result.equals("")) return;
 			saveProject(result);
@@ -837,6 +916,12 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	public CSSSCamera camera() {
+		
+		return camera;
+		
+	}
+	
 	private void initializeDirectories() {
 
 		assetsRoot.seekExistingFiles();
@@ -854,11 +939,15 @@ public final class Engine implements ShutDown {
 		//initialization of rendering
 		display.renderer.post(() -> {
 
+			GPUMemoryViewer.initialize();
+			
 			CSSSProject.initializeArtboardShaders();
 			
 			//initializes the render thread's python interpreter
 			CSJEP.interpreter().initializeCSPythonLibrary();
-			
+
+			glClearColor(0.15f , 0.15f , 0.15f , 1.0f);
+
 			glEnable(GL_BLEND);
 			glBlendEquation(GL_FUNC_ADD);
 			glBlendFunc(GL_SRC_ALPHA , GL_ONE_MINUS_SRC_ALPHA);
@@ -952,6 +1041,14 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	public void resetViewport() {
+		
+		int[] framebufferSize = display.window.framebufferSize();
+		glViewport(0 , 0 , framebufferSize[0] , framebufferSize[1]);
+		glClearColor(0.15f , 0.15f , 0.15f , 1.0f);
+		
+	}
+	
 	public boolean currentlyRendering() {
 		
 		return !renderScene.isFinished();
@@ -963,7 +1060,28 @@ public final class Engine implements ShutDown {
 		return display.window.size();
 		
 	}
-	
+		
+	private void initializeNanoVGFonts() {
+		
+		CSFolder fonts = CSFolder.getRoot("assets").getSubdirectory("fonts");
+		Iterator<CSFile> files = fonts.files();
+		while(files.hasNext()) {
+			
+			CSFile file = files.next();
+			String filepath = file.getRealPath();
+			THE_THREADS.async(() -> {
+				
+				TTF font = new TTF(14 , filepath);
+				NanoVGTypeface nanoFont = nanoVG.createFont(font);
+				loadedFonts.add(new NamedNanoVGTypeface(file.name() , nanoFont));
+				font.shutDown();
+				
+			});
+			
+		}
+		
+	}
+		
 	@Override public void shutDown() {
 		
 		Await writeFiles = THE_THREADS.async(() -> {
@@ -972,10 +1090,18 @@ public final class Engine implements ShutDown {
 			
 		});
 		
+		nanoVG.shutDown();
+		
 		display.renderer.post(() -> CSJEP.interpreter().shutDown());
 		CSJEP.interpreter().shutDown();
 		
 		editor.shutDown();
+		
+		display.window.detachContext();
+		display.window.attachContext();
+
+		if(CSSSSelectingBrush.render != null) CSSSSelectingBrush.render.shutDown();
+		if(currentProject != null) currentProject.shutDown();
 		
 		if(!display.isFreed()) { 
 

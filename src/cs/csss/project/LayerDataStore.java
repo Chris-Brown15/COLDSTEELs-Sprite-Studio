@@ -12,12 +12,21 @@ interface LayerDataStore  {
 	
 	public LayerPixel remove(final int xIndex , final int yIndex);
 	
-	public default LayerPixel[][] get(final int xIndex , final int yIndex , final int width , final int height) {
+	/**
+	 * Gets a two dimensional array of layer modifications representing a subregion of this layer's modification contents.
+	 * 
+	 * @param xIndex — x index of the bottom left corner of the subregion to query
+	 * @param yIndex — y index of the bottom left corner of the subregion to query
+	 * @param width — width of the subregion to query
+	 * @param height — height of the subregion to query
+	 * @return Two dimensional array containing modifications of this layer.
+	 */
+	public default LayerPixel[][] get(int xIndex , int yIndex , final int width , final int height) {
 		
 		LayerPixel[][] region = new LayerPixel[height][width];
-		for(int row = yIndex ; row < yIndex + height ; row++) for(int col = xIndex ; col < xIndex + width ; col++) { 
+		for(int row = 0 ; row < height ; row++ , yIndex++) for(int col = 0 , xOffset = xIndex; col < width ; col++ , xOffset++) {
 			
-			region[row][col] = get(col , row);
+			region[row][col] = get(xOffset , yIndex);
 			
 		}
 		
@@ -31,12 +40,12 @@ interface LayerDataStore  {
 		
 	}
 	
-	public default LayerPixel[][] remove(final int xIndex , final int yIndex , final int width , final int height) {
+	public default LayerPixel[][] remove(int xIndex , int yIndex , final int width , final int height) {
 		
 		LayerPixel[][] region = new LayerPixel[height][width];
-		for(int row = yIndex ; row < yIndex + height ; row++) for(int col = xIndex ; col < xIndex + width ; col++) { 
+		for(int row = 0 ; row < height ; row++ , yIndex++) for(int col = 0 , xOffset = xIndex; col < width ; col++ , xOffset++) {
 			
-			region[row][col] = remove(col , row);
+			region[row][col] = remove(xOffset , yIndex);
 			
 		}
 		

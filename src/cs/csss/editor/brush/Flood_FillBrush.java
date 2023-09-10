@@ -10,7 +10,7 @@ public class Flood_FillBrush extends CSSSBrush {
 
 	public Flood_FillBrush() {
 		
-		super("Flood fill sets all pixels within an enclosed region to the selected color.");
+		super("Flood fill sets all pixels within an enclosed region to the selected color." , false);
 		
 	}
 
@@ -21,6 +21,8 @@ public class Flood_FillBrush extends CSSSBrush {
 	}
 	
 	@Override public boolean canUse(Artboard artboard, Editor editor, int xIndex, int yIndex) {
+		
+		if(!super.canUse(artboard, editor, xIndex, yIndex)) return false;
 		
 		PalettePixel 
 			colorClicked = artboard.getColorPointedToByIndexPixel(xIndex, yIndex) ,

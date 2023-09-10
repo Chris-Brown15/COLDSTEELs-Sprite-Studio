@@ -1,7 +1,7 @@
 package cs.csss.editor.events;
 
 import cs.csss.project.Artboard;
-import cs.csss.project.IndexTexture.IndexPixel;
+import cs.csss.project.IndexPixel;
 import cs.csss.project.Layer;
 import cs.csss.project.LayerPixel;
 import cs.csss.project.VisualLayer;
@@ -32,7 +32,8 @@ public class ErasePixelsEvent extends CSSSEvent {
 
 	@Override public void _do() {
 
-		previousImageRegion = artboard.getRegionOfIndexPixels(xIndex , yIndex , width , height);
+		if(previousImageRegion == null) previousImageRegion = artboard.getRegionOfIndexPixels(xIndex , yIndex , width , height);
+		
 		Layer active = artboard.activeLayer();
 		//will have a nonnegative value when the active layer is visual
 		int activeLayerRank = artboard.isActiveLayerVisual() ? artboard.getLayerRank((VisualLayer)active) : -1;
@@ -57,8 +58,7 @@ public class ErasePixelsEvent extends CSSSEvent {
 		  			
 		  		} else artboard.writeToIndexTexture(x , y , 1 , 1 , artboard.getBackgroundColor(x , y));
 		  				  		
-		  	}
-		  	
+		  	}		  	
 		  	else artboard.writeToIndexTexture(x , y , 1 , 1 , artboard.getBackgroundColor(x , y));
 			
 		}

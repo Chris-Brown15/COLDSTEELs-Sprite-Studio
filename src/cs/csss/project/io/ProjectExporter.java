@@ -1,32 +1,28 @@
 package cs.csss.project.io;
 
-import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
 import static org.lwjgl.opengl.GL11.GL_RGBA;
-import static org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE;
-import static org.lwjgl.opengl.GL11.glClear;
-import static org.lwjgl.opengl.GL11.glClearColor;
-import static org.lwjgl.opengl.GL11.glViewport;
+import static org.lwjgl.opengl.GL11C.glClearColor;
+import static org.lwjgl.opengl.GL11C.glViewport;
 import static org.lwjgl.system.MemoryUtil.memFree;
-import static org.lwjgl.system.MemoryUtil.memAlloc;
-
 import static cs.csss.utils.NumberUtils.nearestGreaterOrEqualPowerOfTwo;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import cs.core.graphics.CSOrthographicCamera;
 import cs.core.graphics.CSStandardRenderer;
 import cs.core.utils.Lambda;
+import cs.coreext.nanovg.NanoVG;
+import cs.coreext.nanovg.NanoVGFrame;
 import cs.csss.engine.Engine;
 import cs.csss.misc.graphcs.framebuffer.Framebuffer;
 import cs.csss.misc.graphcs.framebuffer.RenderBuffer;
-import cs.csss.project.Artboard;
 import cs.csss.project.ArtboardPalette;
 import cs.csss.project.CSSSProject;
 import cs.csss.project.CSSSShader;
 import cs.csss.project.Layer;
+import cs.csss.utils.ByteBufferUtils;
 
 /**
  * Class responsible for exporting projects as images.
@@ -93,135 +89,41 @@ import cs.csss.project.Layer;
  */
 public class ProjectExporter {
 
-	/**
-	 * Returns whether {@code isBetween} is strictly greater than {@code lower} and strictly less than {@code higher}.
-	 * 
-	 * @param isBetween — a number whose status as being between {@code lower} and {@code higher} is being queried
-	 * @param lower — a value {@code isBetween} must be greater than for {@code true} to be returned 
-	 * @param higher — a value {@code isBetween} must be less than for {@code true} to be returned
-	 * @return {@code true} if {@code isBetween} is strictly greater than {@code lower} and strictly less than {@code higher}.
-	 */
-	public static boolean between(int isBetween, int lower , int higher) {
-		
-		return isBetween > lower && isBetween < higher;
-		
-	}
-	
-	/**
-	 * Returns whether {@code artboard1} and {@code artboard2} are colliding <b>horizontally</b>.
-	 * 
-	 * @param artboard1 — an artboard
-	 * @param artboard2 — a second artboard
-	 * @return {@code true} if the artboards are colliding horizontally.
-	 */
-	public static boolean collidingX(Artboard artboard1 , Artboard artboard2) {
-		
-		//two quads are colliding horizontally if one's horizontal positions are between the other's horizontal positions 
-		int
-			a1LX = (int) artboard1.leftX() ,
-			a1RX = (int) artboard1.rightX() ,
-			a2LX = (int) artboard2.leftX() ,
-			a2RX = (int) artboard2.rightX();
-		
-		return between(a1LX , a2LX , a2RX) || between(a2LX , a1LX , a1RX);
-		
-	}
-
-	/**
-	 * Returns whether {@code artboard1} and {@code artboard2} are colliding <b>vertically</b>.
-	 * 
-	 * @param artboard1 — an artboard
-	 * @param artboard2 — a second artboard
-	 * @return {@code true} if the artboards are colliding vertically.
-	 */
-	public static boolean collidingY(Artboard artboard1 , Artboard artboard2) {
-		
-		int
-			a1BY = (int) artboard1.bottomY() ,
-			a1TY = (int) artboard1.topY() ,
-			a2BY = (int) artboard2.bottomY() ,
-			a2TY = (int) artboard2.topY();
-		
-		return between(a1BY , a2BY , a2TY) || between(a2BY , a1BY , a1TY);
-		
-	}
-	
-	/**
-	 * Returns whether {@code artboard1} and {@code artboard2} are colliding. By colliding, we mean they overlap one another.
-	 * 
-	 * @param artboard1 — an artboard
-	 * @param artboard2 — a second artboard
-	 * @return {@code true} if the artboards are colliding both horizontally and vertically.
-	 */
-	public static boolean colliding(Artboard artboard1 , Artboard artboard2) {
-	
-		return collidingX(artboard1 , artboard2) && collidingY(artboard1 , artboard2);
-		
-	}
-	
-	/**
-	 * Returns the distance to translate {@code artboard1} to stop it from colliding with {@code artboard2}. The resulting deltas are 
-	 * invalid if the two artboards are not colliding.
-	 * 
-	 * @param artboard1 — an artboard
-	 * @param artboard2 — a second artboard
-	 * @return Array containing two integers representing the amount to translate {@code artboard1} to stop it from colliding with 
-	 * 		   {@code artboard2}.
-	 */
-	public static int[] collisionDeltas(Artboard artboard1 , Artboard artboard2) {
-		
-		int[] deltas = new int[2];
-		
-		int
-			a1LX = (int) artboard1.leftX() ,
-			a1RX = (int) artboard1.rightX() ,
-			a2LX = (int) artboard2.leftX() ,
-			a2RX = (int) artboard2.rightX() ,
-			a1BY = (int) artboard1.bottomY() ,
-			a1TY = (int) artboard1.topY() ,
-			a2BY = (int) artboard2.bottomY() ,
-			a2TY = (int) artboard2.topY();
-		
-		//x delta
-		if(between(a1LX , a2LX , a2RX)) deltas[0] = a2RX - a1LX;
-		else deltas[0] = a2LX - a1RX;
-		
-		//y delta
-		if(between(a1BY , a2BY , a2TY)) deltas[1] = a2TY - a1BY;
-		//negate this to move the result down
-		else deltas[1] = -(a1TY - a2BY);
-				
-		return deltas;
-		
-	}
-	
 	private final CSStandardRenderer renderer;
-	private final Lambda swapBuffersCallback;
 	private final CSSSProject project;
 	
 	private final Framebuffer framebuffer;	
-	private final CSOrthographicCamera camera;
+	
+	private final Lambda swapBuffersCallback;
 	
 	private final String 
 		exportFolderPath ,
-		visualExportName
-	;
+		visualExportName;
+	
 	private final ArrayList<ExportCallbackAndName> exporters;
+	
+	private final float
+		exportMidX ,
+		exportMidY;
 	
 	private final int 
 		exportWidth ,
 		exportHeight ,
-		visualChannels
-	;
+		visualChannels;
 	
 	private final boolean
 		exportPalettes ,
 		exportHiddenLayers ,		
 		hideCheckeredBackground ,
 		exportNonVisualLayers ,
-		exportAsColor ,
-		exportAnimations
-	;
+		exportAnimations ,
+		exportColor;
+	
+	private final int[] windowSize;
+	
+	private final ImageGrabber imager;
+	
+	private final NanoVG nanoVG;
 	
 	ProjectExporter(
 		CSStandardRenderer renderer , 
@@ -230,6 +132,8 @@ public class ProjectExporter {
 		ArrayList<ExportCallbackAndName> exporters ,
 		String exportFolderPath ,
 		String visualExportName ,
+		NanoVG nanoVG ,
+		int[] windowSize ,
 		boolean exportPalettes , 
 		boolean exportHiddenLayers , 
 		boolean hideCheckeredBackground , 
@@ -240,7 +144,6 @@ public class ProjectExporter {
 	) {
 
 		this.renderer = renderer;
-		this.swapBuffersCallback = swapBuffersCallback;
 		this.project = project;
 		this.exporters = exporters;
 		this.exportFolderPath = exportFolderPath;
@@ -250,9 +153,13 @@ public class ProjectExporter {
 		this.hideCheckeredBackground = hideCheckeredBackground;
 		this.exportNonVisualLayers = exportNonVisualLayers;
 		this.visualChannels = project.channelsPerPixel();
-		this.exportAsColor = exportAsColor;
+		this.exportColor = exportAsColor;
+		
+		this.windowSize = windowSize;
+		this.swapBuffersCallback = swapBuffersCallback;
 		this.exportAnimations = exportAnimations;
-				
+		this.nanoVG = nanoVG;		
+		
 		framebuffer = renderer.make(() -> {
 			
 			Framebuffer newFramebuffer = new Framebuffer();
@@ -270,13 +177,22 @@ public class ProjectExporter {
 			
 		} else { 
 			
-			exportWidth = exportInfo.width();
-			exportHeight = exportInfo.height();
+			exportWidth = (int) Math.ceil(exportInfo.width());
+			exportHeight = (int) Math.ceil(exportInfo.height());
 		
 		}
 					
-		camera = new CSOrthographicCamera(exportWidth / 2 , exportHeight / 2);
-		camera.translate(-exportInfo.midpointX(), -exportInfo.midpointY() , 0);
+		exportMidX = exportInfo.midpointX();
+		exportMidY = exportInfo.midpointY();
+		
+		RenderBuffer renderbuffer = renderer.make(() -> {
+			
+			RenderBuffer newRenderbuffer = new RenderBuffer(exportWidth , exportHeight , GL_RGBA);
+			return newRenderbuffer;
+			
+		}).get();
+
+		imager = new ImageGrabber(framebuffer , renderbuffer , this::render , exportWidth , exportHeight);
 		
 	}
 	
@@ -297,7 +213,7 @@ public class ProjectExporter {
 		
 		if((hideCheckeredBackground)) renderer.post(() -> {
 			
-			project.palette().hideCheckeredBackground();
+			project.visualPalette().hideCheckeredBackground();
 			if(exportNonVisualLayers) project.forEachNonVisualPalette(ArtboardPalette::hideCheckeredBackground);
 			
 		});
@@ -313,46 +229,12 @@ public class ProjectExporter {
 			Framebuffer.deactivate();
 			
 			project.arrangeArtboards();
+
+			glViewport(0 , 0 , windowSize[0] , windowSize[1]);
+			glClearColor(0.15f , 0.15f , 0.15f , 1.0f);
 			
 		});
 				
-	}
-
-	/**
-	 * Renders the project into the given renderbuffer and returns a download of that image.
-	 * 
-	 * @param channels — number of channels to render 
-	 * @return {@code ByteBuffer} containing the resulting render, downloaded.
-	 */
-	private ByteBuffer renderImage(int channels) {
-		
-		CSSSShader shader = exportAsColor ? CSSSProject.thePaletteShader() : CSSSProject.theTextureShader();
-		
-		shader.updatePassVariables(camera.projection(), camera.viewTranslation());
-		
-		int glFormat = GL_RGBA;
-		
-		//render the scene
-		RenderBuffer renderbuffer = initializeRenderBuffer(glFormat);
-		framebuffer.activate();
-		
-		glViewport(0 , 0 , exportWidth , exportHeight);
-		glClearColor(0 , 0 , 0 , 0);
-		glClear(GL_COLOR_BUFFER_BIT);
-		
-		project.renderAllArtboards(shader);
-		
-		swapBuffersCallback.invoke();
-				
-		//resulting data
-		ByteBuffer download = renderbuffer.download(glFormat, GL_UNSIGNED_BYTE);
-		
-		renderbuffer.shutDown();
-		framebuffer.removeColorAttachment(0);
-		Framebuffer.deactivate();
-		
-		return download; 
-		
 	}
 
 	private void exportVisual() {
@@ -366,8 +248,7 @@ public class ProjectExporter {
 				artboard.showAllNonHiddenVisualLayers();
 				
 			});
-			
-			//users the option to export hidden layers or not. 
+			 
 			if(exportHiddenLayers) project.forEachNonShallowCopiedArtboard(artboard -> artboard.forEachVisualLayer(layer -> {
 				
 				if(layer.hiding()) layer.show(artboard);
@@ -375,11 +256,11 @@ public class ProjectExporter {
 			}));
 			
 			//resulting data
-			return renderImage(visualChannels);
+			return imager.renderImage();
 			
 		}).get();
 		
-		exportDownload(visualExportName , download , visualChannels);
+		exportDownload(visualExportName , download , exportColor ? visualChannels : 2);
 
 	}
 
@@ -400,11 +281,11 @@ public class ProjectExporter {
 					
 				});
 			
-				return renderImage(prototype.sizeBytes());
+				return imager.renderImage();
 			
 			}).get();
 			
-			exportDownload(visualExportName + " " + prototype.name() , download , prototype.sizeBytes());
+			exportDownload(visualExportName + " " + prototype.name() , download , exportColor ? prototype.sizeBytes() : 2);
 			
 		});
 		
@@ -421,7 +302,7 @@ public class ProjectExporter {
 
 		AtomicInteger finishedExporters = new AtomicInteger(0);						
 		
-		ByteBuffer exportBuffer = channels == 4 ? download : (download = reformatBuffer(download , channels)); 
+		ByteBuffer exportBuffer = channels == 4 ? download : (download = ByteBufferUtils.reformatBufferRedAlpha(download , channels)); 
 		
 		//list of export tasks
 		Lambda[] exportTasks = constructExportTasks(name , download , channels , finishedExporters);
@@ -445,7 +326,7 @@ public class ProjectExporter {
 			
 			for(ExportCallbackAndName x : exporters) {
 				
-				exportPalette(project.palette() , x , exportFolderPath , " Visual Palette");
+				exportPalette(project.visualPalette() , x , exportFolderPath , " Visual Palette");
 				exportPalette(project.getNonVisualPaletteBySize(1) , x , exportFolderPath , " Nonvisual Palette 1");
 				exportPalette(project.getNonVisualPaletteBySize(2) , x , exportFolderPath , " Nonvisual Palette 2");
 				exportPalette(project.getNonVisualPaletteBySize(3) , x , exportFolderPath , " Nonvisual Palette 3");
@@ -495,6 +376,23 @@ public class ProjectExporter {
 		
 	}
 
+	private void render() {
+	
+		CSOrthographicCamera camera = new CSOrthographicCamera(exportWidth / 2 , exportHeight / 2);
+		camera.translate(-exportMidX, -exportMidY , 0);
+		CSSSShader shader = exportColor ? CSSSProject.thePaletteShader() : CSSSProject.theTextureShader();
+		shader.updatePassVariables(camera.projection(), camera.viewTranslation());
+
+		try(NanoVGFrame frame = nanoVG.frame()) {
+			
+			project.renderEverything(shader , frame);
+		
+		}
+		
+		swapBuffersCallback.invoke();
+	
+	}
+	
 	/**
 	 * Creates a list of {@code Lambda} to be passed to the thread pool.
 	 * 
@@ -523,64 +421,6 @@ public class ProjectExporter {
 		}
 		
 		return tasks;
-		
-	}
-	
-	/**
-	 * Creates and initializes a render buffer.
-	 * 
-	 * @param glFormat — OpenGL format of pixels for the render buffer
-	 * @return Initialized render buffer.
-	 */
-	private RenderBuffer initializeRenderBuffer(int glFormat) {
-		
-		return renderer.make(() -> {
-			
-			RenderBuffer renderbuffer = new RenderBuffer(exportWidth , exportHeight , glFormat);			
-			framebuffer.addColorAttachment(renderbuffer);
-			return renderbuffer;
-			
-		}).get();
-		
-	}
-
-	/**
-	 * Since the render buffer is hard coded to export rgba pixels, we must reformat the download if we want to correctly export. This is
-	 * subject to removal, because it should be possible to use render buffers of different pixel formats within the same shader which 
-	 * would already contain correctly formatted pixels.
-	 * 
-	 * @param source — source {@code ByteBuffer}, assumed to be formatted as RGBA  
-	 * @param newDesiredChannels — the number of channels the resulting buffer should contain
-	 * @return New buffer containing correctly formatted pixel data.
-	 */
-	private ByteBuffer reformatBuffer(ByteBuffer source , int newDesiredChannels) {
-		
-		if(newDesiredChannels == 4) throw new IllegalArgumentException(newDesiredChannels + " is not a valid input.");
-		
-		ByteBuffer reformat = memAlloc((source.limit() / 4) * newDesiredChannels);
-		
-		//alpha is at byte 4, color is at byte 1, so the else block's implementation wont work for two byte per pixel
-		if(newDesiredChannels == 2) while(reformat.hasRemaining()) {
-			
-			reformat.put(source.get());
-			source.position(source.position() + 2);
-			reformat.put(source.get());
-			
-		} else {
-			
-			int difference = 4 - newDesiredChannels;
-			while(reformat.hasRemaining()) {
-				
-				for(int i = 0 ; i < newDesiredChannels ; i ++) reformat.put(source.get());
-				source.position(source.position() + difference);
-				
-			}
-
-		}
-		
-		memFree(source);
-		
-		return reformat.flip();
 		
 	}
 	

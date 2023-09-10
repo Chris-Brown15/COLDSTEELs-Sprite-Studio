@@ -11,7 +11,7 @@ public class Eye_DropperBrush extends CSSSBrush {
 
 	public Eye_DropperBrush() {
 		
-		super("Eyedropper sets the active color to the color of a clicked pixel on an artboard.");
+		super("Eyedropper sets the active color to the color of a clicked pixel on an artboard." , false);
 		
 	}
 

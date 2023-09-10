@@ -11,7 +11,7 @@ public class ScriptBrush extends CSSSModifyingBrush {
 	
 	public ScriptBrush() {
 		
-		super("Invokes a script of the user's choice when used.");
+		super("Invokes a script of the user's choice when used." , false);
 		
 	}
 	
@@ -37,10 +37,4 @@ public class ScriptBrush extends CSSSModifyingBrush {
 		
 	}
 	
-	@Override public boolean canUse(Artboard artboard, Editor editor, int xIndex, int yIndex) {
-		
-		return true;
-		
-	}
-
 }

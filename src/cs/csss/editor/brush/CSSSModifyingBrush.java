@@ -16,9 +16,9 @@ public abstract class CSSSModifyingBrush extends CSSSBrush {
 	
 	protected int[] values = new int[4];
 	
-	CSSSModifyingBrush(String tooltip) {
+	CSSSModifyingBrush(String tooltip , boolean stateful) {
 		
-		super(tooltip);
+		super(tooltip , stateful);
 	
 	}
 	

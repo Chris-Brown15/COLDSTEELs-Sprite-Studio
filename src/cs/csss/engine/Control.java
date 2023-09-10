@@ -18,9 +18,6 @@ public final class Control {
 	
 	static BiFunction<Integer , Boolean , Boolean> checkPressedCallback;
 	
-	/**
-	 * Default Controls. Nothing is stopping people from making more.
-	 */
 	public static final Control
 		UNDO = new Control("Undo" , "Undos a previously done action" , GLFW_KEY_Z) ,
 		REDO = new Control("Redo" , "Redos a previously undone action" , GLFW_KEY_Y) ,
@@ -48,13 +45,19 @@ public final class Control {
 		GO_UP_ONE_LAYER = new Control(
 			"Up One Layer" ,
 			"Sets the active layer to the one above the current one." ,
-			GLFW_MOUSE_BUTTON_3 ,
+			GLFW_MOUSE_BUTTON_4 ,
 			false
-		),
+		) ,
 		GO_DOWN_ONE_LAYER = new Control(
 			"Down One Layer" ,
 			"Sets the active layer to the one below the current one." ,
-			GLFW_MOUSE_BUTTON_4 ,
+			GLFW_MOUSE_BUTTON_5 ,
+			false
+		) ,
+		MOVE_SELECTION_AREA = new Control(
+			"Move Selection Area" , 
+			"Moves the selection area if one is present." , 
+			GLFW_MOUSE_BUTTON_RIGHT , 
 			false
 		)
 	;

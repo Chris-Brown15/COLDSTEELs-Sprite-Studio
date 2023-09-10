@@ -2,6 +2,8 @@ package cs.csss.project;
 
 import static cs.core.utils.CSFileUtils.readAllCharacters;
 
+import cs.core.graphics.CSTexture;
+
 public class PaletteShader extends CSSSShader {
 
 	int
@@ -26,12 +28,10 @@ public class PaletteShader extends CSSSShader {
 		
 	}
 	
-	@Override public void activate(Artboard artboard) {
+	@Override public void updateTextures(ArtboardPalette palette , CSTexture texture) {
 
-		ArtboardPalette palette = artboard.activeLayersPalette();
-		
 		palette.activate(0);
-		artboard.indexTexture().activate(1);
+		texture.activate(1);
 		
 		uploadInt(paletteTextureLocation , 0);
 		uploadInt(imageTextureLocation , 1);
@@ -39,7 +39,7 @@ public class PaletteShader extends CSSSShader {
 		uploadInt(paletteWidthLocation , palette.width());
 		uploadInt(paletteHeightLocation , palette.height());
 	
-		uploadInt(channelsLocation , artboard.activeLayerChannelsPerPixel());
+		uploadInt(channelsLocation , palette.channelsPerPixel());
 		
 	}
 	

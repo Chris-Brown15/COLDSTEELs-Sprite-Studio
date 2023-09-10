@@ -1,6 +1,9 @@
 package cs.csss.project;
 
-public final class LayerPixel {
+import cs.csss.engine.LookupPixel;
+import cs.csss.engine.TexturePixel;
+
+public class LayerPixel implements TexturePixel , LookupPixel {
 
 	/**
 	 * Indices into the texture this pixel cooresponds to.
@@ -23,6 +26,12 @@ public final class LayerPixel {
 		
 	}
 
+	public LayerPixel(final int textureX , final int textureY , LookupPixel source) {
+		
+		this(textureX , textureY , source.unsignedLookupX() , source.unsignedLookupY());
+		
+	}
+	
 	public LayerPixel(final int textureX , final int textureY , final short lookupX , final short lookupY) {
 
 		this.textureX = textureX;
@@ -38,5 +47,41 @@ public final class LayerPixel {
 		return "Pixel at (" + textureX + ", " + textureY + ")";				
 		
 	}
+
+	@Override public int textureX() {
+
+		return textureX;
+		
+	}
+
+	@Override public int textureY() {
+
+		return textureY;
+		
+	}
+
+	@Override public byte lookupX() {
+
+		return (byte) lookupX;
+		
+	}
+
+	@Override public byte lookupY() {
+
+		return (byte) lookupY;
+		
+	}
+
+	@Override public short unsignedLookupX() {
+
+		return lookupX;
+		
+	}
+
+	@Override public short unsignedLookupY() {
+
+		return lookupY;
+		
+	}	
 	
 }

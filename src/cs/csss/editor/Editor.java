@@ -6,20 +6,28 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 
 import cs.core.CSDisplay;
 import cs.core.graphics.CSRender;
 import cs.core.utils.Lambda;
 import cs.core.utils.ShutDown;
 import cs.core.utils.threads.Await;
+import cs.core.utils.threads.ConstructingAwait;
+import cs.coreext.nanovg.NanoVGFrame;
 import cs.coreext.python.CSJEP;
 import cs.csss.editor.brush.BlenderBrush;
 import cs.csss.editor.brush.CSSSBrush;
+import cs.csss.editor.brush.CSSSSelectingBrush;
+import cs.csss.editor.brush.Delete_RegionBrush;
 import cs.csss.editor.brush.EraserBrush;
 import cs.csss.editor.brush.Eye_DropperBrush;
 import cs.csss.editor.brush.Flood_FillBrush;
 import cs.csss.editor.brush.PencilBrush;
+import cs.csss.editor.brush.Region_SelectorBrush;
 import cs.csss.editor.brush.Replace_AllBrush;
+import cs.csss.editor.brush.RotateBrush;
+import cs.csss.editor.brush.Scale_RegionBrush;
 import cs.csss.editor.brush.ScriptBrush;
 import cs.csss.editor.events.CSSSEvent;
 import cs.csss.editor.events.RunArtboardScriptEvent;
@@ -28,11 +36,13 @@ import cs.csss.editor.ui.AnimationPanel;
 import cs.csss.editor.ui.FilePanel;
 import cs.csss.editor.ui.LHSPanel;
 import cs.csss.editor.ui.RHSPanel;
+import cs.csss.engine.CSSSCamera;
 import cs.csss.engine.Control;
 import cs.csss.engine.Engine;
 import cs.csss.misc.files.CSFile;
 import cs.csss.project.Animation;
 import cs.csss.project.Artboard;
+import cs.csss.project.ArtboardPalette;
 import cs.csss.project.CSSSProject;
 import cs.csss.project.VisualLayer;
 import cs.csss.utils.StringUtils;
@@ -57,7 +67,11 @@ public class Editor implements ShutDown {
 	static final Replace_AllBrush theReplaceAllBrush = new Replace_AllBrush();
 	static final BlenderBrush theBlenderBrush = new BlenderBrush();
 	static final ScriptBrush theScriptBrush = new ScriptBrush();
-		
+	static final Region_SelectorBrush theRegionSelect = new Region_SelectorBrush();
+	static final Delete_RegionBrush theDeleteRegion = new Delete_RegionBrush();
+	static final RotateBrush theRotateBrush = new RotateBrush();
+	static final Scale_RegionBrush theScaleBrush = new Scale_RegionBrush();
+	
 	public final IntConsumer setCameraMoveRate;
 	public final IntSupplier getCameraMoveRate;
 	
@@ -67,8 +81,8 @@ public class Editor implements ShutDown {
 	private volatile CSSSBrush currentBrush;
 	
 	private ConcurrentLinkedDeque<CSSSEvent> events = new ConcurrentLinkedDeque<>();
-	private UndoRedoQueue redos = new UndoRedoQueue(1000);
-	private UndoRedoQueue undos = new UndoRedoQueue(1000);
+	private UndoRedoQueue redos = new UndoRedoQueue(500);
+	private UndoRedoQueue undos = new UndoRedoQueue(500);
 	
 	private final AnimationPanel animationPanel;
 	
@@ -81,9 +95,9 @@ public class Editor implements ShutDown {
 
 		leftSidePanel = new LHSPanel(this , display.nuklear);
 		new FilePanel(this , display.nuklear);
-		new RHSPanel(this , display.nuklear);
+		new RHSPanel(this , display.nuklear , engine);
 		animationPanel = new AnimationPanel(this , display.nuklear);
-				
+	
 	}
 
 	/**
@@ -91,6 +105,7 @@ public class Editor implements ShutDown {
 	 */
 	public void update() {
 
+		updateCurrentBrush();
 		//add new events
 		editArtboardOnControls();
 		undoRedoOnControls();
@@ -133,29 +148,26 @@ public class Editor implements ShutDown {
 	
 	private void editArtboardOnControls() {
 
-		if(!engine.wasMousePressedOverUI() && Control.ARTBOARD_INTERACT.pressed() && !engine.isCursorHoveringUI()) {
-			
-			float[] cursor = engine.getCursorWorldCoords();
-			
-			Artboard current = setCurrentArtboard(cursor);
-			
-			if(current != null && current.isCursorInBounds(cursor) && currentBrush != null && !project().freemoveMode()) {
-				
-				int[] pixelIndex = current.cursorToPixelIndex(cursor);				
-		
-				//TODO: make these only go to the renderer if needed
+		float[] cursor = engine.getCursorWorldCoords();			
+		Artboard current = setCurrentArtboard(cursor);
 
-				engine.renderer().post(() -> {
-					
-					boolean canUse = currentBrush.canUse(current , this , pixelIndex[0] , pixelIndex[1]);
-					if(canUse) eventPush(currentBrush.use(current , this , pixelIndex[0] , pixelIndex[1]));
-									
-				}).await();
+		if(!cursorInBoundsForBrush() || currentBrush == null || project().freemoveMode()) return;
+		
+		if(current != null && current.isCursorInBounds(cursor)) {
+		
+			int[] pixelIndex = current.worldToPixelIndices(cursor);
+			
+			//TODO: make these only go to the renderer if needed
+
+			engine.renderer().post(() -> {
 				
-			}
+				boolean canUse = currentBrush.canUse(current , this , pixelIndex[0] , pixelIndex[1]);				
+				if(canUse) eventPush(currentBrush.use(current , this , pixelIndex[0] , pixelIndex[1]));				
+				
+			}).await();
 			
 		}
-		
+
 	}
 
 	/**
@@ -177,6 +189,20 @@ public class Editor implements ShutDown {
 		
 	}
 
+	/**
+	 * Updates the current brush if it is a stateful brush.
+	 */
+	private void updateCurrentBrush() {
+		
+		if(currentBrush != null && currentBrush.stateful) { 
+		
+			CSSSProject project = project();
+			currentBrush.update(project == null ? null : project.currentArtboard() , this);
+						
+		}
+		
+	}
+	
 	/**
 	 * Invokes the most recent event's undo code.
 	 */
@@ -207,6 +233,23 @@ public class Editor implements ShutDown {
 			current.update();
 			
 		} else engine.realtimeMode(false);
+		
+	}
+	
+	/**
+	 * Renders the bounder of the current brush if the current brush is a selecting brush.
+	 * 
+	 * @param frame — a NanoVG frame to render with
+	 */
+	public void renderSelectingBrushBounder(NanoVGFrame frame) {
+		
+		if(currentBrush instanceof CSSSSelectingBrush x) x.renderBounder(frame); 
+		
+	}
+	
+	public void renderSelectingBrushRender() {
+		
+		if(currentBrush instanceof CSSSSelectingBrush) CSSSSelectingBrush.renderSelectionRegion();
 		
 	}
 	
@@ -278,7 +321,7 @@ public class Editor implements ShutDown {
 	 * 
 	 * @param script — a script file
 	 */ 
-	public void runScriptEvent(CSFile script) {
+	public void runArtboardScript(CSFile script) {
 		
 		try(CSJEP python = CSJEP.interpreter()) {
 			
@@ -300,7 +343,7 @@ public class Editor implements ShutDown {
 			
 			if(receiveArguments) engine.startScriptArgumentInput(script.name() , Optional.ofNullable(popupMessage) , args -> {
 				
-				String sanitized = StringUtils.removeMultiSpaces(args);			
+				String sanitized = StringUtils.removeMultiSpaces(args);
 				eventPush(new RunArtboardScriptEvent(isRenderEvent , script , currentArtboard() , this , List.of(sanitized.split(" "))));
 				
 			}); 
@@ -309,7 +352,7 @@ public class Editor implements ShutDown {
 		}
 			
 	}
-		
+	
 	public void requestDebugProject() {
 
 		engine.renderer().post(() -> {
@@ -388,9 +431,15 @@ public class Editor implements ShutDown {
 		
 	}
 	
+	public <T> ConstructingAwait<T> rendererMake(Supplier<T> constructor) {
+		
+		return engine.renderer().make(constructor);
+		
+	}
+	
 	public void startRunScript() {
 		
-		engine.startSelectScriptMenu("events" , this::runScriptEvent);
+		engine.startSelectScriptMenu("artboards" , this::runArtboardScript);
 		
 	}
 	
@@ -430,9 +479,21 @@ public class Editor implements ShutDown {
 		
 	}
 	
+	public void startSetAnimationFramePosition(int originalIndex) {
+		
+		engine.startSetAnimationFramePosition(originalIndex);
+		
+	}
+	
 	public void startExport() {
 		
 		engine.startExport();
+		
+	}
+	
+	public void startAddText() {
+		
+		engine.startAddText();
 		
 	}
 	
@@ -602,6 +663,71 @@ public class Editor implements ShutDown {
 		engine.startLoadProject();
 		
 	}
+
+	/**
+	 * Gets and returns the world coordinates of the cursor.
+	 * 
+	 * @return World coordinates of the cursor.
+	 */
+	public float[] cursorCoords() {
+		
+		return engine.getCursorWorldCoords();
+		
+	}
+	
+	/**
+	 * Returns the current palette of the current artboard, that is, the palette used for coloring the current layer.
+	 * 
+	 * @return Palette for the current artboard, or {@code null} if it cannot be retrieved.
+	 */
+	public ArtboardPalette currentPalette() {
+		
+		CSSSProject project = project();
+		if(project == null) return null;
+		return project.currentPalette();
+		
+	}
+	
+	/**
+	 * Returns whether the cursor is in a state such that it actually can be used. This can be used in brush {@code update} methods to make 
+	 * sure it is actually OK to use the brush.
+	 * 
+	 * @return {@code true} if the conditions are met to use a brush.
+	 */
+	public boolean cursorInBoundsForBrush() {
+		
+		return !engine.wasMousePressedOverUI() && !engine.isCursorHoveringUI();
+		
+	}
+	
+	/**
+	 * Returns the camera of the program.
+	 * 
+	 * @return Camera of the progrma.
+	 */
+	public CSSSCamera camera() {
+		
+		return engine.camera();
+		
+	}
+	
+	/**
+	 * Swaps the current framebuffer.
+	 */
+	public void swapBuffers() {
+		
+		engine.windowSwapBuffers();
+		
+	}
+	
+	/**
+	 * Resets the viewport and clear color to their defaults.
+	 */
+	public void resetViewport() {
+		
+		engine.resetViewport();
+		
+	}
 	
 	/* DEBUG */
 	
@@ -610,14 +736,6 @@ public class Editor implements ShutDown {
 		if(!Engine.isDebug()) throw new DebugDisabledException(this);
 		
 		engine.realtimeMode(!engine.realtimeMode());
-		
-	}
-	
-	public float[] cursorCoords() throws DebugDisabledException {
-		
-		if(!Engine.isDebug()) throw new DebugDisabledException(this);
-		
-		return engine.getCursorWorldCoords();
 		
 	}
 	

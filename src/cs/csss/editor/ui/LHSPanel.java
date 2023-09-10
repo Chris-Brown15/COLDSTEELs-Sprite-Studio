@@ -23,6 +23,7 @@ import cs.csss.editor.brush.CSSSBrush;
 import cs.csss.editor.brush.CSSSModifyingBrush;
 import cs.csss.engine.Engine;
 import cs.csss.project.ArtboardPalette.PalettePixel;
+import cs.csss.project.CSSSProject;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.ui.prefabs.InputBox;
 import cs.core.utils.CSUtils;
@@ -120,14 +121,19 @@ public class LHSPanel {
 		
 			debugProjectRow.doLayout = () -> editor.project() == null;
 			
-			ui.new CSDynamicRow().new CSButton("Arrange Animations" , () -> editor.project().arrangeArtboards());
+			ui.new CSDynamicRow().new CSButton("Arrange Animations" , () -> {
+				
+				CSSSProject project = editor.project();				
+				if(project != null) project.arrangeArtboards();
+				
+			});
 			
 		}
 		
 	}	
 	
 	private void colorInput(final String color , int index , BooleanSupplier doLayout) {
-
+		
 		CSDynamicRow row = ui.new CSDynamicRow();
 		
 		row.doLayout = doLayout;
@@ -142,8 +148,7 @@ public class LHSPanel {
 				
 				byte[] colors = colors();
 				colors[index] = (byte) value;
-				PalettePixel px = editor.currentArtboard().createPalettePixel(colors);				
-				setColor(px);
+				this.color.color(colors[0] , colors[1] , colors[2] , colors[3]);
 				
 			});
 			

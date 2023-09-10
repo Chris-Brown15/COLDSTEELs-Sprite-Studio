@@ -18,5 +18,7 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/CSXCSJEP"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/JEP"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/JOL"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/CSXCSNanoVG"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/LWJGLNanoVG"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

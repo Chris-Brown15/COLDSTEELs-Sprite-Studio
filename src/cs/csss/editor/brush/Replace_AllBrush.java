@@ -4,13 +4,13 @@ import cs.csss.editor.Editor;
 import cs.csss.editor.events.CSSSEvent;
 import cs.csss.editor.events.ModifyPaletteEvent;
 import cs.csss.project.Artboard;
-import cs.csss.project.IndexTexture.IndexPixel;
+import cs.csss.project.IndexPixel;
 
 public class Replace_AllBrush extends CSSSBrush {
 
 	public Replace_AllBrush() {
 
-		super("Replaces all pixels of the value of the clicked pixel on the current artboard with the active color.");
+		super("Replaces all pixels of the value of the clicked pixel on the current artboard with the active color." , false);
 
 	}
 

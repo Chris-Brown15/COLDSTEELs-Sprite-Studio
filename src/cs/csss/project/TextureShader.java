@@ -2,6 +2,8 @@ package cs.csss.project;
 
 import static cs.core.utils.CSFileUtils.readAllCharacters;
 
+import cs.core.graphics.CSTexture;
+
 public class TextureShader extends CSSSShader {
 
 	private int textureLocation;
@@ -17,9 +19,9 @@ public class TextureShader extends CSSSShader {
 		
 	}
 	
-	@Override public void activate(Artboard target) {
+	@Override public void updateTextures(ArtboardPalette palette , CSTexture texture) {
 
-		target.indexTexture().activate(0);
+		texture.activate(0);
 		uploadInt(textureLocation , 0);
 		
 	}

@@ -12,7 +12,7 @@ public class PencilBrush extends CSSSModifyingBrush {
 
 	public PencilBrush() {
 
-		super("Pencil colors artboards by clicking on pixels within them.");
+		super("Pencil colors artboards by clicking on pixels within them." , false);
 
 	}
 
@@ -28,6 +28,8 @@ public class PencilBrush extends CSSSModifyingBrush {
 
 	@Override public boolean canUse(Artboard artboard, Editor editor, int xIndex, int yIndex) {
 
+		if(!super.canUse(artboard, editor, xIndex, yIndex)) return false;
+		
 		/*
 		 * The pencil can be used if any pixel modification of the given layer does not match the editor selected color.
 		 */

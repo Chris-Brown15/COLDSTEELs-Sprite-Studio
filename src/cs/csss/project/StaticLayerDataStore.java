@@ -49,8 +49,8 @@ class StaticLayerDataStore implements LayerDataStore {
 	@Override public synchronized LayerPixel remove(int xIndex, int yIndex) {
 		
 		LayerPixel removed = image[yIndex][xIndex];
-		image[yIndex][xIndex] = null;
 		if(removed != null) mods--;
+		image[yIndex][xIndex] = null;
 		return removed;
 		
 	}

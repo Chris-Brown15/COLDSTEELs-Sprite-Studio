@@ -2,6 +2,7 @@ package cs.csss.project;
 
 import org.joml.Matrix4f;
 
+import cs.core.graphics.CSTexture;
 import cs.core.graphics.utils.ReloadableShader;
 
 public abstract class CSSSShader extends ReloadableShader {
@@ -41,7 +42,7 @@ public abstract class CSSSShader extends ReloadableShader {
 		
 	}
 	
-	public abstract void activate(Artboard target);
+	public abstract void updateTextures(ArtboardPalette palette, CSTexture texture);
 	
 	public String vertexSource() {
 		

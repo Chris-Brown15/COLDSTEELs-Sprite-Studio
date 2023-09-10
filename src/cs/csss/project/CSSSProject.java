@@ -6,18 +6,19 @@ import static org.lwjgl.system.MemoryUtil.memFree;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import cs.core.utils.CSRefInt;
 import cs.core.utils.ShutDown;
+import cs.coreext.nanovg.NanoVGFrame;
+import cs.coreext.nanovg.NanoVGTypeface;
+import cs.csss.engine.Control;
 import cs.csss.engine.Engine;
 import cs.csss.project.io.CTSPFile;
-import cs.csss.project.io.ProjectSizeAndPositions;
 import cs.csss.project.io.CTSPFile.AnimationChunk;
 import cs.csss.project.io.CTSPFile.AnimationFrameChunk;
 import cs.csss.project.io.CTSPFile.ArtboardChunk;
@@ -25,7 +26,8 @@ import cs.csss.project.io.CTSPFile.NonVisualLayerChunk;
 import cs.csss.project.io.CTSPFile.NonVisualLayerDataChunk;
 import cs.csss.project.io.CTSPFile.PaletteChunk;
 import cs.csss.project.io.CTSPFile.VisualLayerDataChunk;
-import cs.csss.project.io.ProjectExporter;
+import cs.csss.project.io.ProjectSizeAndPositions;
+import cs.csss.utils.CollisionUtils;
 import cs.csss.utils.FloatReference;
 
 /**
@@ -115,24 +117,25 @@ public class CSSSProject implements ShutDown {
 	private boolean 
 		freemoveMode = false ,
 		freemoveCheckCollisions = true ,
-		padAnimationFrames = true
-	;
+		freemoveText = false;
 	
 	private ArtboardPalette visualPalette;
 	private ArrayList<ArtboardPalette> nonVisualPalettes = new ArrayList<>(NonVisualLayerPrototype.MAX_SIZE_BYTES);
 
 	private ArtboardCopier copier = new ArtboardCopier();
 	
-	private final LinkedList<Artboard> 
-		allArtboards = new LinkedList<>() ,
-		looseArtboards = new LinkedList<>();
+	private final List<Artboard> 
+		allArtboards = new ArrayList<>() ,
+		looseArtboards = new ArrayList<>();
 
-	private final LinkedList<Animation> animations = new LinkedList<>();
-	private final LinkedList<VisualLayerPrototype> visualLayerPrototypes = new LinkedList<>();
-	private final LinkedList<NonVisualLayerPrototype> nonVisualLayerPrototypes = new LinkedList<>();
+	private final List<Animation> animations = new ArrayList<>();
+	private final List<VisualLayerPrototype> visualLayerPrototypes = new ArrayList<>();
+	private final List<NonVisualLayerPrototype> nonVisualLayerPrototypes = new ArrayList<>();
+	private final List<VectorText> vectorTextBoxes = new ArrayList<>();
 	
 	private Artboard currentArtboard;
 	private Animation currentAnimation;
+	private VectorText currentText;	
 	
 	public CSSSProject(Engine engine , final String name , int channelsPerPixel , boolean makeDefaultLayer) {
 		
@@ -184,108 +187,11 @@ public class CSSSProject implements ShutDown {
  		//animations
  		for(AnimationChunk x : ctsp.animationChunks()) loadAnimation(x);
  		
+ 		arrangeArtboards();
+ 		arrangeArtboards();
+ 		
  	}
 	
- 	private ArtboardPalette loadPalette(PaletteChunk chunk) {
-
- 		int width = chunk.width();
- 		int height = chunk.height();
- 		byte[] pixelData = chunk.pixelData();
- 		
- 		ArtboardPalette palette = new ArtboardPalette(chunk.channels());
- 		palette.initialize();
- 		palette.resizeAndCopy(width , height);
- 		
- 		//this skips the first two entries, the background pixel values
- 		int i = 2 * chunk.channels();
- 		
- 		byte[] channelValues = new byte[chunk.channels()];
- 		while(i < pixelData.length) {
- 			
- 			for(int j = 0 ; j < chunk.channels() ; j++) channelValues[j] = pixelData[i++];
- 			palette.put(palette.new PalettePixel(channelValues));
- 			
- 		}
- 		
- 		return palette;
- 		
- 	}
- 	
- 	private Artboard loadArtboard(ArtboardChunk chunk) {
- 		
- 		Artboard newArtboard = createArtboard(chunk.name() , chunk.width() , chunk.height());
- 		 		
- 		//also set up visual layer ranks here. the order the chunks are found are the ranks the layers are supposed to be in
- 		int i = 0;
- 		for(VisualLayerDataChunk x : chunk.visualLayers()) { 
- 			
- 			VisualLayer layer = (VisualLayer) loadLayer(newArtboard , x);
- 			int previousRank = newArtboard.getLayerRank(layer);
- 			if(previousRank != i) newArtboard.moveVisualLayerRank(previousRank , i);
- 			i++;
-
- 		}
- 		
- 		//nonvisual
- 		for(NonVisualLayerDataChunk x : chunk.nonVisualLayers()) loadLayer(newArtboard , x);
- 		
- 		//set active layer
- 		if(chunk.isActiveLayerVisual()) { 
- 			
- 			newArtboard.setActiveLayer(newArtboard.getVisualLayer(chunk.activeLayerIndex()));
- 			newArtboard.showAllNonHiddenVisualLayers();
- 			
- 		} else { 
- 			
- 			Layer active = newArtboard.getNonVisualLayer(chunk.activeLayerIndex());
- 			newArtboard.setActiveLayer(active);
- 			active.show(newArtboard); 
- 			
- 		}
- 		
- 		return newArtboard;
- 		
- 	}
-
- 	private Layer loadLayer(Artboard artboard , VisualLayerDataChunk chunk) {
- 		
- 		return loadLayer(artboard , chunk.name() , chunk.hiding() , chunk.locked() , chunk.isCompressed() , chunk.pixelData());
- 		
- 	}
-
- 	private Layer loadLayer(Artboard artboard , NonVisualLayerDataChunk chunk) {
- 		
- 		return loadLayer(artboard , chunk.name() , chunk.hiding() , chunk.locked() , chunk.isCompressed() , chunk.pixelData());
- 		
- 	}
- 	
- 	private void loadAnimation(AnimationChunk x) {
- 		
- 		Animation animation = createAnimation(x.name());
- 		animation.defaultSwapType(AnimationSwapType.valueOf(x.defaultSwapType()));
- 		animation.setFrameTime(x.defaultSwapTime());
- 		animation.setUpdates(x.defaultUpdates());
- 		
- 		currentAnimation(animation);
- 		
- 		for(AnimationFrameChunk y : x.frames()) {
- 			
- 			appendArtboardToCurrentAnimation(getArtboard(y.artboardName()));
- 			//most recent frame
- 			AnimationFrame frame = animation.getFrame(animation.numberFrames() - 1); 			
- 			AnimationSwapType swapType = AnimationSwapType.valueOf(y.swapType());
- 			frame.swapType(() -> swapType);
- 			
- 			if(y.frameTime() == animation.getFrameTime.getAsFloat()) frame.time(animation.defaultSwapTime());
- 			else frame.time(new FloatReference(y.frameTime()));
- 			
- 			if(y.frameUpdates() == animation.getUpdates.getAsInt()) frame.updates(animation.defaultUpdateAmount());
- 			else frame.updates(new CSRefInt(y.frameUpdates()));
- 			
- 		}
- 		
- 	}
- 	
 	public void initialize() {
 		
 		visualPalette.initialize();
@@ -325,6 +231,13 @@ public class CSSSProject implements ShutDown {
 	
 	public void appendArtboardToCurrentAnimation(Artboard artboard) {
 		
+		appendArtboardToCurrentAnimationDontArrange(artboard);
+		arrangeArtboards();
+		
+	}	
+	
+	private void appendArtboardToCurrentAnimationDontArrange(Artboard artboard) {
+
 		boolean wasLoose = looseArtboards.remove(artboard);
 		
 		if(wasLoose) {
@@ -339,9 +252,7 @@ public class CSSSProject implements ShutDown {
 			
 		}		
 		
-		arrangeArtboards();
-		
-	}	
+	}
 	
 	private Optional<Artboard> removeArtboardFromAnimation(Animation animation , int index) {
 
@@ -415,6 +326,12 @@ public class CSSSProject implements ShutDown {
 		
 	}
 
+	public void renderAllVectorTextBoxes(NanoVGFrame frame) {
+		
+		vectorTextBoxes.forEach(textBox -> textBox.renderBoxAndText(frame));
+		
+	}
+		
 	public void renderAllArtboards(CSSSShader shader) {
 		
 		forEachArtboard(artboard -> {
@@ -422,138 +339,81 @@ public class CSSSProject implements ShutDown {
 			if(artboard.isActiveLayerVisual()) visualPalette.activate();
 			else nonVisualPalettes.get(artboard.activeLayerChannelsPerPixel() - 1).activate();
 			
-			shader.activate(artboard);
-			shader.activate();
+			shader.updateTextures(artboard.activeLayer().palette , artboard.indexTexture());
+			shader.activate();			
 			artboard.draw();
 			
 		});
 		
 	}
 	
-	private void arrangeAnimation(Animation animation , int xOffset , int spaceBetweenBoards , int height) { 
+	public void renderEverything(CSSSShader shader , NanoVGFrame frame) {
 		
-		for(int j = 0 ; j < animation.numberFrames() ; j++) { 
-			
-			if(j == 0) animation.getFrame(j).board.moveTo(xOffset + animation.xPositionForFrameAt(j) , height);
-			else animation.getFrame(j).board.moveTo(xOffset + animation.xPositionForFrameAt(j) + spaceBetweenBoards * j, height);
-			
-			
-		}
-
+		renderAllArtboards(shader);
+		renderAllVectorTextBoxes(frame);
+		
 	}
 	
 	/**
 	 * Arranges loose artboards. The first loose artboard will be at (0 , 0) with subsequent ones extending rightward from it.
 	 */
-	private void arrangeLooseArtboards() {
+	private int arrangeLooseArtboardsNew() {
 
-		if(looseArtboards.size() > 0) {
+		if(looseArtboards.size() == 0) return 0;
+		
+		return engine.renderer().make(() -> {
 
-			engine.renderer().post(() -> {
-
-				looseArtboards.get(0).moveTo(0 , 0);
-				for(int i = 1 ; i < looseArtboards.size() ; i++) {
-							
-					Artboard current = looseArtboards.get(i);
-					Artboard last = looseArtboards.get(i - 1);
-							
-					float lastRightX = last.rightX();
-					int translationX = (int) Math.ceil(lastRightX) + current.width();
-					current.moveTo(translationX, 0);
-							
-				}
+			Artboard previous = looseArtboards.get(0);
+			int greatestHeight = previous.height(); 
+			previous.moveTo(0 , 0);
+			
+			for(int i = 1 ; i < looseArtboards.size() ; i++) {
 						
-			});
-				
-		}
-				
-	}
-	
-	private int greatestHeightAmongLooseArtboards() {
-		
-		int greatestHeightOfLoose = 0;
-		for(int i = 0 ; i < looseArtboards.size() ; i++) {
-			
-			Artboard current = looseArtboards.get(i);
-			//check the heights for the purposes of offsetting them
-			int height = current.height(); 
-			if(height > greatestHeightOfLoose) greatestHeightOfLoose = height;
-			
-		}					
-		
-		return greatestHeightOfLoose;
-		
-	}
-	
-	/**
-	 * Should be called any time an artboard is added or removed from the project, or when an artboard is added or removed from an 
-	 * animation.
-	 * 
-	 * <p>
-	 * 	This method moves all artboards into position and as such must be called from the render thread. Loose artboards, which are 
-	 * 	artboards that are not in any animation are placed at the bottom of the scene sequentially. Then, artboards that are in animations
-	 * 	are placed above loose artboards from bottom to top in order of the amount of horizontal space the animation's artboards take up. 	
-	 * </p>
-	 */
-	public void arrangeArtboards() {
-
-		//start off by arranging loose artboards, which are artboards that are not in any animations
-		arrangeLooseArtboards();
-		
-		if(animations.size() > 0) {
-			
-			//this will sort the animations from lowest total width to highest total width
-			Collections.sort(animations , (anim1 , anim2) -> anim1.getTotalWidth() - anim2.getTotalWidth());
-			
-			//iterate over the animation list and move artboards to their given position within the list at the heigth offset
-			//This is done by keeping a height offset accumulator which increases for each animation by each animation's frame height
-			//Half of the animation's height is added to the accumulator, then the artboards are moved into position, then the second half
-			//of the animation's height is applied to the accumulator. This is to make the animations tightly next to one another.
-			engine.renderer().post(() -> {
-				
-				int heightAccum = 0;
-				int next = 0;
-				
-				//advances the iterator past any animations that are empty. empty animations are not represented on the image.
-				while(next < animations.size() && animations.get(next).frameHeight() == 0) next++;
-
-				if(next == animations.size()) return;
-				
-				Animation x = animations.get(next);
-				int smallestXPosition = x.leftmostX();
-
-				if(looseArtboards.size() == 0) {
-					
-					//the first animation is a special case where only half of its height is applied to the accum.
-					arrangeAnimation(x , 0 , padAnimationFrames ? 2 : 0 , 0);
-					heightAccum += (x.frameHeight() / 2) + 2;
-					next++;
+				Artboard current = looseArtboards.get(i);
+				previous = looseArtboards.get(i - 1);
 								
-				}
-				//if there are loose artboards (artboards that are not in any animation), they will be at the bottom of the image.
-				//here we move them. we also arrange them so that 
-				else heightAccum = greatestHeightAmongLooseArtboards() + 25;
-
-				while(next < animations.size()) {
-					
-					x = animations.get(next++);
-					
-					int height = x.frameHeight();
-					
-					heightAccum += height / 2;
-					//this moves the animation's artboards into position. the second parameter is the x offset to apply to the animation.
-					//this is used to make all animations have their first artboard's left x positions align
-					arrangeAnimation(x , smallestXPosition + (x.frameWidth() / 2) , padAnimationFrames ? 2 : 0 , heightAccum);
-					heightAccum += (height / 2) + 5;
-					
-				}
+				float lastRightX = previous.rightX();
+				int translationX = (int) Math.ceil(lastRightX) + current.width();
+				current.moveTo(translationX, 0);
+				if(greatestHeight < current.height()) greatestHeight = current.height();				
 				
-			});
-		
-		}
-		
+			}
+					
+			return greatestHeight;
+			
+		}).get();
+	  
 	}
 	
+	public void arrangeArtboards() {
+		
+	 	engine.renderer().post(() -> {
+
+	 		CSRefInt rowHeightAccum = new CSRefInt(arrangeLooseArtboardsNew() + 25);	 		
+	 		animations.sort((animation1 , animation2) -> animation1.getTotalWidth() - animation2.getTotalWidth()); 		
+	 		animations.stream().filter(animation -> !animation.isEmpty()).forEach(x -> {
+
+		 		Iterator<Artboard> iter = x.frames.stream().map(frame -> frame.board).iterator();
+		 		Artboard previous = iter.next() , current;
+		 		
+		 		rowHeightAccum.add(x.frameHeight() / 2);
+		 		
+		 		previous.moveTo(0, rowHeightAccum.intValue());
+		 			 		
+		 		for( ; iter.hasNext() ; previous = current) {
+		 			
+		 			current = iter.next();
+		 			current.moveTo((int)previous.rightX() + (current.width() / 2), rowHeightAccum.intValue());
+		 				 			
+		 		}
+		 		
+		 		rowHeightAccum.add(x.frameHeight());
+		 				 	
+	 		});
+	 			 		
+	 	});
+		
+	}
 	
 	public void forEachAnimation(Consumer<Animation> callback) {
 		
@@ -628,6 +488,18 @@ public class CSSSProject implements ShutDown {
 	public void forEachNonVisualPalette(Consumer<ArtboardPalette> callback) {
 		
 		nonVisualPalettes.forEach(callback);
+		
+	}
+	
+	public void forEachVectorTextBox(Consumer<VectorText> callback) {
+		
+		vectorTextBoxes.forEach(callback);
+		
+	}
+	
+	public Iterator<VectorText> textBoxes() {
+		
+		return vectorTextBoxes.iterator();
 		
 	}
 	
@@ -844,7 +716,20 @@ public class CSSSProject implements ShutDown {
 		
 	}	
 	
-	public ArtboardPalette palette() {
+	/**
+	 * Returns the current palette.
+	 * 
+	 * @return The current palette for the the active layer of the active artboard.
+	 */
+	public ArtboardPalette currentPalette() {
+		
+		if(currentArtboard == null) return null;
+		if(currentArtboard.isActiveLayerVisual()) return visualPalette;
+		else return getNonVisualPaletteBySize(currentArtboard.activeLayerChannelsPerPixel());
+		
+	}
+	
+	public ArtboardPalette visualPalette() {
 		
 		return visualPalette;
 		
@@ -865,6 +750,13 @@ public class CSSSProject implements ShutDown {
 	
 	/* Artboard Copy Methods */
 	
+	/**
+	 * Takes a source artboard and returns a shallow copy of it by the semantics of 
+	 * {@link cs.csss.project.Artboard#shallowCopy(String, Artboard) shallowCopy(String , Artboard)}.
+	 * 
+	 * @param source — source artboard
+	 * @return Shallow copy of {@code source}.
+	 */
 	public Artboard shallowCopy(Artboard source) {
 		
 		Artboard copy = copier.copy(source);
@@ -900,17 +792,27 @@ public class CSSSProject implements ShutDown {
 		
 	}
 	
+	/**
+	 * Returns the total number of artboards in the project.
+	 * 
+	 * @return Number of artboards in this project.
+	 */
 	public int numberArtboards() {
 		
 		return allArtboards.size();
 		
 	}
 	
-	public int numberNonCopiedArtboards() {
+	/**
+	 * Calculates and returns the number of artboards that are not shallow copies. 
+	 * 
+	 * @return Number of artboards that are not shallow copies.
+	 */
+	public int getNumberNonCopiedArtboards() {
 		
-		int nonCopies = 0;		
-		for(Iterator<Artboard> iter = allArtboards.iterator() ; iter.hasNext() ; ) if(!copier.isCopy(iter.next())) nonCopies++;
-		return nonCopies;
+		CSRefInt counter = new CSRefInt(0);
+		allArtboards.stream().filter(artboard -> !copier.isCopy(artboard)).forEach(artboard -> counter.inc());
+		return counter.intValue();
 		
 	}
 	
@@ -923,6 +825,22 @@ public class CSSSProject implements ShutDown {
 	 * @return The new Artboard
 	 */
 	public Artboard createArtboard(String name , int width , int height) {
+
+		Artboard artboard = createArtboardDontArrange(name , width , height);		
+		arrangeArtboards();
+		return artboard;
+		
+	}
+	
+	/**
+	 * Creates a new artboard but does not rearrange artboards.
+	 * 
+	 * @param name — name of the artboard
+	 * @param width — width of the artboard
+	 * @param height — height of the artboard
+	 * @return The new Artboard
+	 */
+	private Artboard createArtboardDontArrange(String name , int width , int height) {
 
 		Artboard newArtboard = new Artboard(name , width , height);
 		
@@ -940,7 +858,8 @@ public class CSSSProject implements ShutDown {
 		
 		});
 		
-		addArtboard(newArtboard);
+		addArtboardDontArrange(newArtboard);
+		
 		return newArtboard;
 		
 	}
@@ -955,7 +874,7 @@ public class CSSSProject implements ShutDown {
 	 */
 	public Artboard createArtboard(int width , int height) {
 		
-		return createArtboard(String.valueOf(numberNonCopiedArtboards()) , width , height);
+		return createArtboard(String.valueOf(getNumberNonCopiedArtboards()) , width , height);
 		
 	}
 	
@@ -982,7 +901,7 @@ public class CSSSProject implements ShutDown {
 	 */
 	public Artboard deepCopy(Artboard source) {
 		
-		return deepCopy(source , String.valueOf(numberNonCopiedArtboards()));
+		return deepCopy(source , String.valueOf(getNumberNonCopiedArtboards()));
 		
 	}
 	
@@ -1027,7 +946,7 @@ public class CSSSProject implements ShutDown {
 		
 		VisualLayerPrototype newVL = new VisualLayerPrototype(name);
 		addVisualLayerPrototype(newVL);
-		forEachNonShallowCopiedArtboard(artboard -> artboard.addVisualLayer(new VisualLayer(artboard , palette() , newVL)));
+		forEachNonShallowCopiedArtboard(artboard -> artboard.addVisualLayer(new VisualLayer(artboard , visualPalette() , newVL)));
 		
 		return newVL;
 		
@@ -1045,6 +964,18 @@ public class CSSSProject implements ShutDown {
 
 		arrangeArtboards();
 		
+	}
+	
+	private void addArtboardDontArrange(Artboard newArtboard) {
+
+		synchronized(allArtboards) {
+			
+			allArtboards.add(newArtboard);
+			
+		}
+		
+		looseArtboards.add(newArtboard);
+
 	}
 	
 	private void addNonVisualLayerPrototype(NonVisualLayerPrototype newNonVisualLayerPrototype) {
@@ -1121,62 +1052,108 @@ public class CSSSProject implements ShutDown {
  		
  	}
  	
+ 	public void addVectorTextBox(NanoVGTypeface typeface) {
+ 		
+ 		vectorTextBoxes.add(new VectorText(typeface));
+ 		
+ 	}
+
+ 	public void addVectorTextBox(NanoVGTypeface typeface , String sourceText) {
+ 		
+ 		vectorTextBoxes.add(new VectorText(typeface , sourceText));
+ 		
+ 	}
+ 	
+ 	public VectorText currentTextBox() {
+ 		
+ 		return currentText;
+ 		
+ 	}
+ 	
+ 	public void currentTextBox(VectorText newCurrent) {
+ 		
+ 		if(newCurrent == currentText) currentText = null;
+ 		else this.currentText = newCurrent;
+ 		
+ 	}
+ 	
  	public void runFreemove(float[] cursorWorldCoords) {
 		
- 		if(freemoveMode && currentArtboard != null) {
+ 		if(freemoveMode && currentArtboard != null) freemoveArtboard(cursorWorldCoords);
+ 		if(freemoveText && currentText != null) freemoveTextBox(cursorWorldCoords);
+ 		else if (!freemoveText && currentText != null) dragTextBox(cursorWorldCoords); 		
  		
-			cursorWorldCoords[0] = (int) Math.floor(cursorWorldCoords[0]);
-			cursorWorldCoords[1] = (int) Math.floor(cursorWorldCoords[1]);
-			
-			if(isLoose(currentArtboard)) { 
-			
-				currentArtboard.moveTo((int)cursorWorldCoords[0], (int)cursorWorldCoords[1]);
-				if(freemoveCheckCollisions) for(Artboard x : allArtboards) {
-					
-					if(x != currentArtboard && ProjectExporter.colliding(currentArtboard, x)) {
-						
-						int[] deltas = ProjectExporter.collisionDeltas(currentArtboard , x);
-						resolveCollision(currentArtboard , deltas[0] , deltas[1]);
+ 	}
+ 	
+ 	private void freemoveArtboard(float[] cursorWorldCoords) {
 
-					}
+		cursorWorldCoords[0] = (int) Math.floor(cursorWorldCoords[0]);
+		cursorWorldCoords[1] = (int) Math.floor(cursorWorldCoords[1]);
+		
+		if(isLoose(currentArtboard)) { 
+		
+			currentArtboard.moveTo((int)cursorWorldCoords[0], (int)cursorWorldCoords[1]);
+			if(freemoveCheckCollisions) for(Artboard x : allArtboards) {
+				
+				if(x != currentArtboard && CollisionUtils.colliding(currentArtboard.positions, x.positions)) {
 					
+					int[] deltas = CollisionUtils.collisionDeltas(currentArtboard.positions , x.positions);
+					resolveCollision(currentArtboard , deltas[0] , deltas[1]);
+
 				}
 				
-			} else for(Animation animation : animations) if(animation.hasArtboard(currentArtboard)) {
+			}
+			
+		} else for(Animation animation : animations) if(animation.hasArtboard(currentArtboard)) {
+			
+			int animationWidthDiv2 = (animation.frameWidth() * animation.numberFrames()) / 2;
+			
+			int animationMidX = (int) animation.getFrame(animation.numberFrames() - 1).board().rightX() - animationWidthDiv2;
+			int animationMidY = (int) animation.getFrame(0).board().midY();
+			
+			int deltaX = (int) (cursorWorldCoords[0] - animationMidX);
+			int deltaY = (int) (cursorWorldCoords[1] - animationMidY);
+			
+			animation.forAllArtboards(artboard -> artboard.translate(deltaX, deltaY));
+			
+			/*
+			 * Resolves collisions between animations and other artboards by iterating over the boards of the animation and all 
+			 * artboards not in the animation, resolving individual collisions between them, and then moving all artboards of the 
+			 * animation accordingly.
+			 */
+			
+			if(freemoveCheckCollisions) ResolveCollisions: for(var iter = animation.frames.iterator() ; iter.hasNext() ;) {
 				
-				int animationWidthDiv2 = (animation.frameWidth() * animation.numberFrames()) / 2;
-				
-				int animationMidX = (int) animation.getFrame(animation.numberFrames() - 1).board().rightX() - animationWidthDiv2;
-				int animationMidY = (int) animation.getFrame(0).board().midY();
-				
-				int deltaX = (int) (cursorWorldCoords[0] - animationMidX);
-				int deltaY = (int) (cursorWorldCoords[1] - animationMidY);
-				
-				animation.forAllArtboards(artboard -> artboard.translate(deltaX, deltaY));
-				
-				/*
-				 * Resolves collisions between animations and other artboards by iterating over the boards of the animation and all 
-				 * artboards not in the animation, resolving individual collisions between them, and then moving all artboards of the 
-				 * animation accordingly.
-				 */
-				
-				if(freemoveCheckCollisions) ResolveCollisions: for(var iter = animation.frames.iterator() ; iter.hasNext() ;) {
+				Artboard artboard = iter.next().board;
+
+				for(Artboard other : allArtboards) if(!animation.hasArtboard(other)) {
 					
-					Artboard artboard = iter.next().board;
+					if(CollisionUtils.colliding(artboard.positions, other.positions)) {
 
-					for(Artboard other : allArtboards) if(!animation.hasArtboard(other)) if(ProjectExporter.colliding(artboard, other)) {
-
-						int[] deltas = ProjectExporter.collisionDeltas(artboard , other);
-						animation.forAllArtboards(moveArtboard -> resolveCollision(moveArtboard , deltas[0] , deltas[1]));				
+						int[] deltas = CollisionUtils.collisionDeltas(artboard.positions , other.positions);
+						animation.forAllArtboards(moveArtboard -> resolveCollision(moveArtboard , deltas[0] , deltas[1]));
 						continue ResolveCollisions;
 						
 					}
 					
 				}
 				
-			}		
+			}
 			
-		}
+		}		
+	
+ 	}
+ 	
+ 	private void freemoveTextBox(float[] cursorCoords) {
+ 		
+ 		currentText.moveTo(cursorCoords[0] , cursorCoords[1]);
+ 		if(Control.ARTBOARD_INTERACT.pressed()) freemoveText = false;
+ 		
+ 	}
+ 	
+ 	private void dragTextBox(float[] cursorCoords) {
+ 		
+ 		if(Control.MOVE_SELECTION_AREA.pressed()) currentText.moveCorner(cursorCoords[0] , cursorCoords[1]);
  		
  	}
  	
@@ -1185,26 +1162,6 @@ public class CSSSProject implements ShutDown {
 		if(deltaX > deltaY) x.translate(deltaX , 0);
 		else x.translate(0 , deltaY);
 		
- 	}
- 	
- 	public boolean padAnimationFrames() {
- 	
- 		return padAnimationFrames;
- 		
- 	}
-
- 	public void padAnimationFrames(boolean doPad) {
- 		
- 		this.padAnimationFrames = doPad;
- 		engine.renderer().post(this::arrangeArtboards);
- 		
- 	}
- 	
- 	public void togglePadAnimationFrames() {
- 	
- 		padAnimationFrames = !padAnimationFrames;
- 		engine.renderer().post(this::arrangeArtboards);
- 		
  	}
  	
  	public boolean isLoose(Artboard artboard) {
@@ -1224,6 +1181,42 @@ public class CSSSProject implements ShutDown {
  		freemoveCheckCollisions = !freemoveCheckCollisions;
  		
  	}
+ 	
+ 	public void removeTextBox(VectorText text) {
+ 		
+ 		vectorTextBoxes.remove(text);
+ 		text.shutDown();
+ 		
+ 	}
+ 	
+ 	public void toggleMovingText() {
+ 		
+ 		freemoveText = !freemoveText;
+ 		
+ 	}
+ 	
+	/**
+	 * Returns whether currently moving text.
+	 * 
+	 * @return Whether currently moving text.
+	 */
+	public boolean movingText() {
+		
+		return freemoveText;
+		
+	}
+
+	/**
+	 *  Sets the state of moving text.
+	 * 
+	 * @param movingText — whether to move text around
+	 */
+	public void movingText(boolean movingText) {
+		
+		this.freemoveText = movingText;
+		
+	}
+
 
 	/**
 	 * Computes size and position data needed for exporting.
@@ -1235,7 +1228,7 @@ public class CSSSProject implements ShutDown {
 		//gather information about the state of the objects being saved
 		
 		//world coordinates notating the extreme points of the project
-		int 	
+		float 	
 			rightmostX = 0 ,
 			leftmostX = Integer.MAX_VALUE ,
 			uppermostY = 0 ,
@@ -1248,14 +1241,14 @@ public class CSSSProject implements ShutDown {
 			Artboard x = artboards.next();
 			
 			//dont use else if's here because if there is only one artboard, we wont set all values, which we need to do.
-			if(x.rightX() > rightmostX) rightmostX = (int) x.rightX();
-			if(x.leftX() < leftmostX) leftmostX = (int) x.leftX();
-			if(x.topY() > uppermostY) uppermostY = (int) x.topY();
-			if(x.bottomY() < lowermostY) lowermostY = (int) x.bottomY();
+			if(x.rightX() > rightmostX) rightmostX = x.rightX();
+			if(x.leftX() < leftmostX) leftmostX = x.leftX();
+			if(x.topY() > uppermostY) uppermostY = x.topY();
+			if(x.bottomY() < lowermostY) lowermostY = x.bottomY();
 			
 		}
 		
-		int
+		float
 			width = rightmostX - leftmostX ,
 			height = uppermostY - lowermostY ,				
 			midpointX = rightmostX - (width / 2) ,
@@ -1265,13 +1258,114 @@ public class CSSSProject implements ShutDown {
 		
 	}
 
+ 	private ArtboardPalette loadPalette(PaletteChunk chunk) {
+
+ 		int width = chunk.width();
+ 		int height = chunk.height();
+ 		byte[] pixelData = chunk.pixelData();
+ 		
+ 		ArtboardPalette palette = new ArtboardPalette(chunk.channels());
+ 		palette.initialize();
+ 		palette.resizeAndCopy(width , height);
+ 		
+ 		//this skips the first two entries, the background pixel values
+ 		int i = 2 * chunk.channels();
+ 		
+ 		byte[] channelValues = new byte[chunk.channels()];
+ 		while(i < pixelData.length) {
+ 			
+ 			for(int j = 0 ; j < chunk.channels() ; j++) channelValues[j] = pixelData[i++];
+ 			palette.put(palette.new PalettePixel(channelValues));
+ 			
+ 		}
+ 		
+ 		return palette;
+ 		
+ 	}
+ 	
+ 	private Artboard loadArtboard(ArtboardChunk chunk) {
+ 		
+ 		Artboard newArtboard = createArtboardDontArrange(chunk.name() , chunk.width() , chunk.height());
+ 		 		
+ 		//also set up visual layer ranks here. the order the chunks are found are the ranks the layers are supposed to be in
+ 		int i = 0;
+ 		for(VisualLayerDataChunk x : chunk.visualLayers()) { 
+ 			
+ 			VisualLayer layer = (VisualLayer) loadLayer(newArtboard , x);
+ 			int previousRank = newArtboard.getLayerRank(layer);
+ 			if(previousRank != i) newArtboard.moveVisualLayerRank(previousRank , i);
+ 			i++;
+
+ 		}
+ 		
+ 		//nonvisual
+ 		for(NonVisualLayerDataChunk x : chunk.nonVisualLayers()) loadLayer(newArtboard , x);
+ 		
+ 		//set active layer
+ 		if(chunk.isActiveLayerVisual()) { 
+ 			
+ 			newArtboard.setActiveLayer(newArtboard.getVisualLayer(chunk.activeLayerIndex()));
+ 			newArtboard.showAllNonHiddenVisualLayers();
+ 			
+ 		} else { 
+ 			
+ 			Layer active = newArtboard.getNonVisualLayer(chunk.activeLayerIndex());
+ 			newArtboard.setActiveLayer(active);
+ 			active.show(newArtboard); 
+ 			
+ 		}
+ 		
+ 		return newArtboard;
+ 		
+ 	}
+
+ 	private Layer loadLayer(Artboard artboard , VisualLayerDataChunk chunk) {
+ 		
+ 		return loadLayer(artboard , chunk.name() , chunk.hiding() , chunk.locked() , chunk.isCompressed() , chunk.pixelData());
+ 		
+ 	}
+
+ 	private Layer loadLayer(Artboard artboard , NonVisualLayerDataChunk chunk) {
+ 		
+ 		return loadLayer(artboard , chunk.name() , chunk.hiding() , chunk.locked() , chunk.isCompressed() , chunk.pixelData());
+ 		
+ 	}
+ 	
+ 	private void loadAnimation(AnimationChunk x) {
+ 		
+ 		Animation animation = createAnimation(x.name());
+ 		animation.defaultSwapType(AnimationSwapType.valueOf(x.defaultSwapType()));
+ 		animation.setFrameTime(x.defaultSwapTime());
+ 		animation.setUpdates(x.defaultUpdates());
+ 		
+ 		currentAnimation(animation);
+ 		
+ 		for(AnimationFrameChunk y : x.frames()) {
+ 			
+ 			appendArtboardToCurrentAnimationDontArrange(getArtboard(y.artboardName()));
+ 			//most recent frame
+ 			AnimationFrame frame = animation.getFrame(animation.numberFrames() - 1); 			
+ 			AnimationSwapType swapType = AnimationSwapType.valueOf(y.swapType());
+ 			frame.swapType(() -> swapType);
+ 			
+ 			if(y.frameTime() == animation.getFrameTime.getAsFloat()) frame.time(animation.defaultSwapTime());
+ 			else frame.time(new FloatReference(y.frameTime()));
+ 			
+ 			if(y.frameUpdates() == animation.getUpdates.getAsInt()) frame.updates(animation.defaultUpdateAmount());
+ 			else frame.updates(new CSRefInt(y.frameUpdates()));
+ 			
+ 		}
+ 		
+ 	}
+ 	
 	@Override public void shutDown() {
 
 		forEachArtboard(artboard -> engine.removeRender(artboard.render()));		
+		vectorTextBoxes.forEach(VectorText::shutDown);
 		isFreed.set(true);
-
+		
 	}
-
+	
 	@Override public boolean isFreed() {
 
 		return isFreed.get();

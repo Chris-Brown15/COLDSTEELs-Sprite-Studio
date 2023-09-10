@@ -17,23 +17,37 @@ import static org.lwjgl.nuklear.Nuklear.nk_radio_text;
 import static org.lwjgl.nuklear.Nuklear.nk_text_wrap_colored;
 import static org.lwjgl.nuklear.Nuklear.nk_checkbox_text;
 import static org.lwjgl.nuklear.Nuklear.nk_button_text;
+import static org.lwjgl.nuklear.Nuklear.nk_spacer;
+import static org.lwjgl.nuklear.Nuklear.nk_edit_string;
+import static org.lwjgl.nuklear.Nuklear.nk_propertyi;
+import static org.lwjgl.nuklear.Nuklear.nk_color_pick;
+
+import static org.lwjgl.system.MemoryUtil.memUTF8;
+
+import java.util.Iterator;
+import java.util.function.BooleanSupplier;
 
 import org.lwjgl.nuklear.NkColor;
+import org.lwjgl.nuklear.NkColorf;
 import org.lwjgl.nuklear.NkContext;
 import org.lwjgl.system.MemoryStack;
 
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
+import cs.coreext.nanovg.NanoVGTypeface;
 import cs.csss.editor.Editor;
 import cs.csss.editor.events.HideLayerEvent;
 import cs.csss.editor.events.SwitchToNonVisualLayerEvent;
 import cs.csss.editor.events.SwitchToVisualLayerEvent;
 import cs.csss.engine.Engine;
+import cs.csss.engine.NamedNanoVGTypeface;
 import cs.csss.project.CSSSProject;
+import cs.csss.ui.menus.VectorTextMenu;
 import cs.csss.utils.ConfirmationBox;
 import cs.csss.utils.NotificationBox;
 
+@SuppressWarnings("unused")
 public class RHSPanel {
 	
 	/**
@@ -57,13 +71,14 @@ public class RHSPanel {
 		expandNonvisual = false ,
 		expandArtboards = false ,
 		expandVisualLayers = false ,
-		expandNonVisualLayers = false
-	;
+		expandNonVisualLayers = false ,
+		expandVectorTextBoxes = false ,
+		expandFonts = false;
 	
-	private CSSSProject current;
+	private CSSSProject project;
 	private final CSUserInterface ui;
 	
-	public RHSPanel(Editor editor , CSNuklear nuklear) {
+	public RHSPanel(Editor editor , CSNuklear nuklear , Engine engine) {
 
 		ui = nuklear.new CSUserInterface("Project" , 0.80f , -1f , 0.199f , 0.90f);
 		ui.setDimensions(ui.xPosition(), 77, ui.interfaceWidth(), ui.interfaceHeight());
@@ -71,7 +86,7 @@ public class RHSPanel {
 		
 		ui.specifyLayout((context , stack) -> {
 			
-			if((current = editor.project()) == null) { 
+			if((project = editor.project()) == null) { 
 				
 				nk_layout_row_dynamic(context , 20 , 1);
 				nk_text_wrap_colored(context , "No project is active." , NkColor.malloc(stack).set(
@@ -97,7 +112,7 @@ public class RHSPanel {
 			if(nk_selectable_symbol_text(
 				context , 
 				toMenuSymbol(expandProject) , 
-				current.name() , 
+				project.name() , 
 				TEXT_MIDDLE , 
 				toByte(stack , expandProject)
 			)) expandProject = !expandProject;
@@ -121,7 +136,7 @@ public class RHSPanel {
 				toByte(stack , expandAnimations))
 			) expandAnimations = !expandAnimations;
 			
-			if(expandAnimations) current.forEachAnimation(animation -> {
+			if(expandAnimations) project.forEachAnimation(animation -> {
 				
 				nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 
@@ -166,7 +181,7 @@ public class RHSPanel {
 			
 			if(expandVisual) {
 				
-				current.forEachVisualLayerPrototype(layer -> {
+				project.forEachVisualLayerPrototype(layer -> {
 					
 					nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 
@@ -179,7 +194,7 @@ public class RHSPanel {
 					
 					button(context , TIER_THREE_PADDING , "Delete" , () -> {
 						
-						if(current.numberVisualLayers() == 1) new NotificationBox(
+						if(project.numberVisualLayers() == 1) new NotificationBox(
 							"Cannot Delete Layer" , 
 							"You cannot delete this layer because at least one visual layer must always be present." ,
 							nuklear
@@ -217,7 +232,7 @@ public class RHSPanel {
 				toByte(stack , expandNonvisual))
 			) expandNonvisual = !expandNonvisual;
 			
-			if(expandNonvisual) current.forEachNonVisualLayerPrototype(layer -> {
+			if(expandNonvisual) project.forEachNonVisualLayerPrototype(layer -> {
 				
 				nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 
@@ -247,7 +262,7 @@ public class RHSPanel {
 			
 			}
 			
-			if(expandArtboards) current.forEachArtboard(artboard -> {
+			if(expandArtboards) project.forEachArtboard(artboard -> {
 	
 				nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 
@@ -270,7 +285,7 @@ public class RHSPanel {
 				pad(context , TIER_THREE_PADDING);
 				int rowWidth = (ui.interfaceWidth() - TIER_THREE_PADDING - 54) / 2;
 				nk_layout_row_push(context , rowWidth);
-				if(nk_button_text(context , "Copy")) editor.rendererPost(() -> editor.addRender(current.deepCopy(artboard).render()));
+				if(nk_button_text(context , "Copy")) editor.rendererPost(() -> editor.addRender(project.deepCopy(artboard).render()));
 				
 				nk_layout_row_push(context , rowWidth);
 				if(nk_button_text(context , "Remove")) Engine.THE_TEMPORAL.onTrue(() -> true , () -> editor.rendererPost(() -> {
@@ -343,9 +358,13 @@ public class RHSPanel {
 				pad(context , TIER_THREE_PADDING);
 				nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);
 				
-				if(nk_selectable_symbol_text(context , toMenuSymbol(expandNonVisualLayers) , "Nonvisual Layers" , TEXT_MIDDLE, asByte(
-					expandNonVisualLayers
-				))) { 
+				if(nk_selectable_symbol_text(
+					context , 
+					toMenuSymbol(expandNonVisualLayers) , 
+					"Nonvisual Layers" , 
+					TEXT_MIDDLE, 
+					asByte(expandNonVisualLayers)
+				)) { 
 					
 					expandNonVisualLayers = !expandNonVisualLayers;
 					
@@ -379,9 +398,157 @@ public class RHSPanel {
 					}
 					
 				});
+
 				
 			});
-
+			
+//			nk_layout_row_begin(context , NK_STATIC , 30 , 2);
+//			pad(context , TIER_ONE_PADDING);
+//			nk_layout_row_push(context , ui.interfaceWidth() - TIER_ONE_PADDING - 40);
+//			
+//			if(nk_selectable_symbol_text(
+//				context , 
+//				toMenuSymbol(expandVectorTextBoxes) , 
+//				"Text Boxes" , 
+//				TEXT_MIDDLE, 
+//				asByte(expandVectorTextBoxes)
+//			)) { 
+//				
+//				expandVectorTextBoxes = !expandVectorTextBoxes;
+//				
+//			}
+//
+//			nk_layout_row_end(context);
+//			
+//			if(expandVectorTextBoxes)  {
+//				
+//				project.forEachVectorTextBox(textBox -> {
+//					
+//					boolean isActive = textBox == project.currentTextBox();
+//					
+//					int textDropDownSymbol = isActive ? SYMBOL_TRIANGLE_DOWN : SYMBOL_TRIANGLE_RIGHT;
+//					
+//					nk_layout_row_begin(context , NK_STATIC , 30 , 2);
+//					pad(context , TIER_TWO_PADDING);
+//					
+//					nk_layout_row_push(context , ui.interfaceWidth() - TIER_TWO_PADDING - 40);
+//					
+//					/*
+//					 * TODO:
+//					 * For some unknown reason the program will crash if it is asked to display too much text in some of these nuklear 
+//					 * functions, therefore we limit the length of strings in order to hopefully prevent that from happening.
+//					 */
+//					String text = memUTF8(textBox.text().get());
+//					if(text.length() > 10) text = text.substring(0, 10);
+//					
+//					if(nk_selectable_symbol_text(context , textDropDownSymbol , text , TEXT_MIDDLE , toByte(stack , isActive))) {
+//					
+//						editor.setBrushTo(null);						
+//						project.currentTextBox(textBox);
+//						
+//					}
+//										
+//					nk_layout_row_end(context);
+//					
+//					if(isActive) {
+//
+//						nk_layout_row_begin(context , NK_STATIC , 30 , 2);
+//						pad(context , TIER_THREE_PADDING);
+//						int fontSymbol = expandFonts ? SYMBOL_TRIANGLE_DOWN : SYMBOL_TRIANGLE_RIGHT; 
+//						nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);
+//						if(nk_selectable_symbol_text(context , fontSymbol , "Fonts" , TEXT_MIDDLE , toByte(stack , expandFonts))) {
+//							
+//							expandFonts = !expandFonts;
+//							
+//						}
+//						
+//						nk_layout_row_end(context);
+//						
+//						if(expandFonts) {
+//							
+//							Iterator<NamedNanoVGTypeface> typefaceIterator = engine.loadedFonts.iterator();
+//							
+//							while(typefaceIterator.hasNext()) {
+//								
+//								NamedNanoVGTypeface typefaceContainer = typefaceIterator.next();
+//								NanoVGTypeface typeface = typefaceContainer.typeface();
+//								
+//								radio(
+//									context , 
+//									typefaceContainer.name() , 
+//									TIER_FOUR_PADDING , 
+//									30 , 
+//									() -> textBox.typeface(typeface) , 
+//									() -> textBox.typeface() == typeface
+//								);
+//								
+//							}
+//						
+//						}
+//						
+//						nk_layout_row_begin(context , NK_STATIC , 20 , 2);
+//						pad(context , TIER_THREE_PADDING);						
+//						nk_text(context , "Input Text: " , TEXT_LEFT);						
+//						nk_layout_row_end(context);
+//						
+//						nk_layout_row_begin(context , NK_STATIC , 150 , 2);						
+//						pad(context , TIER_THREE_PADDING);
+//						nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);						
+//						nk_edit_string(
+//							context , 
+//							VectorTextMenu.TEXT_EDIT_OPTIONS , 
+//							textBox.textEditorBuffer() ,
+//							textBox.textLengthBuffer() , 
+//							999 , 
+//							CSNuklear.NO_FILTER
+//						);
+//						
+//						nk_layout_row_end(context);
+//
+//						button(context , TIER_THREE_PADDING , 30 , "Accept" , textBox::setTextFromBuffers);
+//						button(context , TIER_THREE_PADDING , 30 , "Remove" , () -> onTrue(() -> project.removeTextBox(textBox)));
+//						textBox.charHeight(slider(context , TIER_THREE_PADDING , textBox.charHeight() , 1 , 9999 , 1 , 1f));	
+//						textBox.rowHeight(slider(context , TIER_THREE_PADDING , textBox.rowHeight() , 1 , 9999 , 1 , 1f));
+//						checkBox(context , "Move/Arrange" , TIER_THREE_PADDING , 30 , project::toggleMovingText , project::movingText);
+//					
+//						nk_layout_row_begin(context , NK_STATIC , 20 , 2);
+//						pad(context , TIER_THREE_PADDING);
+//						nk_text(context , "Text Color: " , TEXT_LEFT);					
+//						nk_layout_row_end(context);
+//						
+//						nk_layout_row_begin(context , NK_STATIC , 150 , 2);						
+//						pad(context , TIER_THREE_PADDING);
+//						nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);	
+//						
+//						NkColorf color = NkColorf.malloc(stack);
+//						
+//						int colors = textBox.color();
+//						
+//						float ured = Byte.toUnsignedInt((byte)(colors >> 24));
+//						float ugreen = Byte.toUnsignedInt((byte)(colors >> 16));
+//						float ublue = Byte.toUnsignedInt((byte)(colors >> 8));
+//						float ualpha = Byte.toUnsignedInt((byte) colors);
+//						
+//						color.set(ured / 255f , ugreen / 255f , ublue / 255f , ualpha / 255f); 
+//						
+//						int format = project.channelsPerPixel() == 4 ? RGBA : RGB;
+//						nk_color_pick(context , color , format);
+//						nk_layout_row_end(context);					
+//						
+//						byte red = (byte)(color.r() * 255);
+//						byte green = (byte)(color.g() * 255);
+//						byte blue = (byte)(color.b() * 255);
+//						byte alpha = (byte)(color.a() * 255);
+//						
+//						colors = (255 & red) << 24 | (255 & green) << 16 | (255 & blue) << 8 | 255 & alpha;
+//						textBox.color(colors);
+//						
+//					}
+//					
+//				});
+//				
+//			}
+			
 		});	
 		
 	}
@@ -389,15 +556,21 @@ public class RHSPanel {
 	private void pad(NkContext context , int pixels) {
 		
 		nk_layout_row_push(context , pixels);
-		nk_text_wrap(context ,  "");
+		nk_spacer(context);
 		
 	}
 
 	private void button(NkContext context , int padding , final String buttonText , final Lambda onPress) {
 
-		final int rowSpace =  ui.interfaceWidth() - padding - 50;
+		button(context , padding , 20 , buttonText , onPress);
+		
+	}
 
-		nk_layout_row_begin(context , NK_STATIC , 20 , 2);
+	private void button(NkContext context , int padding , int rowWidth , final String buttonText , final Lambda onPress) {
+
+		final int rowSpace =  ui.interfaceWidth() - padding - 40;
+
+		nk_layout_row_begin(context , NK_STATIC , rowWidth , 2);
 		pad(context, padding);
 		
 		nk_layout_row_push(context , rowSpace);						
@@ -406,10 +579,38 @@ public class RHSPanel {
 		nk_layout_row_end(context);
 
 	}
+
+	private void checkBox(NkContext context , String text , int padding , int rowWidth , Lambda onPress , BooleanSupplier state) {
+		
+		final int rowSpace =  ui.interfaceWidth() - padding - 40;
+
+		nk_layout_row_begin(context , NK_STATIC , rowWidth , 2);
+		pad(context, padding);
+		
+		nk_layout_row_push(context , rowSpace);
+		if(nk_checkbox_text(context , text , toByte(MemoryStack.stackGet() , state.getAsBoolean()))) onPress.invoke();
+		
+		nk_layout_row_end(context);
+
+	}
+
+	private void radio(NkContext context , String text , int padding , int rowWidth , Lambda onPress , BooleanSupplier state) {
+		
+		final int rowSpace =  ui.interfaceWidth() - padding - 40;
+
+		nk_layout_row_begin(context , NK_STATIC , rowWidth , 2);
+		pad(context, padding);
+		
+		nk_layout_row_push(context , rowSpace);
+		if(nk_radio_text(context , text , toByte(MemoryStack.stackGet() , state.getAsBoolean()))) onPress.invoke();
+		
+		nk_layout_row_end(context);
+
+	}
 	
 	private void activeLayerCheckBox(NkContext context , final String buttonText , final boolean state , final Lambda onPress) {
 
-		final int rowSpace =  ui.interfaceWidth() - TIER_FIVE_PADDING - 50;
+		final int rowSpace =  ui.interfaceWidth() - TIER_FIVE_PADDING - 40;
 
 		nk_layout_row_begin(context , NK_STATIC , 20 , 2);
 		pad(context, TIER_FIVE_PADDING);
@@ -419,10 +620,29 @@ public class RHSPanel {
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			
 			if(nk_checkbox_text(context , buttonText , toByte(stack , state))) onPress.invoke();
+			
 		}
 		
 		nk_layout_row_end(context);
 
+	}
+
+	private int slider(NkContext context , int padding , int current , int min , int max , int increase , float increasePerPixel) {
+
+		nk_layout_row_begin(context , NK_STATIC , 30 , 2);
+		pad(context , padding);			
+		nk_layout_row_push(context , ui.interfaceWidth() - padding - 40);						
+		int result = nk_propertyi(context, "Row Height" , 1 , current , 9999, 1, increasePerPixel);			
+		nk_layout_row_end(context);
+
+		return result;
+		
+	}
+
+	private void onTrue(Lambda onTrue) {
+		
+		Engine.THE_TEMPORAL.onTrue(() -> true , onTrue);
+		
 	}
 	
 }

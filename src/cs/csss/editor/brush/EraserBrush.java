@@ -9,7 +9,7 @@ public class EraserBrush extends CSSSModifyingBrush {
 
 	public EraserBrush() {
 
-		super("Removes a pixel or region of pixels from the artboard.");
+		super("Removes a pixel or region of pixels from the artboard." , false);
 		
 	}
 
@@ -21,6 +21,8 @@ public class EraserBrush extends CSSSModifyingBrush {
 	}
 	
 	@Override public boolean canUse(Artboard artboard, Editor editor, int xIndex, int yIndex) {
+		
+		if(!super.canUse(artboard, editor, xIndex, yIndex)) return false;
 		
 		int[] region = centerAroundRadius(xIndex, yIndex, artboard.width(), artboard.height());
 		for(int row = 0 ; row < region[3] ; row++) for(int col = 0 ; col < region[2] ; col++) {

@@ -3,6 +3,7 @@ package cs.csss.editor.ui;
 import static cs.core.utils.CSFileUtils.readAllCharacters;
 
 import java.io.IOException;
+import java.util.function.BooleanSupplier;
 
 import static cs.core.ui.CSUIConstants.*;
 
@@ -54,16 +55,32 @@ public class FilePanel {
 		
 		editMenu.new CSDynamicRow().new CSButton("Undo" , editor::undo);
 		editMenu.new CSDynamicRow().new CSButton("Redo" , editor::redo);
+//		editMenu.new CSDynamicRow().new CSButton("Add Text" , editor::startAddText);
 		editMenu.new CSDynamicRow().new CSButton("Run Artboard Script" , editor::startRunScript);
 		editMenu.new CSDynamicRow().new CSButton("Run Project Script" , editor::startProjectScript);
 	
 		projectMenu.new CSDynamicRow().new CSButton("New Project" , editor::startNewProject);
-		projectMenu.new CSDynamicRow().new CSButton("Add Animation" , editor::startNewAnimation);
-		projectMenu.new CSDynamicRow().new CSButton("Add Visual Layer" , editor::startNewVisualLayer);
-		projectMenu.new CSDynamicRow().new CSButton("Add Nonvisual Layer" , editor::startNewNonVisualLayer);
-		projectMenu.new CSDynamicRow().new CSButton("Add Artboard" , editor::startNewArtboard);
 		
-		projectMenu.new CSDynamicRow().new CSCheckBox("Show Animation Panel" , false , editor::toggleAnimationPanel);
+		BooleanSupplier doLayoutProjectButtons = () -> editor.project() != null;
+		
+		CSDynamicRow
+			addAnimationRow = projectMenu.new CSDynamicRow() ,
+			addVisualLayerRow = projectMenu.new CSDynamicRow() ,
+			addNonVisualLayerRow = projectMenu.new CSDynamicRow() ,
+			addArtboardRow = projectMenu.new CSDynamicRow() ,
+			toggleAnimationPanelRow = projectMenu.new CSDynamicRow();
+		
+		addAnimationRow.new CSButton("Add Animation" , editor::startNewAnimation);
+		addVisualLayerRow.new CSButton("Add Visual Layer" , editor::startNewVisualLayer);
+		addNonVisualLayerRow.new CSButton("Add Nonvisual Layer" , editor::startNewNonVisualLayer);
+		addArtboardRow.new CSButton("Add Artboard" , editor::startNewArtboard);
+		toggleAnimationPanelRow.new CSCheckBox("Animation Panel" , false , editor::toggleAnimationPanel);
+		
+		addAnimationRow.doLayout = doLayoutProjectButtons;
+		addVisualLayerRow.doLayout = doLayoutProjectButtons;
+		addNonVisualLayerRow.doLayout = doLayoutProjectButtons;
+		addArtboardRow.doLayout = doLayoutProjectButtons;
+		toggleAnimationPanelRow.doLayout = doLayoutProjectButtons; 
 		
 		optionsMenu.new CSDynamicRow().new CSButton("Toggle Fullscreen" , editor::toggleFullscreen);
 		
@@ -110,13 +127,13 @@ public class FilePanel {
 		paletteRow2.doLayout = paletteRow1.doLayout;
 		paletteRow1.new CSText(() -> {
 			
-			return "Palette Size: " + editor.project().palette().width() + ", " + editor.project().palette().height();
+			return "Palette Size: " + editor.project().visualPalette().width() + ", " + editor.project().visualPalette().height();
 			
 		});
 		
 		paletteRow2.new CSText(() -> {
 			
-			return "Palette Position: " + editor.project().palette().currentCol() + ", " + editor.project().palette().currentRow();
+			return "Palette Position: " + editor.project().visualPalette().currentCol() + ", " + editor.project().visualPalette().currentRow();
 			
 		});
 				
@@ -178,6 +195,12 @@ public class FilePanel {
 				e.printStackTrace();
 				
 			}
+			
+		});
+		
+		debugMenu.new CSDynamicRow().new CSButton("Switch Shader" , () -> {
+			
+			CSSSProject.setTheCurrentShader(CSSSProject.theTextureShader());
 			
 		});
 		

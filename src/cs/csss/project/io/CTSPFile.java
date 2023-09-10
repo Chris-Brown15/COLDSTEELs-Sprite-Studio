@@ -119,7 +119,7 @@ public class CTSPFile {
 			
 			putString(fullFileName.substring(0, fullFileName.indexOf(FILE_EXTENSION)) , writer);
 			putByte((byte) project.channelsPerPixel() , writer);
-			putInt(project.numberNonCopiedArtboards() , writer);
+			putInt(project.getNumberNonCopiedArtboards() , writer);
 			putInt(project.numberVisualLayers() , writer);
 			putInt(project.numberNonVisualLayers() , writer);
 			putInt(project.numberAnimations() , writer);
@@ -160,7 +160,7 @@ public class CTSPFile {
 	
 	private void writePaletteChunks(FileOutputStream writer) throws IOException {
 		
-		writePalette(project.palette() , writer);
+		writePalette(project.visualPalette() , writer);
 		writePalette(project.getNonVisualPaletteBySize(1) , writer);
 		writePalette(project.getNonVisualPaletteBySize(2) , writer);
 		writePalette(project.getNonVisualPaletteBySize(3) , writer);

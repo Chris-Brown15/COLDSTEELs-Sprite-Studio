@@ -6,12 +6,14 @@ import static cs.core.ui.CSUIConstants.HOVERING;
 import static cs.core.ui.CSUIConstants.MOUSE_PRESSED;
 import static cs.core.ui.CSUIConstants.MOUSE_RIGHT;
 
+import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.LinkedList;
+import java.util.List;
 
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSElement;
 import cs.csss.editor.Editor;
 import cs.csss.editor.events.CSSSEvent;
+import cs.csss.engine.Control;
 import cs.csss.project.Artboard;
 
 /**
@@ -24,13 +26,33 @@ import cs.csss.project.Artboard;
  */
 public abstract class CSSSBrush {
 
-	private static final LinkedList<CSSSBrush> allBrushes = new LinkedList<>();
+	private static final List<CSSSBrush> allBrushes = new ArrayList<>();
 	
 	public static Iterator<CSSSBrush> allBrushes() {
 	
 		return allBrushes.iterator();
 		
 	}	
+	
+	public static Iterator<CSSSModifyingBrush> modifyingBrushes() {
+		
+		return allBrushes
+			.stream()
+			.filter(brush -> brush instanceof CSSSModifyingBrush)
+			.map(brush -> (CSSSModifyingBrush) brush)
+			.iterator();
+		
+	}
+
+	public static Iterator<CSSSSelectingBrush> selectingBrushes() {
+		
+		return allBrushes
+			.stream()
+			.filter(brush -> brush instanceof CSSSSelectingBrush)
+			.map(brush -> (CSSSSelectingBrush) brush)
+			.iterator();
+		
+	}
 	
 	public static int numberBrushes() {
 		
@@ -39,11 +61,13 @@ public abstract class CSSSBrush {
 	}
 	
 	public final String toolTip;
+	public final boolean stateful;
 	
-	CSSSBrush(final String tooltip){
+	CSSSBrush(final String tooltip , boolean stateful){
 		
 		allBrushes.add(this);
 		this.toolTip = tooltip;
+		this.stateful = stateful;
 		
 	}
 	
@@ -59,22 +83,34 @@ public abstract class CSSSBrush {
 	public abstract CSSSEvent use(Artboard artboard , Editor editor , int xIndex , int yIndex);
 	
 	/**
-	 * Used to verify whether this brush should activate or not. This can be used to cull potential generation of events which would have
-	 * no affect, such as trying to color a pixel who is already the selected color. If the required computations to avoid a useless event
-	 * are more expensive than the required event, this method should just return true.
+	 * Determines when this brush can be used. The default implementation will allow the brush to be used whenever the 
+	 * {@link cs.csss.core.Control Control#ARTBOARD_INTERACT ARTBOARD_INTERACT} control is pressed, but any condition can be used, and it is
+	 * valid for brushes to activate uner other circumstances according to the desired way to use the brush.
 	 * 
 	 * @param artboard — the current artboard
 	 * @param editor — the editor
 	 * @param xIndex — x index of the pixel selected
 	 * @param yIndex — y index of the pixel selected
-	 * @return {@code true} if it is wise to invoke {@code go} or if the implementor does not verify, {@code false} otherwise.
+	 * @return {@code true} if it is valid to invoke {@code use}.
 	 */
 	public boolean canUse(Artboard artboard , Editor editor , int xIndex , int yIndex) {
 		
-		return true;
+		return Control.ARTBOARD_INTERACT.pressed(); 
 		
 	}
 
+	/**
+	 * Override this to implement stateful functionality to a brush.
+	 * 
+	 * @param artboard — the current artboard, or {@code null} if none is active
+	 * @param editor — the editor
+	 */
+	public void update(Artboard artboard , Editor editor) {
+		
+		if(!stateful) throw new UnsupportedOperationException("Cannot update a non stateful brush.");
+		
+	}
+	
 	/**
 	 * Sets up the toolTip associated with this Brush.
 	 * 

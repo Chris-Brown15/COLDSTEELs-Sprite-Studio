@@ -8,6 +8,14 @@ import cs.core.graphics.CSOrthographicCamera;
  */
 public class CSSSCamera extends CSOrthographicCamera {
 
+	public static CSSSCamera centeredCamera(int viewWidth , int viewHeight , float worldXMid , float worldYMid) {
+		
+		CSSSCamera camera = new CSSSCamera(viewWidth / 2 , viewHeight / 2);
+		camera.translate(-worldXMid, -worldYMid);
+		return camera;
+		
+	}
+	
 	public CSSSCamera(int windowWidth, int windowHeight) {
 		
 		super(windowWidth, windowHeight);

@@ -13,6 +13,7 @@ import static cs.core.utils.CSUtils.require;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import cs.core.utils.data.CSCHashMap;
@@ -43,7 +44,30 @@ public abstract class Layer {
 		reservedNames.put("___meta", "___meta");
 		
 	}
+
+	public static void toByteBuffer(LayerPixel[][] source , ByteBuffer destination) {
 		
+		int destPosition = destination.position();
+		
+		for(LayerPixel[] row : source) for(LayerPixel x : row) {
+			
+			if(x != null) destination.put((byte)x.lookupX).put((byte)x.lookupY);
+			else destination.put((byte)0).put((byte)0);
+			
+		}
+	
+		destination.position(destPosition);
+		
+	}
+
+	public static ByteBuffer toByteBuffer(LayerPixel[][] source) {
+		
+		ByteBuffer contents = memAlloc(source[0].length * source.length * IndexTexture.pixelSizeBytes);
+		toByteBuffer(source , contents);
+		return contents;
+				
+	}
+	
 	/**
 	 * Some words and characters are used internally and cannot be layer names. This method checks to make sure a potential layer name is 
 	 * not one of the reserved words and does not contain reserved characters.
@@ -117,6 +141,21 @@ public abstract class Layer {
 		specify(containsModificationTo(xIndex, yIndex) , "This layer does not modify (" + xIndex + ", " + yIndex + ")");
 		
 		layerDataStore.remove(xIndex, yIndex);
+		
+	}
+	
+	/**
+	 * Removes the region whose bottom left coordinate is {@code (xIndex , yIndex)} and whose dimensions are {@code width} and 
+	 * {@code height}.
+	 * 
+	 * @param xIndex — x index of the bottom left corner of the region
+	 * @param yIndex — y index of the bottom left corner of the region
+	 * @param width — width of the region
+	 * @param height — height of the region
+	 */
+	public void remove(int xIndex , int yIndex , int width , int height) {
+		
+		layerDataStore.remove(xIndex, yIndex, width, height);
 		
 	}
 	
@@ -295,7 +334,7 @@ public abstract class Layer {
 	 * 
 	 * @return The number of positions this layer modifies.
 	 */
-	protected int mods() {
+	public int mods() {
 		
 		return layerDataStore.mods();
 		
@@ -309,6 +348,21 @@ public abstract class Layer {
 		forEachModification(px -> buffer.putInt(px.textureX).putInt(px.textureY).put((byte) px.lookupX).put((byte) px.lookupY));
 		buffer.flip();
 		return buffer;
+		
+	}
+	
+	public final ByteBuffer toByteBuffer(int startingX , int startingY , int width , int height) {
+		
+		Objects.checkIndex(startingX, this.width);
+		Objects.checkIndex(startingY, this.height);
+		Objects.checkFromIndexSize(startingX, width, this.width);
+		Objects.checkFromIndexSize(startingY, height, this.height);
+		
+		ByteBuffer buffer = memAlloc(width * height * IndexTexture.pixelSizeBytes);
+		LayerPixel[][] contents = layerDataStore.get(startingX, startingY, width, height);
+		toByteBuffer(contents , buffer);
+		
+		return buffer.rewind();
 		
 	}
 	

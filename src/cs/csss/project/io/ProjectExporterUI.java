@@ -4,6 +4,7 @@ import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
 import static org.lwjgl.nuklear.Nuklear.nk_text_wrap;
 import static cs.core.ui.CSUIConstants.*;
 
+import java.io.File;
 import java.util.ArrayList;
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
@@ -12,6 +13,7 @@ import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
+import cs.coreext.python.CSJEP;
 import cs.csss.engine.Engine;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.project.CSSSProject;
@@ -60,6 +62,10 @@ public class ProjectExporterUI {
 	
 	private ArrayList<ExportCallbackAndName> exporters = new ArrayList<>();
 	
+	private String scriptPath;
+	
+	private CSCheckBox doExportScript;
+	
 	public ProjectExporterUI(final Engine engine , CSNuklear nuklear , final CSSSProject project) {
 	
 		int[] windowSize = engine.windowSize();
@@ -79,8 +85,6 @@ public class ProjectExporterUI {
 			ui.shutDown();
 			
 		};
-		
-		project.padAnimationFrames(false);
 		
 		String description = "Drag a folder into Sprite Studio to select it as the location to export to.";
 		ui.new CSDynamicRow(20).new CSText(description , (byte)0x0 , (byte)0x79 , (byte) 0x0 , (byte)0xff);
@@ -139,7 +143,31 @@ public class ProjectExporterUI {
 			
 		}
 		
-		ui.new CSDynamicRow(25).new CSCheckBox("Script" , false , () -> {});
+		CSDynamicRow scriptRow = ui.new CSDynamicRow(30);
+		doExportScript = scriptRow.new CSCheckBox("Script" , false , () -> {});
+		
+		ui.attachedLayout((context , stack) -> {
+			
+			if(scriptPath == null) doExportScript.uncheck();
+			
+		});
+		
+		scriptRow.new CSButton("Select" , () -> engine.startSelectScriptMenu("exporters" , file -> {
+			
+			scriptPath = file.getRealPath();
+
+			exporters.add(new ExportCallbackAndName((filepath , data , width , height , channels) -> {
+				
+				try(CSJEP python = CSJEP.interpreter()) {
+					
+					python.run(scriptPath);
+					python.invoke("export", filepath , data , width , height , channels);
+					
+				}
+				
+			} , new File(scriptPath).getName()));
+
+		}));
 		
 		CSDynamicRow finishRow = ui.new CSDynamicRow();
 		
@@ -154,6 +182,8 @@ public class ProjectExporterUI {
 				exporters , 
 				exportLocation + CSFolder.separator ,
 				nameInput.toString() ,
+				engine.nanoVG() ,
+				engine.windowSize() ,
 				exportPalette.checked() ,
 				exportHiddenLayers.checked() ,
 				hideCheckeredBackground.checked() ,
@@ -171,14 +201,12 @@ public class ProjectExporterUI {
 		
 	}
 	
-	/**
-	 * Makes sure the name input is not empty.
-	 * 
-	 * @return {@code true} if the name input box is not empty.
-	 */
 	private boolean verifyExportable() {
 		
-		return !nameInput.toString().equals("");
+		boolean initiallyPossible = exporters.size() > 0 && !nameInput.toString().equals("");
+		if(doExportScript.checked()) initiallyPossible = initiallyPossible && scriptPath != null;
+		
+		return initiallyPossible;
 		
 	}
 

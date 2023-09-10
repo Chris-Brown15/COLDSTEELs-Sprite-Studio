@@ -87,7 +87,7 @@ public class Animation {
 	}
 	
 	int xPositionForFrameAt(int index) {
-		
+			
 		return index * frameWidth();
 		
 	}
@@ -281,6 +281,19 @@ public class Animation {
 	}
 	
 	/**
+	 * Sets the frame at {@code originalIndex} to the index {@code newIndex}.
+	 * 
+	 * @param originalIndex — index of some a frame
+	 * @param newIndex — new index for the frame
+	 */
+	public void setFramePosition(int originalIndex , int newIndex) {
+		
+		AnimationFrame frame = frames.remove(originalIndex);
+		frames.add(newIndex, frame);
+		
+	}
+	
+	/**
 	 * This method renders the current frame of the animation, an artboard, on the given UI element.
 	 * 
 	 * <p>
@@ -310,16 +323,14 @@ public class Animation {
 		 */
 		final float 
 			newZoom = renderOnto.zoom() ,
-			originalZoom = camera.zoom()
-		;
+			originalZoom = camera.zoom();
 		
 		camera.zoom(newZoom);
 		
 		int[] 
 			panelMidpoint = renderOnto.midpointToAnimationFrameSlot() ,
 			panelDims = renderOnto.dimensionsOfAnimationFrameSlot() ,
-			panelTopLeft = renderOnto.topLeftPointOfAnimationFrameSlot()
-		;
+			panelTopLeft = renderOnto.topLeftPointOfAnimationFrameSlot();
 		
 		//here we compute the world coordinates of the point of the ui element we want to render the active frame in. We'll move the active
 		//frame to that point using these values
@@ -344,7 +355,7 @@ public class Animation {
 		//the artboard into the frame as perfectly as possible. this will look the same no matter the window dimensions.
 		glScissor(panelTopLeft[0] , screenHeight - panelTopLeft[1] - panelDims[1] - 5, panelDims[0] + 10 , panelDims[1] - 1);
 		
-		shader.activate(frame.board);
+		shader.updateTextures(frame.board.activeLayersPalette() , frame.board.indexTexture());
 		shader.activate();
 		frame.board.draw();
 		
@@ -371,9 +382,9 @@ public class Animation {
 	 * 
 	 * @return X coordinate of the left vertex of the first artboard of this animation.
 	 */
-	public int leftmostX() {
+	public float leftmostX() {
 		
-		return -(frames.get(0).board.width() / 2);
+		return frames.get(0).board.leftX();
 		
 	}
 	
@@ -489,7 +500,7 @@ public class Animation {
 		
 	}
 
-	public float leftU(int projectLeftMostX , int projectRightMostX) {
+	public float leftU(float projectLeftMostX , float projectRightMostX) {
 		
 		if(numberFrames() == 0) return -1f;				
 	 	AnimationFrame firstFrame = frames.get(0);
@@ -498,7 +509,7 @@ public class Animation {
 		
 	}
 	
-	public float bottomV(int projectBottomY , int projectTopY) {
+	public float bottomV(float projectBottomY , float projectTopY) {
 		
 		if(numberFrames() == 0) return -1f;		
 		AnimationFrame firstFrame = frames.get(0);		
@@ -507,7 +518,7 @@ public class Animation {
 		
 	}
 	
-	public float topV(int projectBottomY , int projectTopY) {
+	public float topV(float projectBottomY , float projectTopY) {
 		
 		if(numberFrames() == 0) return -1f;		
 		AnimationFrame firstFrame = frames.get(0);
@@ -516,11 +527,17 @@ public class Animation {
 		
 	}
 	
-	public float widthU(int projectLeftMostX , int projectRightMostX) {
+	public float widthU(float projectLeftMostX , float projectRightMostX) {
 
 		if(numberFrames() == 0) return -1f;	
 		float projectWidth = projectRightMostX - projectLeftMostX;
-		return Math.abs((float)frameWidth() / projectWidth);
+		return Math.abs(frameWidth() / projectWidth);
+		
+	}
+
+	public boolean isEmpty() {
+		
+		return frames.isEmpty();
 		
 	}
 	

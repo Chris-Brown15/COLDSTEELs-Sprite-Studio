@@ -5,13 +5,13 @@ import cs.csss.editor.events.BlendPixelsEvent;
 import cs.csss.editor.events.CSSSEvent;
 import cs.csss.project.Artboard;
 import cs.csss.project.ArtboardPalette.PalettePixel;
-import cs.csss.project.IndexTexture.IndexPixel;
+import cs.csss.project.IndexPixel;
 
 public class BlenderBrush extends CSSSModifyingBrush {
 
 	public BlenderBrush() {
 
-		super("Blends the clicked pixels with the editor's active pixel.");
+		super("Blends the clicked pixels with the editor's active pixel." , true);
 		
 	}
 	
@@ -27,6 +27,8 @@ public class BlenderBrush extends CSSSModifyingBrush {
 	
 	@Override public boolean canUse(Artboard artboard , Editor editor , int xIndex , int yIndex) {
 
+		if(!super.canUse(artboard, editor, xIndex, yIndex)) return false;
+		
 		/*
 		 * Can use if at least one pixel in the region does not match the editor-selected one.
 		 */
@@ -60,4 +62,6 @@ public class BlenderBrush extends CSSSModifyingBrush {
 	
 	}
 
+	@Override public void update(Artboard artboard , Editor editor) {}
+	
 }
