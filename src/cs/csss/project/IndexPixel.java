@@ -8,21 +8,23 @@ import java.nio.ByteBuffer;
 import cs.csss.engine.LookupPixel;
 
 /**
- * This class exists mainly because java does not have unsigned primitives. This means that code that wants a java {@code byte} to be 
- * unsigned, as it is in the GPU, may have errors which this class tries to fix. As well, there are basically different kinds of pixels
- * in this application, index pixels and palette pixels. Palette pixels are more complicated because their number of number of channels 
- * per pixel vary. This class attempts to make working with pixels as painless as possible.
+ * Representation of a lookup pixel. A lookup pixel is a pixel containing primitives as channels which are used as lookups into a palette 
+ * texture. So the x and y values of this lookup pixel correspond to the color located in a palette at the x and y coordinates within the 
+ * texture of the palette.
  * 
- * @author Chris Brown
- *
  */
 public class IndexPixel implements LookupPixel {
 
 	public final short 
 		xIndex ,
-		yIndex
-	;
+		yIndex;
 	
+	/**
+	 * Creates an index pixel with the given values.
+	 * 
+	 * @param xIndex — x lookup of this index pixel
+	 * @param yIndex — y lookup of this index pixel
+	 */
 	public IndexPixel(short xIndex , short yIndex) {
 	
 		specify(xIndex >= 0 , xIndex + " is an invalid x index") ; specify(yIndex >= 0 , yIndex + " is an invalid y index");
@@ -32,6 +34,12 @@ public class IndexPixel implements LookupPixel {
 		
 	}	
 
+	/**
+	 * Creates an index pixel with the given values.
+	 * 
+	 * @param xIndex — x lookup of this index pixel
+	 * @param yIndex — y lookup of this index pixel
+	 */
 	public IndexPixel(int xIndex , int yIndex) {
 
 		specify(xIndex >= 0 , xIndex + " is an invalid x index") ; specify(yIndex >= 0 , yIndex + " is an invalid y index");
@@ -41,6 +49,11 @@ public class IndexPixel implements LookupPixel {
 		
 	}	
 
+	/**
+	 * Creates an index pixel that uses the given buffer's next two bytes as its values.
+	 * 
+	 * @param buffer — a bytebuffer to read from
+	 */
 	public IndexPixel(ByteBuffer buffer) {
 		
 	 	xIndex = (short)Byte.toUnsignedInt(buffer.get());
@@ -48,6 +61,11 @@ public class IndexPixel implements LookupPixel {
 		
 	}
 
+	/**
+	 * Puts the contents of this index pixel into the next two bytes of {@code buffer}.
+	 *  
+	 * @param buffer — destination for the values of this pixel
+	 */
 	public void buffer(ByteBuffer buffer) {
 
 		//2 is used because each pixel of the image is always two bytes.

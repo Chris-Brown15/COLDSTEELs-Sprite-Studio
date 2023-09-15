@@ -9,6 +9,7 @@ import static org.lwjgl.opengl.GL11.glViewport;
 
 import java.nio.ByteBuffer;
 import cs.core.utils.Lambda;
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.misc.graphcs.framebuffer.Framebuffer;
 import cs.csss.misc.graphcs.framebuffer.RenderBuffer;
 
@@ -26,6 +27,15 @@ public class ImageGrabber {
 		width ,
 		height;
 	
+	/**
+	 * Creates an image grabber.
+	 *  
+	 * @param framebuffer — {@link cs.csss.annotation.Nullable @Nullable} framebuffer for rendering
+	 * @param renderbuffer — {@code @Nullable} renderbuffer to receive render
+	 * @param renderCallback — code to invoke to render something to the framebuffer's attachments
+	 * @param width — width of the rendered region in world space
+	 * @param height — height of the rendered region in world space
+	 */
 	public ImageGrabber(Framebuffer framebuffer , RenderBuffer renderbuffer , Lambda renderCallback , int width , int height) {
 
 		this.framebuffer = framebuffer;
@@ -37,11 +47,12 @@ public class ImageGrabber {
 	}
 	
 	/**
-	 * Renders the project into the given renderbuffer and returns a download of that image.
+	 * Renders the project into the given renderbuffer and returns a {@link cs.csss.annotation.FreeAfterUse @FreeAfterUse} downloaded
+	 * {@code ByteBuffer} of that image.
 	 * 
-	 * @return {@code ByteBuffer} containing the resulting render, downloaded.
+	 * @return {@code @FreeAfterUse ByteBuffer} containing the resulting render, downloaded.
 	 */
-	public ByteBuffer renderImage() {
+	@RenderThreadOnly public ByteBuffer renderImage() {
 
 		int glFormat = GL_RGBA;
 

@@ -1,116 +1,12 @@
 package cs.csss.utils;
 
-import static cs.core.utils.CSUtils.require;
 import static cs.core.utils.CSUtils.specify;
 
+/**
+ * Container for utilties for numbers.
+ */
 public final class NumberUtils {
-
-	public static Number[] toNumbers(final byte... bytes) {
 		
-		Number[] asNumbers = new Number[bytes.length];
-		for(int i = 0 ; i < bytes.length ; i ++)  asNumbers[i] = bytes[i];
-		return asNumbers;
-		
-	}
-
-	public static Number[] toNumbers(final short... shorts) {
-		
-		Number[] asNumbers = new Number[shorts.length];
-		for(int i = 0 ; i < shorts.length ; i ++)  asNumbers[i] = shorts[i];
-		return asNumbers;
-		
-	}
-
-	public static Number[] toNumbers(final int... ints) {
-		
-		Number[] asNumbers = new Number[ints.length];
-		for(int i = 0 ; i < ints.length ; i ++)  asNumbers[i] = ints[i];
-		return asNumbers;
-		
-	}
-		
-	public static int[] toInts(final Number... numbers) {
-		
-		int[] ints = new int[numbers.length];
-		for(int i = 0 ; i < numbers.length ; i++) ints[i] = numbers[i].intValue();
-		return ints;
-		
-	}
-	
-	public static short[] toShorts(final Number... numbers) {
-		
-		short[] shorts = new short[numbers.length];
-		for(int i = 0 ; i < numbers.length ; i++) shorts[i] = numbers[i].shortValue();
-		return shorts;
-		
-	}
-	
-	public static byte[] toBytes(final Number... numbers) {
-		
-		byte[] bytes = new byte[numbers.length];
-		for(int i = 0 ; i < numbers.length ; i++) bytes[i] = numbers[i].byteValue();
-		return bytes;
-		
-	}
-
-	public static long[] toLongs(final int... numbers) {
-		
-		long[] longs = new long[numbers.length];
-		for(int i = 0 ; i < numbers.length ; i++) longs[i] = numbers[i];
-		return longs;
-		
-	}
-
-	public static long[] toLongs(final short... numbers) {
-		
-		long[] longs = new long[numbers.length];
-		for(int i = 0 ; i < numbers.length ; i++) longs[i] = numbers[i];
-		return longs;
-		
-	}
-	
-	public static short[] asShorts(final short...shorts) {
-		
-		return shorts;
-		
-	}
-
-	public static short[] asShorts(final int...ints) {
-		
-		short[] shorts = new short[ints.length];
-		for(int i = 0 ; i < shorts.length ; i++) shorts[i] = (short)ints[i];
-		return shorts;
-		
-	}
-
-	public static int[] asInts(final int...ints) {
-		
-		return ints;
-		
-	}
-
-	public static long[] asLong(final long... longs) {
-		
-		return longs;
-		
-	}
-	
-	public static byte[] bytes(long value , int length) {
-		
-		return bytes(value , length , new byte[length]);
-		
-	}
-
-	public static byte[] bytes(long value , int length , byte[] buffer) {
-		
-		require(buffer);
-	
-		final int largestShift = (length - 1) * 8;		
-		for(int i = 0 ; i < length ; i++) buffer[i] = (byte) (value >> (largestShift - (i * 8)));
-		return buffer;
-		
-	}
-	
 	/**
 	 * Returns whether a number {@code number} is a power of two, meaning some {@code n} exists such that {@code (2 ^ n) == number} is 
 	 * {@code true} 

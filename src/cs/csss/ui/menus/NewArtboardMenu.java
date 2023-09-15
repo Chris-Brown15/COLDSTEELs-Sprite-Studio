@@ -10,6 +10,9 @@ import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
 import cs.csss.project.CSSSProject;
 
+/**
+ * UI menu for creating a new artboard.
+ */
 public class NewArtboardMenu {
 
 	public CSUserInterface ui;
@@ -19,14 +22,18 @@ public class NewArtboardMenu {
 
 	private int 
 		width = -1 ,
-		height = -1
-	;
+		height = -1;
 	
 	private final CSTextEditor    
 		widthEditor ,
-		heightEditor
-	;
+		heightEditor;
 		
+	/**
+	 * Creates a new artboard menu.
+	 *
+	 * @param currentProject — the project to add the artboard to
+	 * @param nuklear — the Nuklear factory 
+	 */
 	public NewArtboardMenu(CSSSProject currentProject , CSNuklear nuklear) {
 		
 		ui = nuklear.new CSUserInterface("New Artboard" , 0.5f - (0.33f / 2) , 0.5f - (0.25f / 2) , 0.33f , 0.25f);
@@ -68,18 +75,33 @@ public class NewArtboardMenu {
 		
 	}
 	
+	/**
+	 * Returns whether this UI is ready to finish.
+	 * 
+	 * @return Whether this UI is ready to finish.
+	 */
 	public boolean isFinished() {
 		
 		return isFinished;
 		
 	}
 				
+	/**
+	 * Returns the width of the new artboard.
+	 * 
+	 * @return Width of the new artboard.
+	 */
 	public int width() {
 		
 		return width;
 		
 	}
 	
+	/**
+	* Returns the height of the new artboard.
+	* 
+	* @return Height of the new artboard.
+	*/
 	public int height() {
 		
 		return height;
@@ -104,6 +126,11 @@ public class NewArtboardMenu {
 		
 	}
 	
+	/**
+	 * Returns whether the state of this UI at the time it was finished was such that a new artboard could be created from its variables.
+	 * 
+	 * @return {@code true} if a new artboard could be created from the input values of this menu.
+	 */
 	public boolean finishedValidly() {
 		
 		return width != -1 & height != -1;

@@ -20,6 +20,9 @@ import cs.csss.engine.Engine;
 import cs.csss.misc.files.CSFile;
 import cs.csss.misc.files.CSFolder;
 
+/**
+ * UI menu for creating a new project.
+ */
 public class NewProjectMenu {
 
 	private static final LinkedList<String> existingProjects = new LinkedList<>();
@@ -47,6 +50,11 @@ public class NewProjectMenu {
 
 	private int channelsPerPixel = -1;
 
+	/**
+	 * Creates a new project menu.
+	 * 
+	 * @param nuklear — the Nuklear factory
+	 */
 	public NewProjectMenu(final CSNuklear nuklear) {
 
 		this.ui = nuklear.new CSUserInterface("New Project" , 0.5f - (0.33f / 2) , 0.5f - (0.35f / 2) , 0.33f , 0.35f);
@@ -112,6 +120,11 @@ public class NewProjectMenu {
 		
 	}
 	
+	/**
+	 * Returns the selected channels per pixel of the project.
+	 * 
+	 * @return Channels per pixel of the project.
+	 */
 	public int channelsPerPixel() {
 		
 		return channelsPerPixel;
@@ -125,12 +138,22 @@ public class NewProjectMenu {
 		
 	}
 	
+	/**
+	 * Returns whether this menu can finish based on its current state.
+	 * 
+	 * @return Whether this menu can finish based on its current state.
+	 */
 	public boolean canFinish() {
 		
 		return canFinish;
 		
 	}
 	
+	/**
+	 * Returns the name of the project.
+	 * 
+	 * @return Name of the project.
+	 */
 	public String get() {
 		
 		return projectName;

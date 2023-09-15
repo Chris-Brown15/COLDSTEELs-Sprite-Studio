@@ -9,11 +9,20 @@ import cs.core.utils.Lambda;
 import cs.csss.project.AnimationSwapType;
 import cs.core.ui.CSNuklear.CSUserInterface;
 
+/**
+ * UI menu for setting the swap type of an animation frame.
+ */
 public class SetAnimationFrameSwapTypeMenu {
 
 	private AnimationSwapType swapType;
 	private final CSUserInterface ui;
 	
+	/**
+	 * Creates a set swap type for animation frame menu. 
+	 * 
+	 * @param nuklear — the Nuklear factory
+	 * @param frame — index of an animation frame
+	 */
 	public SetAnimationFrameSwapTypeMenu(CSNuklear nuklear , int frame) {
 
 		ui = nuklear.new CSUserInterface("Set Animation Frame Swap Type" , .5f - (.22f / 2) , .5f - (.22f / 2) , .22f , .2f );
@@ -58,12 +67,22 @@ public class SetAnimationFrameSwapTypeMenu {
 		
 	}
 	
+	/**
+	 * Returns whether this UI is finished.
+	 * 
+	 * @return Whether this UI is finished.
+	 */
 	public boolean finished() {
 		
 		return ui.isFreed();
 		
 	}
 
+	/**
+	 * Returns what swap type is selected.
+	 * 
+	 * @return What swap type is selected.
+	 */
 	public AnimationSwapType swapType() {
 		 
 		return swapType;

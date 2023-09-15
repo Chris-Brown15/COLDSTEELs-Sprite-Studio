@@ -11,58 +11,57 @@ import java.util.Iterator;
 import java.util.List;
 
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSElement;
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
-import cs.csss.editor.events.CSSSEvent;
+import cs.csss.editor.event.CSSSEvent;
 import cs.csss.engine.Control;
 import cs.csss.project.Artboard;
 
 /**
  * Base class for all brushes. Brushes are representations of tools used by artists to modify and introspect on the artboard. Brushes have
- * their own semantics and rules, and this class and {@linkplain cs.csss.editor.brushes.CSSSModifyingBrush ModifyingBrush} unify the brush.
- * API.
+ * their own semantics and rules, and this class, {@linkplain cs.csss.editor.brush.CSSSModifyingBrush ModifyingBrush}, and
+ * {@link cs.csss.editor.brush.CSSSSelectingBrush SelectingBrush} unify the brush API.
  * 
  * @author Chris Brown
  *
  */
-public abstract class CSSSBrush {
+@RenderThreadOnly public abstract class CSSSBrush {
 
 	private static final List<CSSSBrush> allBrushes = new ArrayList<>();
 	
+	/**
+	 * Returns an iterator over all the brushes that have been created.
+	 * 
+	 * @return — iterator over all the brushes that have been created
+	 */
 	public static Iterator<CSSSBrush> allBrushes() {
 	
 		return allBrushes.iterator();
 		
 	}	
 	
-	public static Iterator<CSSSModifyingBrush> modifyingBrushes() {
-		
-		return allBrushes
-			.stream()
-			.filter(brush -> brush instanceof CSSSModifyingBrush)
-			.map(brush -> (CSSSModifyingBrush) brush)
-			.iterator();
-		
-	}
-
-	public static Iterator<CSSSSelectingBrush> selectingBrushes() {
-		
-		return allBrushes
-			.stream()
-			.filter(brush -> brush instanceof CSSSSelectingBrush)
-			.map(brush -> (CSSSSelectingBrush) brush)
-			.iterator();
-		
-	}
-	
+	/**
+	 * Returns the number of brushes that have been created.
+	 * 
+	 * @return Number of brushes that have been created.
+	 */
 	public static int numberBrushes() {
 		
 		return allBrushes.size();
 		
 	}
 	
+	/**
+	 * String which is displayed as a tooltip when a brush button is hovered and the tooltip control is pressed.
+	 */
 	public final String toolTip;
-	public final boolean stateful;
 	
+	/**
+	 * Whether this brush is stateful. Stateful brushes can implement {@link CSSSBrush#update(Artboard, Editor) update(Artboard, Editor)} to
+	 * give them much more flexability and power.
+	 */
+	public final boolean stateful;
+		
 	CSSSBrush(final String tooltip , boolean stateful){
 		
 		allBrushes.add(this);
@@ -118,6 +117,7 @@ public abstract class CSSSBrush {
 	 */
 	public void setupToolTip(CSElement thisBrushsElement) {
 		
+		if(thisBrushsElement.toolTip != null) thisBrushsElement.toolTip.shutDown();
 		thisBrushsElement.initializeToolTip(HOVERING|MOUSE_PRESSED, MOUSE_RIGHT , 0 , textLength(toolTip));
 		thisBrushsElement.toolTip.new CSDynamicRow(20).new CSText(toolTip);
 		

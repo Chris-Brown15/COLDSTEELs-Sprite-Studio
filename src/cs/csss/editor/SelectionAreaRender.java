@@ -18,6 +18,7 @@ import cs.core.graphics.utils.VertexBufferBuilder;
 import cs.core.utils.Lambda;
 import cs.core.utils.ShutDown;
 import cs.core.utils.files.CSGraphic;
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.engine.CSSSCamera;
 import cs.csss.engine.Position;
 import cs.csss.engine.TransformPosition;
@@ -62,7 +63,21 @@ public class SelectionAreaRender extends CSRender implements ShutDown {
 	
 	private final CSOrthographicCamera camera;
 	
-	public SelectionAreaRender(
+	/**
+	 * Creates a new selection area render from the given parameters.
+	 * 
+	 * @param shader — the palette shader
+	 * @param startingLeftX — starting left x coordinate in world space of this bounder
+	 * @param startingBottomY — starting bottom y coordinate in world space of this bounder
+	 * @param width — width of the render
+	 * @param height — height of the render
+	 * @param moveToX — x coordinate to move to
+	 * @param moveToY — y coordinate to move to
+	 * @param region — pixels that make up this region
+	 * @param palette — color palette for this region
+	 * @param camera — camera to render this object with
+	 */
+	@RenderThreadOnly public SelectionAreaRender(
 		CSSSShader shader ,
 		int startingLeftX ,
 		int startingBottomY ,
@@ -106,20 +121,28 @@ public class SelectionAreaRender extends CSRender implements ShutDown {
 		
 	}
 
+	/**
+	 * Returns the 2D array of pixels used to make this render.
+	 * 
+	 * @return 2D array of pixels used to make this render.
+	 */
 	public LayerPixel[][] regionContents() {
 		
 		return regionContents;
 		
 	}
 	
-	public void drawDirect() {
+	/**
+	 * Draws the VAO of this object.
+	 */
+	@RenderThreadOnly public void drawDirect() {
 		
 		vao.activate();
 		vao.draw();
 					
 	}
 	
-	@Override public void draw() {
+	@RenderThreadOnly @Override public void draw() {
 		
 		if(activate()) {
 
@@ -139,9 +162,9 @@ public class SelectionAreaRender extends CSRender implements ShutDown {
 	}
 	
 	/**
-	 * Returns the texel buffer that was passed to the constructor of this instance.
+	 * Returns the {@link cs.csss.annotation.FreeAfterUse @FreeAfterUse} texel buffer that was passed to the constructor of this instance.
 	 * 
-	 * @return Texel buffer of this render.
+	 * @return {@code @FreeAfterUse} texel buffer of this render.
 	 */
 	public ByteBuffer texels() {
 				
@@ -156,7 +179,7 @@ public class SelectionAreaRender extends CSRender implements ShutDown {
 	 * 
 	 * @param current — the current artboard
 	 */
-	public void removeSectionFromArtboard(Artboard current , int leftX , int bottomY) {
+	@RenderThreadOnly public void removeSectionFromArtboard(Artboard current , int leftX , int bottomY) {
 	
 		//remove the section of the artboard that we selected
 		
@@ -221,7 +244,7 @@ public class SelectionAreaRender extends CSRender implements ShutDown {
 				
 				//cant be null
 				LayerPixel nextHighestModification = nextHighest.get(col, row);
-				current.writeToIndexTexture(col, row, 1, 1, current.getColorPointedToByLayerPixel(nextHighestModification));
+				current.writeToIndexTexture(col, row, 1, 1, current.getColorPointedToBy(nextHighestModification));
 				
 			}
 			
@@ -294,7 +317,7 @@ public class SelectionAreaRender extends CSRender implements ShutDown {
 	 * @param shader  — shader to render with
 	 * @param swapBuffers — callback for swapping buffers after draw, or {@code null} if buffer swap should occur after drawing
 	 */
-	public void draw(CSOrthographicCamera camera , CSSSShader shader , Lambda swapBuffers) {
+	@RenderThreadOnly public void draw(CSOrthographicCamera camera , CSSSShader shader , Lambda swapBuffers) {
 
 		shader.updatePassVariables(camera.projection() , camera.viewTranslation() , positions.translation);
 		shader.updateTextures(null, textures[0]);
@@ -306,17 +329,18 @@ public class SelectionAreaRender extends CSRender implements ShutDown {
 	}
 	
 	/**
-	 * Draws this render and returns a downloaded buffer from a custom framebuffer to which this render was drawn.
+	 * Draws this render and returns a downloaded {@link cs.csss.annotation.FreeAfterUse @FreeAfterUse} buffer from a custom framebuffer to 
+	 * which this render was drawn.
 	 * 
 	 * @param swapBuffers — callback for swapping buffers, must not be null
 	 * @param width — width of the region to draw
 	 * @param height — height of the region to draw
 	 * @param midX — x coordinate where a camera should center on 
 	 * @param midY — y coordinate where a camera should center on
-	 * @return {@code ByteBuffer} containing the downloaded result of the render. A pixel of {@code (0 , 0)} notates a pixel the underlying
-	 * 		   source texture does not modify; its a background pixel.
+	 * @return {@code @FreeAfterUse ByteBuffer} containing the downloaded result of the render. A pixel of {@code (0 , 0)} notates a pixel
+	 * 		   the underlying source texture does not modify; its a background pixel.
 	 */
-	public ByteBuffer renderAndDownload(Lambda swapBuffers , int width , int height , float midX , float midY) {
+	@RenderThreadOnly public ByteBuffer renderAndDownload(Lambda swapBuffers , int width , int height , float midX , float midY) {
 		
 		ImageGrabber grabber = new ImageGrabber(
 			null , 
@@ -331,22 +355,23 @@ public class SelectionAreaRender extends CSRender implements ShutDown {
 	}
 
 	/**
-	 * Draws this render and returns a downloaded buffer from a custom framebuffer to which this render was drawn.
+	 * Draws this render and returns a downloaded {@link cs.csss.annotation.FreeAfterUse @FreeAfterUse} buffer from a custom framebuffer to
+	 * which this render was drawn.
 	 * 
 	 * @param swapBuffers — callback for swapping buffers, must not be null
 	 * @param width — width of the region to draw
 	 * @param height — height of the region to draw
 	 * @param position — object whose midpoint is used for centering the camera
-	 * @return {@code ByteBuffer} containing the downloaded result of the render. A pixel of {@code (0 , 0)} notates a pixel the underlying
-	 * 		   source texture does not modify; its a background pixel.
+	 * @return {@code @FreeAfterUse ByteBuffer} containing the downloaded result of the render. A pixel of {@code (0 , 0)} notates a pixel
+	 * 		   the underlying source texture does not modify; its a background pixel.
 	 */
-	public ByteBuffer renderAndDownload(Lambda swapBuffers , int width , int height , Position position) {
+	@RenderThreadOnly public ByteBuffer renderAndDownload(Lambda swapBuffers , int width , int height , Position position) {
 		
 		return renderAndDownload(swapBuffers , width , height , position.midX() , position.midY()); 
 		
 	}
 	
-	@Override public void shutDown() {
+	@RenderThreadOnly @Override public void shutDown() {
 		
 		if(!vao.isFreed() || !textures[0].isFreed()) {
 			
@@ -357,30 +382,60 @@ public class SelectionAreaRender extends CSRender implements ShutDown {
 		
 	}
 	
+	/**
+	 * @throws UnsupportedOperationException use 
+	 * {@link SelectionAreaRender#SelectionAreaRender(CSSSShader, int, int, int, int, int, int, LayerPixel[][], ArtboardPalette, 
+	 * CSOrthographicCamera) SelectionAreaRender(CSSSShader, int, int, int, int, int, int, LayerPixel[][], ArtboardPalette, 
+	 * CSOrthographicCamera)} instead.
+	 */
 	public SelectionAreaRender() {
 		
 		throw new UnsupportedOperationException("Wrong constructor for this object");		
 		
 	}
-	
+
+	/**
+	 * @throws UnsupportedOperationException use 
+	 * {@link SelectionAreaRender#SelectionAreaRender(CSSSShader, int, int, int, int, int, int, LayerPixel[][], ArtboardPalette, 
+	 * CSOrthographicCamera) SelectionAreaRender(CSSSShader, int, int, int, int, int, int, LayerPixel[][], ArtboardPalette, 
+	 * CSOrthographicCamera)} instead.
+	 */
 	public SelectionAreaRender(CSVAO vao) {
 		
 		throw new UnsupportedOperationException("Wrong constructor for this object");		
 		
 	}
 
+	/**
+	 * @throws UnsupportedOperationException use 
+	 * {@link SelectionAreaRender#SelectionAreaRender(CSSSShader, int, int, int, int, int, int, LayerPixel[][], ArtboardPalette, 
+	 * CSOrthographicCamera) SelectionAreaRender(CSSSShader, int, int, int, int, int, int, LayerPixel[][], ArtboardPalette, 
+	 * CSOrthographicCamera)} instead.
+	 */
 	public SelectionAreaRender(CSVAO vao, CSTexture... textures) {
 		
 		throw new UnsupportedOperationException("Wrong constructor for this object");		
 		
 	}
 
+	/**
+	 * @throws UnsupportedOperationException use 
+	 * {@link SelectionAreaRender#SelectionAreaRender(CSSSShader, int, int, int, int, int, int, LayerPixel[][], ArtboardPalette, 
+	 * CSOrthographicCamera) SelectionAreaRender(CSSSShader, int, int, int, int, int, int, LayerPixel[][], ArtboardPalette, 
+	 * CSOrthographicCamera)} instead.
+	 */
 	public SelectionAreaRender(CSGLSL shader, CSTexture... textures) {
 		
 		throw new UnsupportedOperationException("Wrong constructor for this object");		
 		
 	}
 
+	/**
+	 * @throws UnsupportedOperationException use 
+	 * {@link SelectionAreaRender#SelectionAreaRender(CSSSShader, int, int, int, int, int, int, LayerPixel[][], ArtboardPalette, 
+	 * CSOrthographicCamera) SelectionAreaRender(CSSSShader, int, int, int, int, int, int, LayerPixel[][], ArtboardPalette, 
+	 * CSOrthographicCamera)} instead.
+	 */
 	public SelectionAreaRender(CSVAO vertexArray, CSGLSL shader, CSTexture... textures) {
 		
 		throw new UnsupportedOperationException("Wrong constructor for this object");		

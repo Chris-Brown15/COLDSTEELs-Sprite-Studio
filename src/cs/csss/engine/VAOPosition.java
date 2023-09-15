@@ -1,6 +1,7 @@
 package cs.csss.engine;
 
 import cs.core.graphics.CSVAO;
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.utils.VAOUtils;
 
 /**
@@ -23,7 +24,7 @@ public class VAOPosition extends Position {
 		
 	}
 
- 	@Override public void translate(int x , int y) {
+	@RenderThreadOnly @Override public void translate(int x , int y) {
 		
 		translate((float)x , (float)y);
 		
@@ -35,7 +36,7 @@ public class VAOPosition extends Position {
 		
 	} 
 	
- 	@Override public void translate(float x , float y) {
+	@RenderThreadOnly @Override public void translate(float x , float y) {
 		
 		VAOUtils.translateFloats(vertices, x, y);
 		super.updatePositions(x, y);

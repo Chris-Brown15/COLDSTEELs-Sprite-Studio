@@ -3,7 +3,7 @@ package cs.csss.engine;
 /**
  * Interface for pixels that provide lookup values.
  */
-public interface LookupPixel {
+public interface LookupPixel extends Comparable<LookupPixel> {
 	
 	/**
 	 * Returns the x lookup coordinate of this lookup pixel
@@ -32,5 +32,20 @@ public interface LookupPixel {
 	 * @return Unsigned y lookup coordinate.
 	 */
 	short unsignedLookupY();
+	
+	@Override default int compareTo(LookupPixel other) {
+		
+		short thisX = unsignedLookupX();
+		short thisY = unsignedLookupY();
+		short otherX = other.unsignedLookupX();
+		short otherY = other.unsignedLookupY();
+		
+		if(thisY > otherY) return 1;
+		else if (thisY < otherY) return -1;
+		else if(thisX > otherX) return 1;
+		else if(thisX < otherX) return -1;
+		else return 0;
+		
+	}
 	
 }

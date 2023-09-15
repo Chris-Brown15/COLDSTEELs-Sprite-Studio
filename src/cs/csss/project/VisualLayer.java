@@ -1,5 +1,6 @@
 package cs.csss.project;
 
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.project.ArtboardPalette.PalettePixel;
 
 /**
@@ -25,19 +26,29 @@ public class VisualLayer extends Layer {
 		
 	}
 	
+	/**
+	 * Toggles whether this layer is hiding or not directly. This does not automatically change the artboard to reflect the hiding of this
+	 * layer.
+	 */
 	public void toggleHiding() {
 		
 		hiding = !hiding;
 		
 	}
 
+	/**
+	 * Sets whether this layer is hiding or not directly. If {@code hiding == false}, the artboard owning this layer will not update 
+	 * automatically.
+	 * 
+	 * @param hiding — whether this layer should hide
+	 */
 	public void hiding(boolean hiding) {
 		
 		this.hiding = hiding;
 		
 	}
 	
-	@Override public void show(Artboard artboard) {
+	@RenderThreadOnly @Override public void show(Artboard artboard) {
 
 		int thisRank = artboard.getLayerRank(this);
 		
@@ -57,7 +68,7 @@ public class VisualLayer extends Layer {
 		
 	}
 	
-	@Override public void hide(Artboard artboard) {
+	@RenderThreadOnly @Override public void hide(Artboard artboard) {
 
 		int thisRank = artboard.getLayerRank(this);
 		
@@ -106,6 +117,12 @@ public class VisualLayer extends Layer {
 		
 	}
 	
+	/**
+	 * Returns whether this layer is an instance of the given prototype.
+	 * 
+	 * @param prototype — visual layer prototype 
+	 * @return {@code true} if this layer is an instance of the given prototype.
+	 */
 	public boolean isInstanceOfPrototype(VisualLayerPrototype prototype) {
 		
 		return this.name.equals(prototype.name());

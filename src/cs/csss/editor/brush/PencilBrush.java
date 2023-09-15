@@ -1,14 +1,19 @@
 package cs.csss.editor.brush;
 
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
-import cs.csss.editor.events.CSSSEvent;
-import cs.csss.editor.events.ModifyArtboardImageEvent;
+import cs.csss.editor.event.CSSSEvent;
+import cs.csss.editor.event.ModifyArtboardImageEvent;
+import cs.csss.engine.LookupPixel;
 import cs.csss.project.Artboard;
 import cs.csss.project.Layer;
 import cs.csss.project.LayerPixel;
 import cs.csss.project.ArtboardPalette.PalettePixel;
 
-public class PencilBrush extends CSSSModifyingBrush {
+/**
+ * Creates events that modify singular regions of the artboard.
+ */
+@RenderThreadOnly public class PencilBrush extends CSSSModifyingBrush {
 
 	public PencilBrush() {
 
@@ -39,7 +44,7 @@ public class PencilBrush extends CSSSModifyingBrush {
 		int[] region = centerAroundRadius(xIndex, yIndex , artboard.width() , artboard.height());
 		
 		PalettePixel editorActive = editor.selectedColors(artboard);
-		short[] indices = artboard.putInPalette(editorActive);
+		LookupPixel indices = artboard.putInPalette(editorActive);
 		
 		Layer activeLayer = artboard.activeLayer();
 		
@@ -55,7 +60,7 @@ public class PencilBrush extends CSSSModifyingBrush {
 			LayerPixel at = activeLayer.get(x , y); 
 			
 			//the condition inside the parentheses will be true when the pixel does match the current iteration's pixel
-			if(!(activeLayer.containsModificationTo(x , y) && at.lookupX == indices[0] && at.lookupY == indices[1])) {
+			if(!(activeLayer.containsModificationTo(x , y) && at.compareTo(indices) == 0)) {
 				
 				areRegionsEqual = false;
 				break;

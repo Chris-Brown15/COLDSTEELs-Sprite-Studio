@@ -27,8 +27,16 @@ public interface ExportCallback {
 			stbi_write_jpg(location , width , height , channels , data , ExportParameters.JPEGQuality());
 			
 		};
-		
 	
+	/**
+	 * Exports {@link cs.csss.annotation.FreeAfterUse @FreeAfterUse} {@code data} as an image to disk at {@code location}.
+	 * 
+	 * @param location — location to write to
+	 * @param data — pixel data to write
+	 * @param width — width of the resulting image
+	 * @param height — height of the resulting image
+	 * @param channels — channels of the resulting image
+	 */
 	public void export(String location , ByteBuffer data , int width , int height , int channels);
 	
 }

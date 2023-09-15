@@ -11,12 +11,12 @@ import static org.lwjgl.util.lz4.LZ4.LZ4_decompress_safe;
 import static cs.core.utils.CSUtils.require;
 
 import java.nio.ByteBuffer;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import cs.core.utils.data.CSCHashMap;
+import cs.csss.annotation.FreeAfterUse;
+import cs.csss.annotation.Invalidated;
 
 /**
  * 
@@ -34,17 +34,15 @@ import cs.core.utils.data.CSCHashMap;
  */
 public abstract class Layer {
 
-	private static final CSCHashMap<String , String> reservedNames = new CSCHashMap<>(13);
-
 	static final LinkedList<String> invalidNameContents = new LinkedList<>();
 	
-	static {
-		
-		invalidNameContents.add(",");
-		reservedNames.put("___meta", "___meta");
-		
-	}
-
+	/**
+	 * Writes the contents of {@code source} into {@code destination}. Each pixel will occupy two bytes in the destination and for any 
+	 * pixels that are {@code null}, the values {@code (0 , 0)} are written.  
+	 * 
+	 * @param source — a 2D array of layer pixels
+	 * @param destination — a destination for the layer pixels
+	 */
 	public static void toByteBuffer(LayerPixel[][] source , ByteBuffer destination) {
 		
 		int destPosition = destination.position();
@@ -60,7 +58,14 @@ public abstract class Layer {
 		
 	}
 
-	public static ByteBuffer toByteBuffer(LayerPixel[][] source) {
+	/**
+	 * Writes the contents of {@code source} to a newly allocated {@link cs.csss.annotation.FreeAfterUse @FreeAfterUse} {@code ByteBuffer}, 
+	 * returning the byte buffer after writing. 
+	 * 
+	 * @param source — a 2D array of layer pixels
+	 * @return {@code @FreeAfterUse ByteBuffer} destination for layer pixel data.
+	 */
+	public static @FreeAfterUse ByteBuffer toByteBuffer(LayerPixel[][] source) {
 		
 		ByteBuffer contents = memAlloc(source[0].length * source.length * IndexTexture.pixelSizeBytes);
 		toByteBuffer(source , contents);
@@ -68,31 +73,14 @@ public abstract class Layer {
 				
 	}
 	
-	/**
-	 * Some words and characters are used internally and cannot be layer names. This method checks to make sure a potential layer name is 
-	 * not one of the reserved words and does not contain reserved characters.
-	 * 
-	 * @param name — a potential layer name
-	 * @return {@code true} if the potential name is a valid name.
-	 */
-	public static final boolean isValidName(String name) {
-
-		boolean valid = !reservedNames.hasKey(name);;
-		for(Iterator<String> iter = invalidNameContents.iterator() ; iter.hasNext() && valid ; ) valid = !name.contains(iter.next());
-		return valid; 
-		
-	}
-	
 	public final int 
 		width ,
-		height
-	;
+		height;
 	
 	//if true, this layer cannot be modified.
 	protected boolean 
 		locked = false ,
-		hiding = false
-	;
+		hiding = false;
 	
 	public final String name;
 	protected final ArtboardPalette palette;
@@ -340,9 +328,22 @@ public abstract class Layer {
 		
 	}
 	
+	/**
+	 * Copies this layer into {@code otherLayer}.
+	 *  
+	 * @param <T> — type of another layer
+	 * @param otherLayer — a destination for copying
+	 */
 	public abstract  <T extends Layer> void copy(T otherLayer);
 	
-	public final ByteBuffer toByteBuffer() {
+	/**
+	 * Converts the contents of this layer to a {@link cs.csss.annotation.FreeAfterUse @FreeAfterUse} {@code ByteBuffer}. Unlike 
+	 * {@link Layer#toByteBuffer(LayerPixel[][])}, this method copies both the positions in the layer of the layer pixels, and the lookup
+	 * values of said pixels.  
+	 * 
+	 * @return {@code @FreeAfterUse ByteBuffer} containing the layer data of this layer.
+	 */
+	public final @FreeAfterUse ByteBuffer toByteBuffer() {
 		
 		ByteBuffer buffer = memAlloc(mods() * 10);
 		forEachModification(px -> buffer.putInt(px.textureX).putInt(px.textureY).put((byte) px.lookupX).put((byte) px.lookupY));
@@ -351,7 +352,18 @@ public abstract class Layer {
 		
 	}
 	
-	public final ByteBuffer toByteBuffer(int startingX , int startingY , int width , int height) {
+	/**
+	 * Converts a region of this layer to a {@link cs.csss.annotation.FreeAfterUse @FreeAfterUse} {@code ByteBuffer}. The region starts
+	 * at the given {@code (startingX , startingY)} position within the layer, and writes a region of {@code width} width and {@code height}
+	 * height to a byte buffer which is returned.
+	 * 
+	 * @param startingX — starting x coordinate for copy  
+	 * @param startingY — starting y coordinate for copy
+	 * @param width — width of the copied region
+	 * @param height — height of the copied region
+	 * @return {@code @FreeAfterUse ByteBuffer} containing the specified region of layer data of this layer.
+	 */
+	public final @FreeAfterUse ByteBuffer toByteBuffer(int startingX , int startingY , int width , int height) {
 		
 		Objects.checkIndex(startingX, this.width);
 		Objects.checkIndex(startingY, this.height);
@@ -366,13 +378,18 @@ public abstract class Layer {
 		
 	}
 	
-	public final ByteBuffer encode() {
+	/**
+	 * Converts the entire contents of this layer to the returned {@link cs.csss.annotation.FreeAfterUse @FreeAfterUse} {@code ByteBuffer}
+	 * and encodes that buffer using the LZ4 library.
+	 * 
+	 * @return Compressed contents of this layer.
+	 */
+	public final @FreeAfterUse ByteBuffer encode() {
 		
 		//the buffer sizes are based on the fact that layer pixels are 10 bytes, 8 for position, and 2 for lookup
 		ByteBuffer 	
 			buffer = toByteBuffer() ,
-			compress = memAlloc(mods() * 10)
-		;
+			compress = memAlloc(mods() * 10);
 
 		int bytes = LZ4_compress_default(buffer , compress);
 		compress.limit(bytes);
@@ -383,7 +400,14 @@ public abstract class Layer {
 		
 	}
 	
-	public final ByteBuffer decode(ByteBuffer compressed) {
+	/**
+	 * Given a byte buffer that was prevously encoded using {@link Layer#encode() encode()}, this method decodes it and returns the result.
+	 * The buffer passed to this method is {@link cs.csss.annotation.Invalidated @Invalidated}, do not use it again.
+	 * 
+	 * @param compressed {@code @Invalidated ByteBuffer} used to decode the contents of a layer.
+	 * @return {@link cs.csss.annotation.FreeAfterUse @FreeAfterUse} {@code ByteBuffer} containing the decoded contents of this layer.
+	 */
+	public final @FreeAfterUse ByteBuffer decode(@Invalidated ByteBuffer compressed) {
 
 		ByteBuffer decompressed = memAlloc((width * height) * 10);
 		

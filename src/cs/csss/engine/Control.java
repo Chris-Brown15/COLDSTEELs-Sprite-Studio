@@ -18,6 +18,9 @@ public final class Control {
 	
 	static BiFunction<Integer , Boolean , Boolean> checkPressedCallback;
 	
+	/**
+	 * Default controls.
+	 */
 	public static final Control
 		UNDO = new Control("Undo" , "Undos a previously done action" , GLFW_KEY_Z) ,
 		REDO = new Control("Redo" , "Redos a previously undone action" , GLFW_KEY_Y) ,

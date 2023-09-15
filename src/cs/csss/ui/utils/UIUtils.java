@@ -14,10 +14,18 @@ import org.lwjgl.system.MemoryStack;
 
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSElement;
 
+/**
+ * Utilities for UI elements.
+ */
 public final class UIUtils {
 
 	private static NkTextWidthCallbackI fontWidthGetter;
 	
+	/**
+	 * Used to set the callback this class invokes to get the width of a string.
+	 * 
+	 * @param getter — new text width getter
+	 */
 	public static void setFontWidthGetter(NkTextWidthCallbackI getter) {
 		
 		fontWidthGetter = getter;
@@ -110,6 +118,12 @@ public final class UIUtils {
 		
 	}
 	
+	/**
+	 * Sets the tooltip of any element to the cannonical tooltip show test and sets the string displayed to {@code tooltip}. 
+	 *  
+	 * @param element — an element whose tooltip is being initialized
+	 * @param tooltip — text to display as the toolti of the element.
+	 */
 	public static void toolTip(CSElement element , String tooltip) {
 		
 		int width = textLength(tooltip);		

@@ -19,6 +19,7 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryStack;
 
 import cs.core.graphics.CSTexture;
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.misc.utils.FlexableGraphic;
 import cs.csss.project.io.ExportFileTypes;
@@ -32,14 +33,16 @@ import cs.csss.project.io.ExportFileTypes;
  * @author Chris Brown
  *
  */
-public class ArtboardPalette extends CSTexture {
+@RenderThreadOnly public class ArtboardPalette extends CSTexture {
 
+	/**
+	 * OpenGL constant for the channel type for GL functions.
+	 */
 	public static final int glChannelType = GL_UNSIGNED_BYTE;
 	
 	short
 		currentRow = 0 ,
-		currentCol = 0 
-	;
+		currentCol = 0;
 	
 	final int channelsPerPixel;
 	
@@ -47,8 +50,7 @@ public class ArtboardPalette extends CSTexture {
 		glDataFormat ,
 		pixelSizeBytes ,
 		paletteWidth = 256 ,
-		paletteHeight = 256
-	;
+		paletteHeight = 256;
 
 	/**
 	 * Notates how many additional rows the palette gains when a resize occurs.
@@ -65,6 +67,11 @@ public class ArtboardPalette extends CSTexture {
 		darkerCheckeredBackground ,
 		lighterCheckeredBackground;
 	
+	/**
+	 * Creates an artboard palette.
+	 * 
+	 * @param channelsPerPixel — number of channels per pixel of this palette
+	 */
 	public ArtboardPalette(int channelsPerPixel) {
 		
 		this.channelsPerPixel = channelsPerPixel;
@@ -74,6 +81,9 @@ public class ArtboardPalette extends CSTexture {
 		
 	}
 		
+	/**
+	 * Initializes this artboard palette.
+	 */
 	public void initialize() {
 
 		FlexableGraphic graphic = new FlexableGraphic(paletteWidth , paletteHeight , 1 , channelsPerPixel , 0xff);
@@ -160,10 +170,11 @@ public class ArtboardPalette extends CSTexture {
 	}
 	
 	/**
+	 * Puts {@code writeThis} in the palette.
 	 * 
-	 * @param xIndex
-	 * @param yIndex
-	 * @param writeThis
+	 * @param xIndex — x index to write to
+	 * @param yIndex — y index to write to
+	 * @param writeThis — color to write in this palette 
 	 */
 	public void put(final int xIndex , final int yIndex , final PalettePixel writeThis) {
 
@@ -247,36 +258,66 @@ public class ArtboardPalette extends CSTexture {
 		
 	}
 	
+	/**
+	 * Returns a read-only texel buffer for this palette.
+	 * 
+	 * @return Read-only texel buffer for this palette.
+	 */
 	public ByteBuffer texelData() {
 		
 		return paletteMemory.asReadOnlyBuffer();
 		
 	}
 	
+	/**
+	 * Returns the channels per pixel of pixels of this palette.
+	 * 
+	 * @return Channels per pixel of pixels of this palette.
+	 */
 	public int channelsPerPixel() {
 		
 		return channelsPerPixel;
 		
 	}
 
+	/**
+	 * Returns width of this palette.
+	 * 
+	 * @return Width of this palette.
+	 */
 	public int width() {
 		
 		return paletteWidth;
 		
 	}
-	
+
+	/**
+	 * Returns height of this palette.
+	 * 
+	 * @return Height of this palette.
+	 */
 	public int height() {
 		
 		return paletteHeight;
 		
 	}
-	
+
+	/**
+	 * Returns current column of this palette.
+	 * 
+	 * @return Current column of this palette.
+	 */
 	public int currentCol() {
 		
 		return currentCol;
 		
 	}
 
+	/**
+	 * Returns current row of this palette.
+	 * 
+	 * @return Current row of this palette.
+	 */
 	public int currentRow() {
 		
 		return currentRow;
@@ -298,6 +339,9 @@ public class ArtboardPalette extends CSTexture {
 		
 	}
 	
+	/**
+	 * Sets the alpha channels of the background checkered colors to 0, making those colors invisible.
+	 */
 	public void hideCheckeredBackground() {
 		
 		if(channelsPerPixel == 1 || channelsPerPixel == 3) return;
@@ -309,7 +353,10 @@ public class ArtboardPalette extends CSTexture {
 		put(1 , 0 , new PalettePixel(lighterCheckeredBackground));
 		
 	}
-	
+
+	/**
+	 * Sets the alpha channels of the background checkered colors to 255, making those colors opaque.
+	 */
 	public void showCheckeredBackground() {
 
 		if(channelsPerPixel == 1 || channelsPerPixel == 3) return;
@@ -389,6 +436,11 @@ public class ArtboardPalette extends CSTexture {
 			
 		}
 		
+		/**
+		 * Stores this pixel in {@code buffer}. 
+		 * 
+		 * @param buffer — buffer to write to
+		 */
 		public void buffer(ByteBuffer buffer) {
 			
 			require(buffer.remaining() >= pixelSizeBytes);
@@ -405,30 +457,55 @@ public class ArtboardPalette extends CSTexture {
 			
 		}
 		
+		/**
+		 * Returns the red channel of this pixel.
+		 * 
+		 * @return The red channel of this pixel.
+		 */
 		public byte red() {
 			
 			return red;
 			
 		}
 
+		/**
+		 * Returns the green channel of this pixel.
+		 * 
+		 * @return The green channel of this pixel.
+		 */
 		public byte green() {
 			
 			return green;
 			
 		}
 
+		/**
+		 * Returns the blue channel of this pixel.
+		 * 
+		 * @return The blue channel of this pixel.
+		 */
 		public byte blue() {
 			
 			return blue;
 			
 		}
 
+		/**
+		 * Returns the alpha channel of this pixel.
+		 * 
+		 * @return The alpha channel of this pixel.
+		 */
 		public byte alpha() {
 			
 			return alpha;
 			
 		}
 
+		/**
+		 * Returns the color channel corresponding to {@code index}.
+		 * 
+		 * @return Color channel corresponding to {@code index}.
+		 */
 		public byte index(int index) {
 			
 			return switch(index) {
@@ -441,6 +518,12 @@ public class ArtboardPalette extends CSTexture {
 			
 		}
 		
+		/**
+		 * Sets the color channel corresponding to {@code index} to {@code value}.
+		 * 
+		 * @param value — a color value
+		 * @param index — channel index value
+		 */
 		public void setByIndex(byte value , int index) {
 			
 			switch(index) {
@@ -452,7 +535,7 @@ public class ArtboardPalette extends CSTexture {
 			
 		}
 		
-		public String toString() { 
+		@Override public String toString() { 
 			
 			StringBuilder asString = new StringBuilder();
 			asString.append("[Red: ");
@@ -469,14 +552,6 @@ public class ArtboardPalette extends CSTexture {
 			
 		}
 
-		public Number[] toArray() {
-			
-			Number[] array = new Number[channelsPerPixel];
-			for(int i = 0 ; i < array.length ; i++) array[i] = index(i);
-			return array;
-			
-		}
-		
 	}
 	
 }

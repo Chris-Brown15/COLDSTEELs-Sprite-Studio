@@ -2,13 +2,14 @@ package cs.csss.utils;
 
 import cs.core.graphics.CSVAO;
 import cs.core.graphics.CSVAO.VertexBufferAccess;
+import cs.csss.annotation.RenderThreadOnly;
 
 /**
  * Class providing utilities for modifying artboard positions. In Sprite Studio, artboard movement is accomplished by modifying vertices 
  * rather than by a matrix. This class is used anywhere modification of vertices is done, so DRY is never violated. This class also assumes
  * that the VAOs given are laid out as 2D positions and 2D UVs, which all artboards are.
  */
-public final class VAOUtils {
+@RenderThreadOnly public final class VAOUtils {
 
 	private static final int 
 		LX = 8 ,

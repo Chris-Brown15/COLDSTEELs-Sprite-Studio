@@ -1,15 +1,22 @@
 package cs.csss.editor.brush;
 
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
-import cs.csss.editor.events.CSSSEvent;
-import cs.csss.editor.events.DeleteRegionEvent;
+import cs.csss.editor.event.CSSSEvent;
+import cs.csss.editor.event.DeleteRegionEvent;
 import cs.csss.project.Artboard;
 import cs.csss.project.LayerPixel;
 
-public class Delete_RegionBrush extends CSSSSelectingBrush {
+/**
+ * Deletes a region of pixels under a bounder.
+ */
+@RenderThreadOnly public class Delete_RegionBrush extends CSSSSelectingBrush {
 
 	private LayerPixel[][] region;
 	
+	/**
+	 * Creates the delete region brush.
+	 */
 	public Delete_RegionBrush() {
 		
 		super("Deletes the selected region under the current layer.");

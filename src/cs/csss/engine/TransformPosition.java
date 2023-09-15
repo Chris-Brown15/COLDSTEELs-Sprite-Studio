@@ -9,6 +9,11 @@ public class TransformPosition extends Position {
 
 	public final Matrix4f translation = new Matrix4f();
 	
+	/**
+	 * Creates a transform position.
+	 * 
+	 * @param positions — position array
+	 */
 	public TransformPosition(float[] positions) {
 
 		super(positions);

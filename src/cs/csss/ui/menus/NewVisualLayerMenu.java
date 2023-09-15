@@ -10,6 +10,9 @@ import cs.core.utils.CSRefInt;
 import cs.core.utils.Lambda;
 import cs.csss.project.CSSSProject;
 
+/**
+ * UI menu for creating a new visual layer prototype.
+ */
 public class NewVisualLayerMenu {
 
 	private int channelsPerPixel = -1;
@@ -21,6 +24,12 @@ public class NewVisualLayerMenu {
 	
  	private final CSSSProject project;
 	
+ 	/**
+ 	 * Creates a new visual layer prototype menu.
+ 	 * 
+ 	 * @param project — the project to whom the new visual layer prototype will belong
+ 	 * @param nuklear — the Nuklear factory
+ 	 */
 	public NewVisualLayerMenu(CSSSProject project , CSNuklear nuklear) {
 
 		CSUserInterface ui = nuklear.new CSUserInterface("New Visual Layer" , 0.5f - (0.33f / 2) , 0.5f - (0.46f / 2) , 0.33f , 0.46f);
@@ -82,18 +91,33 @@ public class NewVisualLayerMenu {
 		
 	}
 
+	/**
+	 * Returns whether this menu can finish based on its current state.
+	 * 
+	 * @return Whether this menu can finish based on its current state.
+	 */
 	public boolean isFinished() {
 		
 		return isFinished;
 		
 	}
 	
+	/**
+	 * Returns whether a new visual layer prototype can be created.
+	 * 
+	 * @return Whether a new visual layer prototype can be created.
+	 */
 	public boolean canCreate() {
 		
 		return !nameInput.toString().equals("");
 		
 	}
 	
+	/**
+	 * Returns the name of the new visual layer prototype.
+	 * 
+	 * @return Name of the new visual layer prototype.
+	 */
 	public String name() {
 		
 		return nameInput.toString();

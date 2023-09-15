@@ -20,7 +20,7 @@ import cs.csss.project.CSSSProject;
  * Class modeling the animation file exported by Sprite Studio.
  * Follows a specifed format found via pdf at the root archive of this application
  */
-public class CTSAFile {
+class CTSAFile {
 
 	public static final String FILE_EXTENSION = ".ctsa";
 	
@@ -41,9 +41,10 @@ public class CTSAFile {
 	private FrameChunk[] frames;
 	
 	/**
-	 * Write constructor for a {@code .ctsa} file. Call {@link CTSAFile#write() write()} to create an animation file.
+	 * Write constructor for a {@code .ctsa} file. 
 	 * 
-	 * @param animation
+	 * @param animation — an animation to write
+	 * @param project — a project owning {@code animation}
 	 */
 	public CTSAFile(Animation animation , CSSSProject project) {
 		
@@ -53,6 +54,11 @@ public class CTSAFile {
 		
 	}
 
+	/**
+	 * Read constructor for a {@code .ctsa} file. 
+	 * 
+	 * @param filepath — filepath for reading
+	 */
 	public CTSAFile(String filepath) {
 		
 		this.readFilePath = filepath;
@@ -61,7 +67,7 @@ public class CTSAFile {
 				
 	}
 	
-	public void write(String filepath) throws IOException {
+	void write(String filepath) throws IOException {
 		
 		StringBuilder append = new StringBuilder();				
 		if(!filepath.endsWith(CSFolder.separator)) append.append(CSFolder.separator);
@@ -93,7 +99,7 @@ public class CTSAFile {
 		
 	}
 	
-	public void read() throws IOException {
+	void read() throws IOException {
 		
 		specify(Files.exists(Paths.get(readFilePath)) , readFilePath + " does not name a file path.");
 		specify(readFilePath.endsWith(FILE_EXTENSION) , readFilePath + " does not have the .ctsa file path.");
@@ -139,37 +145,37 @@ public class CTSAFile {
 		
 	}
 		
-	public int getNumberFrames() {
+	int getNumberFrames() {
 	
 		return numberFrames;
 		
 	}
 
-	public float getLeftU() {
+	float getLeftU() {
 		
 		return leftU;
 		
 	}
 
-	public float getBottomV() {
+	float getBottomV() {
 		
 		return bottomV;
 		
 	}
 
-	public float getTopV() {
+	float getTopV() {
 		
 		return topV;
 		
 	}
 
-	public float getWidthU() {
+	float getWidthU() {
 		
 		return widthU;
 		
 	}
 
-	public FrameChunk[] getFrames() {
+	FrameChunk[] getFrames() {
 		
 		return frames;
 		
@@ -178,12 +184,12 @@ public class CTSAFile {
 	/**
 	 * @return the animationname.
 	 */
-	public String getAnimationName() {
+	String getAnimationName() {
 		
 		return animationName;
 		
 	}
 
-	public record FrameChunk(float time , int updates , byte swapType) {}
+	record FrameChunk(float time , int updates , byte swapType) {}
 	
 }

@@ -4,13 +4,11 @@ import static cs.core.utils.CSUtils.require;
 
 import static cs.core.ui.CSUIConstants.*;
 import static cs.csss.ui.utils.UIUtils.toolTip;
-
 import java.util.Iterator;
 import java.util.function.BooleanSupplier;
 
 import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
 import static org.lwjgl.nuklear.Nuklear.nk_propertyi;
-
 import org.joml.Vector4f;
 
 import cs.core.ui.CSNuklear;
@@ -18,6 +16,7 @@ import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSButton;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSColorPicker;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
+import cs.csss.editor.DebugDisabledException;
 import cs.csss.editor.Editor;
 import cs.csss.editor.brush.CSSSBrush;
 import cs.csss.editor.brush.CSSSModifyingBrush;
@@ -28,6 +27,9 @@ import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.ui.prefabs.InputBox;
 import cs.core.utils.CSUtils;
 
+/**
+ * Left hand side panel. This panel contains buttons and UI elements for modifying artboards.
+ */
 public class LHSPanel {
 
 	private final CSUserInterface ui;
@@ -38,6 +40,12 @@ public class LHSPanel {
 
 	private final Editor editor;
 	
+	/**
+	 * Creates a left hand side panel.
+	 * 
+	 * @param editor — the editor
+	 * @param nuklear — Nuklear factory
+	 */
 	public LHSPanel(Editor editor , CSNuklear nuklear) {
 
 		this.editor = editor;
@@ -61,12 +69,7 @@ public class LHSPanel {
 				twoDColor.layout();
 				
 			});
-			
-			//dynamically sets up all the brush classes loaded
-			
-			CSRadio[] brushRadios = new CSRadio[CSSSBrush.numberBrushes()];
 
-			int next = 0;
 			Iterator<CSSSBrush> brushes = CSSSBrush.allBrushes();
 			CSSSBrush iter;
 			
@@ -76,17 +79,37 @@ public class LHSPanel {
 				
 				CSSSBrush finalIter = iter;
 				
-				String uiText = iter.getClass().getSimpleName().replace("Brush", "").replace('_', ' ');
+				String uiText = radioTextFromBrushName(iter);
 				CSDynamicRow row = ui.new CSDynamicRow(25);
-				CSRadio newRadio = row.new CSRadio(uiText , false , () -> editor.setBrushTo(finalIter));
-				
+				CSRadio newRadio = row.new CSRadio(uiText , () -> editor.currentBrush() == finalIter , () -> editor.setBrushTo(finalIter));	
 				toolTip(newRadio , iter.toolTip);
-				
-				brushRadios[next++] = newRadio;
 				
 			}
 			
-			CSRadio.groupAll(brushRadios);
+			//script brushes next
+			CSDynamicRow scriptBrushRow = ui.new CSDynamicRow(30);						
+			CSRadio scriptBrushRadio = scriptBrushRow.new CSRadio(
+				"Script Brush" , 
+				() -> editor.currentBrush() == Editor.theScriptBrush() , 
+				() -> editor.setBrushTo(Editor.theScriptBrush()));
+			
+			scriptBrushRow.new CSButton("Select" , () -> editor.startSelectSimpleScriptBrush(scriptBrushRadio));
+			
+			CSDynamicRow modifyingScriptBrushRow = ui.new CSDynamicRow(30);
+			CSRadio scriptModifyingBrushRadio = modifyingScriptBrushRow.new CSRadio(
+				"Modifying Script Brush" , 
+				() -> editor.currentBrush() == Editor.theModifyingScriptBrush() , 
+				() -> editor.setBrushTo(Editor.theModifyingScriptBrush()));
+
+			modifyingScriptBrushRow.new CSButton("Select" , () -> editor.startSelectModifyingScriptBrush(scriptModifyingBrushRadio));
+			
+			CSDynamicRow selectingBrushRow = ui.new CSDynamicRow(30);
+			CSRadio scriptSelectingBrushRadio = selectingBrushRow.new CSRadio(
+				"Selecting Script Brush" , 
+				() -> editor.currentBrush() == Editor.theSelectingScriptBrush() , 
+				() -> editor.setBrushTo(Editor.theSelectingScriptBrush()));
+
+			selectingBrushRow.new CSButton("Select" , () -> editor.startSelectSelectingScriptBrush(scriptSelectingBrushRadio));
 			
 			//this is a slider that lets you modify the brush radius if the brush is a modifying brush
 			ui.attachedLayout((context , stack) -> {
@@ -117,7 +140,18 @@ public class LHSPanel {
 			
 			CSDynamicRow debugProjectRow = ui.new CSDynamicRow();
 			
-			debugProjectRow.new CSButton("add debug proj" , editor::requestDebugProject);
+			debugProjectRow.new CSButton("add debug proj" , () -> {
+				
+				try {
+
+					editor.requestDebugProject();
+					
+				} catch (DebugDisabledException e) {
+					
+					throw new IllegalStateException(e);
+				}
+				
+			});
 		
 			debugProjectRow.doLayout = () -> editor.project() == null;
 			
@@ -159,6 +193,12 @@ public class LHSPanel {
 		
 	}
 	
+	/**
+	 * Creates and returns an array of colors.
+	 * 
+	 * @param colors — destination for color values
+	 * @return {@code colors} after writing.
+	 */
 	public byte[] colors(byte[] colors) {
 		
 		require(colors.length == channels());
@@ -179,12 +219,22 @@ public class LHSPanel {
 		
 	}
 	
+	/**
+	 * Gets and returns the active color.
+	 * 
+	 * @return The color selected by the color picker.
+	 */
 	public byte[] colors() {
 		
 		return colors(new byte[channels()]);
 		
 	}
 	
+	/**
+	 * Sets the color of the color picker.
+	 * 
+	 * @param pixel — a new color  
+	 */
 	public void setColor(PalettePixel pixel) {
 		
 		if(channels() <= 2) {
@@ -196,21 +246,9 @@ public class LHSPanel {
 		
 	}
 	
-	public int height() {
-		
-		return ui.interfaceHeight();
-		
-	}
-	
-	void enableScrollbar() {
-		
-		ui.options |= UI_UNSCROLLABLE;
-		
-	}
-	
-	void disableScrollbar() {
-		
-		ui.options = ui.options & ~UI_UNSCROLLABLE;
+	private String radioTextFromBrushName(CSSSBrush brush) {
+
+		return brush.getClass().getSimpleName().replace("Brush", "").replace('_', ' ');
 		
 	}
 	

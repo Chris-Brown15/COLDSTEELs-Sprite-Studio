@@ -11,6 +11,9 @@ public enum ExportFileTypes {
 	JPEG(".jpg")
 	;
 	
+	/**
+	 * File name ending.
+	 */
 	public final String ending;
 	
 	ExportFileTypes(String type) {

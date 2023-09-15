@@ -1,15 +1,17 @@
 package cs.csss.editor.brush;
 
+import cs.csss.annotation.RenderThreadOnly;
+
 /**
  * 
  * Base class for all brushes that have a radius of impact. This class is intended to unify all brushes that have some modifying behavior on
- * the artboard specifically. For example, {@code EyeDropperBrush} is not a modifying brush because it does not modify the artboard, whereas
- * {@code PencilBrush} is.
+ * the artboard specifically. For example, {@link cs.csss.editor.brush.EyeDropperBrush EyeDropperBrush} is not a modifying brush because it 
+ * does not modify the artboard, whereas {@link cs.csss.editor.brush.PencilBrush PencilBrush} is.
  * 
  * @author Chris Brown
  *
  */
-public abstract class CSSSModifyingBrush extends CSSSBrush {
+@RenderThreadOnly public abstract class CSSSModifyingBrush extends CSSSBrush {
 
 	//represents the radius of the brush
 	protected int radius = 0;

@@ -49,18 +49,33 @@ public class Logging {
 		
 	}
 	
+	/**
+	 * Prints the given objects.
+	 * 
+	 * @param x — objects to print
+	 */
 	public static void sysout(Object... x) {
 		
 		sysoutInternal(System.out::println , x);
 		
 	}
 	
+	/**
+	 * Prints the given objects in the error output.
+	 * 
+	 * @param x — objects to print
+	 */
 	public static void syserr(Object... x) {
 		
 		sysoutInternal(System.err::println , x);
 		
 	}
 	
+	/**
+	 * Prints the given objects only if debug mode is off.
+	 * 
+	 * @param x — objects to print
+	 */
 	public static void sysDebug(Object... x) {
 		
 		if(Engine.isDebug()) syserr(x);

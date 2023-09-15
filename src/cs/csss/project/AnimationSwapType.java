@@ -64,6 +64,11 @@ public enum AnimationSwapType {
 		
 	}
 	
+	/**
+	 * Returns a more convenient name for this swap type.
+	 * 
+	 * @return Shortened name for an instance of this frame type.
+	 */
 	public String shortenedName() {
 		
 		char[] chars = toString().toLowerCase().toCharArray();

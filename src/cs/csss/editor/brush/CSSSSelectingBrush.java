@@ -1,6 +1,7 @@
 package cs.csss.editor.brush;
 
 import cs.coreext.nanovg.NanoVGFrame;
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
 import cs.csss.editor.SelectionAreaBounder;
 import cs.csss.editor.SelectionAreaRender;
@@ -9,8 +10,19 @@ import cs.csss.project.Artboard;
 import cs.csss.project.CSSSProject;
 import cs.csss.project.LayerPixel;
 
-public abstract class CSSSSelectingBrush extends CSSSBrush { 
+/**
+ * Brush unifying the API for all brushes who utilize {@link cs.csss.editor.SelectionAreaBounder SelectionAreaBounder} and 
+ * {@link cs.csss.editor.SelectionAreaRender SelectionAreaRender} to provide functionality for brushes that modify regions of pixels in
+ * various ways.
+ * <p>
+ * 	Such brushes are inherently stateful so they are always marked as such.
+ * </p>
+ */
+@RenderThreadOnly public abstract class CSSSSelectingBrush extends CSSSBrush { 
 
+	/**
+	 * Object that is used to visualize a region of an artboard apart from the artboard itself.
+	 */
 	public static volatile SelectionAreaRender render;
 
 	/**
@@ -24,6 +36,11 @@ public abstract class CSSSSelectingBrush extends CSSSBrush {
 	
 	protected final SelectionAreaBounder selectionBounder = new SelectionAreaBounder();
 	
+	/**
+	 * Creates a new selecting brush with the given tooltip.
+	 * 
+	 * @param tooltip — a tooltip for this brush
+	 */
 	public CSSSSelectingBrush(String tooltip) {
 		
 		super(tooltip , true);

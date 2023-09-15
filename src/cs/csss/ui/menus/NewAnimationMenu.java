@@ -15,6 +15,9 @@ import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
 import cs.csss.project.CSSSProject;
 
+/**
+ * UI menu for creating a new animation.
+ */
 public class NewAnimationMenu {
 
 	private volatile boolean isFinished = false;
@@ -26,6 +29,12 @@ public class NewAnimationMenu {
 	private final CSUserInterface ui;
 	private final Lambda finish;
 			
+	/**
+	 * Creates a new animation menu.
+	 * 
+	 * @param currentProject — the current project to add an animation to
+	 * @param nuklear — the Nuklear factory
+	 */
 	public NewAnimationMenu(CSSSProject currentProject , CSNuklear nuklear) {
 
 		ui = nuklear.new CSUserInterface("New Animation" , 0.5f - (.33f / 2) , .5f - .125f , .33f , .25f);
@@ -81,12 +90,22 @@ public class NewAnimationMenu {
 		
 	}
 	
+	/**
+	 * Returns whether this UI is ready to finish.
+	 * 
+	 * @return Whether this UI is ready to finish.
+	 */
 	public boolean isFinished() {
 		
 		return isFinished;
 		
 	}
 	
+	/**
+	 * Returns the name the user input for the animation.
+	 * 
+	 * @return the name the user input
+	 */
 	public String get() { 
 		
 		return animationName;

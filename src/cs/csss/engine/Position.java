@@ -9,6 +9,11 @@ public abstract class Position {
 
 	private final float[] positions;
 	
+	/**
+	 * Creates a position object from the given {@code positions}.
+	 * 
+	 * @param positions — position array
+	 */
 	public Position(float[] positions) {
 
 		this.positions = positions;

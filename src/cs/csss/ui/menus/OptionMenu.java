@@ -12,10 +12,18 @@ import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSRow;
 import cs.core.ui.CSNuklear.CSUserInterface;
 
+/**
+ * Base class for option menus.
+ */
 public abstract class OptionMenu {
 
 	protected final CSUserInterface ui;
 	
+	/**
+	 * Creates a new optin menu on the given {@code ui}.
+	 * 
+	 * @param ui — a UI to put menus on
+	 */
 	public OptionMenu(CSUserInterface ui) {
 
 		this.ui = ui;

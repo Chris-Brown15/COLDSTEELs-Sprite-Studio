@@ -1,5 +1,11 @@
 package cs.csss.project;
 
+import cs.csss.annotation.RenderThreadOnly;
+
+/**
+ * Layer containing nonvisual data. Nonvisual data is like image data and is created the same way as visual data, but can be treated as 
+ * something other than visual data.
+ */
 public class NonVisualLayer extends Layer {
 
 	private final int bytesPerPixel;
@@ -11,7 +17,7 @@ public class NonVisualLayer extends Layer {
 		
 	}
 
-	@Override public void hide(Artboard artboard) {
+	@RenderThreadOnly @Override public void hide(Artboard artboard) {
 
 		forEachModification(pixel -> {
 			
@@ -30,7 +36,7 @@ public class NonVisualLayer extends Layer {
 		
 	}
 
-	@Override public void show(Artboard artboard) {
+	@RenderThreadOnly @Override public void show(Artboard artboard) {
 
 		forEachModification(pixel -> {
 			
@@ -54,6 +60,11 @@ public class NonVisualLayer extends Layer {
 		
 	}
 	
+	/**
+	 * Returns the number of bytes per pixel of this layer.
+	 * 
+	 * @return Number of bytes per pixel of this layer.
+	 */
 	public int bytesPerPixel() {
 		
 		return bytesPerPixel;
@@ -72,6 +83,12 @@ public class NonVisualLayer extends Layer {
 		
 	}
 	
+	/**
+	 * Returns whether this layer is an instance of the given prototype.
+	 * 
+	 * @param prototype — a nonvisual layer prototype
+	 * @return {@code true} if this layer is an instance of the given prototype.
+	 */ 
 	public boolean isInstanceOfPrototype(NonVisualLayerPrototype prototype) {
 		
 		return prototype.sizeBytes() == bytesPerPixel && prototype.name().equals(name);

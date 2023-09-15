@@ -37,18 +37,20 @@ import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
 import cs.coreext.nanovg.NanoVGTypeface;
 import cs.csss.editor.Editor;
-import cs.csss.editor.events.HideLayerEvent;
-import cs.csss.editor.events.SwitchToNonVisualLayerEvent;
-import cs.csss.editor.events.SwitchToVisualLayerEvent;
+import cs.csss.editor.event.HideLayerEvent;
+import cs.csss.editor.event.SwitchToNonVisualLayerEvent;
+import cs.csss.editor.event.SwitchToVisualLayerEvent;
 import cs.csss.engine.Engine;
 import cs.csss.engine.NamedNanoVGTypeface;
 import cs.csss.project.CSSSProject;
+import cs.csss.ui.menus.ConfirmationBox;
+import cs.csss.ui.menus.NotificationBox;
 import cs.csss.ui.menus.VectorTextMenu;
-import cs.csss.utils.ConfirmationBox;
-import cs.csss.utils.NotificationBox;
 
-@SuppressWarnings("unused")
-public class RHSPanel {
+/**
+ * Class for the right hand side panel. This class contains a drop down tree of project components.
+ */
+@SuppressWarnings("unused") public class RHSPanel {
 	
 	/**
 	 * Denotes the pixel offset from the left side of the UI for elements right below the project in tier.
@@ -78,6 +80,13 @@ public class RHSPanel {
 	private CSSSProject project;
 	private final CSUserInterface ui;
 	
+	/**
+	 * Creates a right hand side panel.
+	 * 
+	 * @param editor — the editor
+	 * @param nuklear — Nuklear factory
+	 * @param engine — the engine
+	 */
 	public RHSPanel(Editor editor , CSNuklear nuklear , Engine engine) {
 
 		ui = nuklear.new CSUserInterface("Project" , 0.80f , -1f , 0.199f , 0.90f);

@@ -16,6 +16,7 @@ import cs.core.utils.CSRefInt;
 import cs.core.utils.ShutDown;
 import cs.coreext.nanovg.NanoVGFrame;
 import cs.coreext.nanovg.NanoVGTypeface;
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.engine.Control;
 import cs.csss.engine.Engine;
 import cs.csss.project.io.CTSPFile;
@@ -55,7 +56,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * The shader for artboards stays the same over any artboard, so only one is created and used everywhere.
 	 */
-	public static void initializeArtboardShaders() {
+	@RenderThreadOnly public static void initializeArtboardShaders() {
 		
 		thePaletteShader.initialize();
 		theTextureShader.initialize();
@@ -137,7 +138,14 @@ public class CSSSProject implements ShutDown {
 	private Animation currentAnimation;
 	private VectorText currentText;	
 	
-	public CSSSProject(Engine engine , final String name , int channelsPerPixel , boolean makeDefaultLayer) {
+	/**
+	 * Creates a project.
+	 * 
+	 * @param engine — the engine
+	 * @param name — the name of this project
+	 * @param channelsPerPixel — the channels per pixel of this project
+	 */
+	@RenderThreadOnly public CSSSProject(Engine engine , final String name , int channelsPerPixel) {
 		
 		specify(channelsPerPixel > 0 && channelsPerPixel <= 4 , channelsPerPixel + " is not a valid number of channels per pixel.");
 
@@ -150,10 +158,16 @@ public class CSSSProject implements ShutDown {
 
 		for(int i = 1 ; i <= NonVisualLayerPrototype.MAX_SIZE_BYTES ; i++) nonVisualPalettes.add(new ArtboardPalette(i));
 		
-	 	if(makeDefaultLayer) addVisualLayerPrototype(new VisualLayerPrototype("Default Layer"));
+	 	addVisualLayerPrototype(new VisualLayerPrototype("Default Layer"));
 		
 	}
 
+	/**
+	 * Creates a nwe projcet without specifying its channels per pixel.
+	 * 
+	 * @param engine — the engine
+	 * @param name — the name of this project
+	 */
 	public CSSSProject(Engine engine , final String name) {
 	
 		this.engine = engine;
@@ -163,7 +177,13 @@ public class CSSSProject implements ShutDown {
 				
 	}
 	
- 	public CSSSProject(Engine engine , CTSPFile ctsp) {
+	/**
+	 * Creates a new project by loading from the given {@link cs.csss.project.io.CTSPFile CTSPFile}.
+	 * 
+	 * @param engine — the engine
+	 * @param ctsp — a loaded CTSP file
+	 */
+ 	@RenderThreadOnly public CSSSProject(Engine engine , CTSPFile ctsp) {
 
  		this.engine = engine;
  		setName(ctsp.name());
@@ -192,7 +212,10 @@ public class CSSSProject implements ShutDown {
  		
  	}
 	
-	public void initialize() {
+ 	/**
+ 	 * Initializes this project.
+ 	 */
+	@RenderThreadOnly public void initialize() {
 		
 		visualPalette.initialize();
 		for(ArtboardPalette x : nonVisualPalettes) x.initialize();
@@ -204,7 +227,7 @@ public class CSSSProject implements ShutDown {
 	 * 
 	 * @param layer — layer to delete
 	 */
-	public void deleteVisualLayer(VisualLayerPrototype layer) {
+	@RenderThreadOnly public void deleteVisualLayer(VisualLayerPrototype layer) {
 		
 		synchronized(allArtboards) {
 			
@@ -229,7 +252,12 @@ public class CSSSProject implements ShutDown {
 	
 	/* Animation Methods */
 	
-	public void appendArtboardToCurrentAnimation(Artboard artboard) {
+	/**
+	 * Appends the given artboard to the current animation
+	 * 
+	 * @param artboard — an artboard
+	 */
+	@RenderThreadOnly public void appendArtboardToCurrentAnimation(Artboard artboard) {
 		
 		appendArtboardToCurrentAnimationDontArrange(artboard);
 		arrangeArtboards();
@@ -288,13 +316,23 @@ public class CSSSProject implements ShutDown {
 		
 	}
 	
-	public void removeArtboardFromCurrentAnimation(Artboard artboard) {
+	/**
+	 * Removes the given artboard from the current animation.
+	 * 
+	 * @param artboard — an artboard
+	 */
+	@RenderThreadOnly public void removeArtboardFromCurrentAnimation(Artboard artboard) {
 		
 		removeArtboardFromCurrentAnimation(currentAnimation.indexOf(artboard));
 		
 	}
 	
-	public void removeArtboardFromCurrentAnimation(int frameIndex) {
+	/**
+	 * Removes the animation frame at the given index from the current animation.
+	 * 
+	 * @param frameIndex — index of an animation frame for the current animation
+	 */
+	@RenderThreadOnly public void removeArtboardFromCurrentAnimation(int frameIndex) {
 
 		Optional<Artboard> removed = removeArtboardFromAnimation(currentAnimation , frameIndex);		
 		if(removed.isPresent()) looseArtboards.add(removed.get());		
@@ -302,7 +340,10 @@ public class CSSSProject implements ShutDown {
 		
 	}
 	
-	public void deleteAnimation() {
+	/**
+	 * Deletes the current animation from the application. No artboards are deleted, only the animation object itself.
+	 */
+	@RenderThreadOnly public void deleteAnimation() {
 		
 		Optional<Artboard> results;
 		
@@ -320,19 +361,32 @@ public class CSSSProject implements ShutDown {
 		
 	}
 	
-	public void renderAllArtboards() {
+	/**
+	 * Draws all artboards in this project.
+	 */
+	@RenderThreadOnly public void renderAllArtboards() {
 		
 		renderAllArtboards(currentShader);
 		
 	}
 
-	public void renderAllVectorTextBoxes(NanoVGFrame frame) {
+	/**
+	 * Draws all vector text boxes in this project
+	 *  
+	 * @param frame — NanoVG Frame for the current application frame
+	 */
+	@RenderThreadOnly public void renderAllVectorTextBoxes(NanoVGFrame frame) {
 		
 		vectorTextBoxes.forEach(textBox -> textBox.renderBoxAndText(frame));
 		
 	}
 		
-	public void renderAllArtboards(CSSSShader shader) {
+	/**
+	 * Renders all artboards with the given shader.
+	 * 
+	 * @param shader — a shader to use for rendering
+	 */
+	@RenderThreadOnly public void renderAllArtboards(CSSSShader shader) {
 		
 		forEachArtboard(artboard -> {
 
@@ -347,7 +401,13 @@ public class CSSSProject implements ShutDown {
 		
 	}
 	
-	public void renderEverything(CSSSShader shader , NanoVGFrame frame) {
+	/**
+	 * Draws both all artboards and all vector text boxes. 
+	 * 
+	 * @param shader — a shader for the artboards
+	 * @param frame — the nano VG frame for the current program frame
+	 */
+	@RenderThreadOnly public void renderEverything(CSSSShader shader , NanoVGFrame frame) {
 		
 		renderAllArtboards(shader);
 		renderAllVectorTextBoxes(frame);
@@ -385,7 +445,11 @@ public class CSSSProject implements ShutDown {
 	  
 	}
 	
-	public void arrangeArtboards() {
+	/**
+	 * Arranges all artboards in the applicaton. Artboards are arranged so that animations who take up the most horizontal space are placed
+	 * higher, with descending horizontal space animations right below them. At the bottom are the loose artboards.
+	 */
+	@RenderThreadOnly public void arrangeArtboards() {
 		
 	 	engine.renderer().post(() -> {
 
@@ -415,36 +479,66 @@ public class CSSSProject implements ShutDown {
 		
 	}
 	
+	/**
+	 * Invokes {@code callback} on each animation of this project
+	 * 
+	 * @param callback — code to invoke
+	 */
 	public void forEachAnimation(Consumer<Animation> callback) {
 		
 		animations.forEach(callback);
 		
 	}
 	
+	/**
+	 * Returns an iterator over the animations of this project.
+	 * 
+	 * @return Iterator over the animations of this project.
+	 */
 	public Iterator<Animation> animations() {
 		
 		return animations.iterator();
 		
 	}
-	
+
+	/**
+	 * Returns an iterator over all artboards of this project.
+	 * 
+	 * @return Iterator over all artboards of this project.
+	 */
 	public Iterator<Artboard> allArtboards() {
 		
 		return allArtboards.iterator();
 		
 	}
-	
+
+	/**
+	 * Invokes {@code callback} on each visual layer prototype of this project
+	 * 
+	 * @param callback — code to invoke
+	 */
 	public void forEachVisualLayerPrototype(Consumer<VisualLayerPrototype> callback) {
 		
 		visualLayerPrototypes.forEach(callback);
 		
 	}
 
+	/**
+	 * Invokes {@code callback} on each nonvisual layer prototype of this project
+	 * 
+	 * @param callback — code to invoke
+	 */
 	public void forEachNonVisualLayerPrototype(Consumer<NonVisualLayerPrototype> callback) {
 		
 		nonVisualLayerPrototypes.forEach(callback);
 		
 	}
-	
+
+	/**
+	 * Returns an iterator over all nonvisual layer prototypes of this project.
+	 * 
+	 * @return Iterator over all nonvisual layer prototypes of this project.
+	 */
 	public Iterator<NonVisualLayerPrototype> nonvisualLayers() {
 		
 		return nonVisualLayerPrototypes.iterator();
@@ -466,18 +560,40 @@ public class CSSSProject implements ShutDown {
 		
 	}
 
+	/**
+	 * Invokes {@code callback} for each artboard that is a shallow copy of {@code source}. 
+	 * 
+	 * <p>
+	 * 	A shallow copy of an artboard is produced when an existing artboard is added to an animation while it is already in a different
+	 * 	one. Shallow copies share graphics resources with their sources, so changes made to a source or shallow copy reflect on all the
+	 * 	other shallow copies and source.
+	 * </p>
+	 * 
+	 * @param source — a source artboard
+	 * @param callback — code to invoke for each shallow copy
+	 */
 	public void forEachCopyOf(Artboard source , Consumer<Artboard> callback) {
 		
 		copier.forEachCopyOf(source , callback);
 		
 	}
 	
+	/**
+	 * Invokes {@code callback} for all artboards that are shallow copies.
+	 * 
+	 * @param callback — code to invoke
+	 */
 	public void forEachShallowCopy(Consumer<Artboard> callback) {
 		
 		copier.forEachCopy(callback);
 		
 	}
 	
+	/**
+	 * Invokes {@code callback} for each palette, of which there are 5 total.
+	 * 
+	 * @param callback — code to invoke
+	 */
 	public void forEachPalette(Consumer<ArtboardPalette> callback) {
 		
 		callback.accept(visualPalette);
@@ -485,54 +601,101 @@ public class CSSSProject implements ShutDown {
 		
 	}
 
+	/**
+	 * Invokes {@code callback} for each nonvisual palette, of which there are 4, one for each channel size.
+	 * 
+	 * @param callback — code to invoke
+	 */
 	public void forEachNonVisualPalette(Consumer<ArtboardPalette> callback) {
 		
 		nonVisualPalettes.forEach(callback);
 		
 	}
-	
+
+	/**
+	 * Invokes {@code callback} for each vector text box.
+	 * 
+	 * @param callback — code to invoke
+	 */
 	public void forEachVectorTextBox(Consumer<VectorText> callback) {
 		
 		vectorTextBoxes.forEach(callback);
 		
 	}
-	
+
+	/**
+	 * Returns an iterator over all vector text boxes of this project.
+	 * 
+	 * @return Iterator over all vector text boxes of this project.
+	 */
 	public Iterator<VectorText> textBoxes() {
 		
 		return vectorTextBoxes.iterator();
 		
 	}
 	
+	/**
+	 * Returns the number of channels per pixel for visual layers for this project.
+	 * 
+	 * @return Number of channels per pixel for visual layers.
+	 */
 	public int channelsPerPixel() {
 		
 		return channelsPerPixel;
 		
 	}
 	
+	/**
+	 * Gets a visual layer prototype at the given index.
+	 * 
+	 * @param index — index of a visual layer prototype within the list of visual layer prototypes
+	 * @return VisualLayerPrototype at the given index.
+	 */
 	public VisualLayerPrototype visualLayerPrototype(int index) {
 		
 		return visualLayerPrototypes.get(index);
 		
 	}
 	
+	/**
+	 * Returns the number of visual layer prototypes in this project.
+	 * 
+	 * @return Number of visual layer prototypes.
+	 */
 	public int numberVisualLayers() {
 		
 		return visualLayerPrototypes.size();
 		
 	}
-	
+
+	/**
+	 * Returns the number of nonvisual layer prototypes in this project.
+	 * 
+	 * @return Number of nonvisual layer prototypes.
+	 */
 	public int numberNonVisualLayers() {
 		
 		return nonVisualLayerPrototypes.size();
 		
 	}
-	
+
+	/**
+	 * Returns the number of animations in this project.
+	 * 
+	 * @return Number of animations.
+	 */
 	public int numberAnimations() {
 		
 		return animations.size();
 		
 	}
 	
+	/**
+	 * Gets the index of the given artboard in the list of all artboards for this project.
+	 * 
+	 * @param artboard — an artboard whose index is being queried 
+	 * @return Index of {@code artboard} in this project.
+	 */
 	public int getArtboardIndex(Artboard artboard) {
 		
 		synchronized(allArtboards) {
@@ -543,6 +706,13 @@ public class CSSSProject implements ShutDown {
 		
 	}
 	
+	/**
+	 * Sets this project's current artboard to whichever artboard the given cursor world coordinates fall into. This will not change the 
+	 * current artboard if none is under the cursor.
+	 * 
+	 * @param cursorWorldX — x world coordinate of the cursor 
+	 * @param cursorWorldY — y world coordinate of the cursor 
+	 */
 	public void setCurrentArtboardByMouse(float cursorWorldX , float cursorWorldY) {
 		
 		synchronized(allArtboards) {
@@ -558,42 +728,77 @@ public class CSSSProject implements ShutDown {
 		
 	}
 	
+	/**
+	 * Returns the current artboard.
+	 * 
+	 * @return The current artboard.
+	 */
 	public Artboard currentArtboard() {
 		
 		return currentArtboard;
 		
 	}
 	
+	/**
+	 * Sets the current artboard.
+	 * 
+	 * @param currentArtboard — new current artboard
+	 */
 	public void currentArtboard(Artboard currentArtboard) {
 		
 		this.currentArtboard = currentArtboard;
 		
 	}
-	
+
+	/**
+	 * Returns the current animation.
+	 * 
+	 * @return The current animation.
+	 */
 	public Animation currentAnimation() {
 		
 		return currentAnimation;
 		
 	}
 
+	/**
+	 * Sets the current animation.
+	 * 
+	 * @param newCurrent — new current animation
+	 */
 	public void currentAnimation(Animation newCurrent) {
 		
 		this.currentAnimation = newCurrent;
 		
 	}
 	
+	/**
+	 * Sets the name of this project.
+	 * 
+	 * @param name — new name for this project
+	 */
 	public void setName(String name) {
 		
 		this.name = name.strip();
 		
 	}
 		
+	/**
+	 * Gets the name of this project.
+	 * 
+	 * @return Name of this project.
+	 */
 	public String name() {
 		
 		return name;
 		
 	}
 	
+	/**
+	 * Gets the channels per pixel of the current layer for the current artboard. If no artboard is active, returns 4.
+	 * 
+	 * @return The number of channels per pixel of the current layer for the current artboard, or 4 if none is active.
+	 */
 	public int getChannelsPerPixelOfCurrentLayer() {
 		
 		if(currentArtboard != null) {
@@ -605,44 +810,52 @@ public class CSSSProject implements ShutDown {
 		
 	}
 	
-	public ArtboardPalette getNonVisualPaletteBySize(int sizeBytes) {
+	/**
+	 * Gets a nonvisual palette by {@code sizeBytes}, which corresponds to the number of channels per pixel for the returned palette. 
+	 * 
+	 * @param channels — the channels per pixel of the palette being queried
+	 * @return Nonvisual artboard palette used for nonvisual layers whose channel per pixel is {@code sizeBytes}.
+	 */
+	public ArtboardPalette getNonVisualPaletteBySize(int channels) {
 		
-		specify(sizeBytes > 0 && sizeBytes <= NonVisualLayerPrototype.MAX_SIZE_BYTES , "Invalid size in bytes for a nonvisual layer.");
+		specify(channels > 0 && channels <= NonVisualLayerPrototype.MAX_SIZE_BYTES , "Invalid size in bytes for a nonvisual layer.");
 		
-		return nonVisualPalettes.get(sizeBytes - 1);
-		
-	}
-	
-	public void setCheckeredBackgroundSize() {
-		
-		forEachArtboard(artboard -> {
-			
-			for(int row = 0 ; row < artboard.height() ; row++) for(int col = 0 ; col < artboard.width() ; col++) {
-				
-				if(!artboard.isAnyLayerModifying(col, row)) { 
-					
-					artboard.writeToIndexTexture(col, row, 1, 1, artboard.getBackgroundColor(col, row));
-					
-				}
-				
-			}
-		
-		});
+		return nonVisualPalettes.get(channels - 1);
 		
 	}
 	
+	/**
+	 * Invokes {@code callback} for each loose artboard.
+	 * <p>
+	 * 	A loose artboard is an artboard that is not in any animation. they would be the artboards at the bottom of the project, below any
+	 * 	animations.
+	 * </p>
+	 * 
+	 * @param callback — code to invoke
+	 */
 	public void forEachLooseArtboard(Consumer<Artboard> callback) {
 		
 		looseArtboards.forEach(callback);
 		
 	}
 	
+	/**
+	 * Returns an iterator over the loose artboards of this project.
+	 * 
+	 * @return Iterator over the loose artboards
+	 */
 	public Iterator<Artboard> looseArtboards() {
 		
 		return looseArtboards.iterator();
 		
 	}
 	
+	/**
+	 * Invokes{@code callback} for each artboard in this project that is not a shallow copy of another artboard. These could be loose or
+	 * nonloose artboards, but for nonloose artboards, they are artboards which are not in more than one animation.
+	 * 
+	 * @param callback — code to invoke
+	 */
 	public void forEachNonShallowCopiedArtboard(Consumer<Artboard> callback) {
 		
 		synchronized(allArtboards) {
@@ -653,6 +866,14 @@ public class CSSSProject implements ShutDown {
 		
 	}	
 	
+	/**
+	 * Given some animation, {@code callback} is invoked for each artboard of the project which is a valid candidate for being added to the
+	 * animation. An artboard is valid if it is the same dimensions as artboards already in the animation, and it is not already in the 
+	 * animation. If no artboard is in the animation, all nonshallow artboards are valid.
+	 * 
+	 * @param animation — an animation
+	 * @param callback — code to invoke for each valid artboard for {@code animation}
+	 */
 	public void forValidArtboardsForAnimation(Animation animation , Consumer<Artboard> callback) {
 		
 		//valid artboards are those who aren't shallow copies and who dont have a shallow copy in the animation 
@@ -675,25 +896,49 @@ public class CSSSProject implements ShutDown {
 		
 	}
 	
+	/**
+	 * Returns whether the given artboard is a shallow copy of another.
+	 * 
+	 * @param artboard — an artboard
+	 * @return {@code true} if {@code artboard} is a shallow copy of another artboard.
+	 */
 	public boolean isCopy(Artboard artboard) {
 		
 		return copier.isCopy(artboard);
 		
 	}
-	
+
+	/**
+	 * Returns whether the given artboard is a source of other shallow artboards. Artboards that are themselves shallow and artboards that
+	 * have not been used to create other artboards will return {@code false}.
+	 * 
+	 * @param artboard — an artboard
+	 * @return {@code true} if {@code artboard} is a source for shallow copy of another artboard.
+	 */
 	public boolean isCopySource(Artboard isSource) {
 		
 		return copier.isSource(isSource);
 		
 	}
 	
+	/**
+	 * Given some shallow copied artboard, returns it's source. 
+	 * 
+	 * @param copy — a shallow copied artboard
+	 * @return The source artboard for the copy.
+	 */
 	public Artboard getSource(Artboard copy) {
 		
 		return copier.getSourceOf(copy);
 		
 	}
 	
-	public void removeArtboard(Artboard artboard) {
+	/**
+	 * Removes the given artboard from this project.
+	 * 
+	 * @param artboard — an artboard to remove
+	 */
+	@RenderThreadOnly public void removeArtboard(Artboard artboard) {
 		
 		engine.renderer().removeRender(artboard.render());
 		artboard.render().shutDown();
@@ -729,19 +974,25 @@ public class CSSSProject implements ShutDown {
 		
 	}
 	
+	/**
+	 * Returns the visual palette.
+	 * 
+	 * @return The single visual palette for this project.
+	 */
 	public ArtboardPalette visualPalette() {
 		
 		return visualPalette;
 		
 	}
 	
-	public synchronized Artboard getArtboard(final int index) {
-		
-		return allArtboards.get(index);
-		
-	}
-	
-	public synchronized Artboard getArtboard(final String name) {
+	/**
+	 * Gets an artboard by the given name. 
+	 *  
+	 * @param name — name of an artboard
+	 * @return An artboard of the given name.
+	 * @throws IllegalArgumentException if the given name does not belong to any artboard
+	 */
+	public synchronized Artboard getArtboard(final String name) throws IllegalArgumentException {
 		
 		for(Artboard x : allArtboards) if(x.name.equals(name)) return x;
 		throw new IllegalArgumentException(name + " does not name an artboard");
@@ -757,7 +1008,7 @@ public class CSSSProject implements ShutDown {
 	 * @param source — source artboard
 	 * @return Shallow copy of {@code source}.
 	 */
-	public Artboard shallowCopy(Artboard source) {
+	@RenderThreadOnly public Artboard shallowCopy(Artboard source) {
 		
 		Artboard copy = copier.copy(source);
 		engine.renderer().addRender(copy.render());
@@ -765,41 +1016,6 @@ public class CSSSProject implements ShutDown {
 		return copy;
 				
 		
-		
-	}
-	
-	/**
-	 * Returns whether the given artboard was created as a result of a shallow copy operation.
-	 * 
-	 * @param isShallowCopied — artboard which may have been shallow copied
-	 * @return {@code true} if {@code isShallowCopied} is a shallow copy of some other artboard.
-	 */
-	public boolean isShallowCopy(Artboard isShallowCopied) {
-		
-		return copier.isCopy(isShallowCopied);
-		
-	}
-	
-	/**
-	 * Returns whether {@code hasShallowCopies} has at least one Artboard alive as a shallow copy.
-	 * 
-	 * @param hasShallowCopies — an artboard which is being queried for whether any shallow copies were made from it that are still alive
-	 * @return {@code true} if at least one artboard exists which is a shallow copy of {@code hasShallowCopies}.
-	 */
-	public boolean hasShallowCopies(Artboard hasShallowCopies) {
-		
-		return copier.isSource(hasShallowCopies);
-		
-	}
-	
-	/**
-	 * Returns the total number of artboards in the project.
-	 * 
-	 * @return Number of artboards in this project.
-	 */
-	public int numberArtboards() {
-		
-		return allArtboards.size();
 		
 	}
 	
@@ -824,7 +1040,7 @@ public class CSSSProject implements ShutDown {
 	 * @param height — height of the artboard
 	 * @return The new Artboard
 	 */
-	public Artboard createArtboard(String name , int width , int height) {
+	@RenderThreadOnly public Artboard createArtboard(String name , int width , int height) {
 
 		Artboard artboard = createArtboardDontArrange(name , width , height);		
 		arrangeArtboards();
@@ -872,7 +1088,7 @@ public class CSSSProject implements ShutDown {
 	 * @param height — height of the artboard
 	 * @return The new Artboard.
 	 */
-	public Artboard createArtboard(int width , int height) {
+	@RenderThreadOnly public Artboard createArtboard(int width , int height) {
 		
 		return createArtboard(String.valueOf(getNumberNonCopiedArtboards()) , width , height);
 		
@@ -885,7 +1101,7 @@ public class CSSSProject implements ShutDown {
 	 * @param newArtboardName — name of the copied artboard
 	 * @return The result of the copy.
 	 */
-	public Artboard deepCopy(Artboard source , String newArtboardName) {
+	@RenderThreadOnly public Artboard deepCopy(Artboard source , String newArtboardName) {
 		
 		Artboard result = Artboard.deepCopy(newArtboardName, source, this);
 		addArtboard(result);
@@ -899,7 +1115,7 @@ public class CSSSProject implements ShutDown {
 	 * @param source — an existing artboard to make a deep copy of
 	 * @return The result of the deep copy.
 	 */
-	public Artboard deepCopy(Artboard source) {
+	@RenderThreadOnly public Artboard deepCopy(Artboard source) {
 		
 		return deepCopy(source , String.valueOf(getNumberNonCopiedArtboards()));
 		
@@ -920,7 +1136,7 @@ public class CSSSProject implements ShutDown {
 	}
 	
 	/**
-	 * Creates a new nonvisual layer from the given parameters and gives a new copy of it to each artboard.
+	 * Creates a new nonvisual layer prototype from the given parameters and gives a new copy of it to each artboard.
 	 * 
 	 * @param name — name of the nonvisual layer
 	 * @param sizeBytes — size in bytes of pixels of the nonvisual layer
@@ -942,6 +1158,12 @@ public class CSSSProject implements ShutDown {
 		
 	}
 	
+	/**
+	 * Creates a new visual layer prototype from the given parameters and gives a new copy of it to each artboard.
+	 * 
+	 * @param name — name of the visual layer prototype
+	 * @return New visual layer prototype.
+	 */
 	public VisualLayerPrototype createVisualLayer(String name) {
 		
 		VisualLayerPrototype newVL = new VisualLayerPrototype(name);
@@ -984,12 +1206,22 @@ public class CSSSProject implements ShutDown {
 				
 	}
 
+	/**
+	 * Adds the given visual layer prototype to this project's list of visual layer prototypes.
+	 * 
+	 * @param newVisualLayerPrototype — visual layer prototype to add
+	 */
 	public void addVisualLayerPrototype(VisualLayerPrototype newVisualLayerPrototype) {
 		
 		visualLayerPrototypes.add(newVisualLayerPrototype);
 	
 	}
 	
+	/**
+	 * Adds the given animation to this project's list of animations.
+	 * 
+	 * @param newAnimation — animation to add
+	 */
 	private void addAnimation(Animation newAnimation) {
 		
 		animations.add(newAnimation);
@@ -1040,36 +1272,65 @@ public class CSSSProject implements ShutDown {
 	
 	}
 
+ 	/**
+ 	 * Returns whether freemove mode is enabled.
+ 	 * 
+ 	 * @return {@code true} if freemove mode is enabled.
+ 	 */
  	public boolean freemoveMode() {
  		
  		return freemoveMode;
  		
  	}
  	
+ 	/**
+ 	 * Toggles on or off freemove mode.
+ 	 */
  	public void toggleFreemoveMode() {
  		
  		freemoveMode = !freemoveMode;
  		
  	}
  	
+ 	/**
+ 	 * Adds a vector text box to the project which will use the given typeface.
+ 	 * 
+ 	 * @param typeface — a nanoVG typeface
+ 	 */
  	public void addVectorTextBox(NanoVGTypeface typeface) {
  		
  		vectorTextBoxes.add(new VectorText(typeface));
  		
  	}
 
+ 	/**
+ 	 * Adds a vector text box containing the given text to the project which will use the given typeface.
+ 	 * 
+ 	 * @param typeface — a nanoVG typeface
+ 	 * @param sourceText — text for the textbox to contain
+ 	 */
  	public void addVectorTextBox(NanoVGTypeface typeface , String sourceText) {
  		
  		vectorTextBoxes.add(new VectorText(typeface , sourceText));
  		
  	}
  	
+ 	/**
+ 	 * Returns the current vector text box.
+ 	 * 
+ 	 * @return Current vector text box.
+ 	 */
  	public VectorText currentTextBox() {
  		
  		return currentText;
  		
  	}
  	
+ 	/**
+ 	 * Sets the current vector text box to {@code newCurrent}.
+ 	 * 
+ 	 * @param newCurrent — vector text box to make current
+ 	 */
  	public void currentTextBox(VectorText newCurrent) {
  		
  		if(newCurrent == currentText) currentText = null;
@@ -1077,7 +1338,12 @@ public class CSSSProject implements ShutDown {
  		
  	}
  	
- 	public void runFreemove(float[] cursorWorldCoords) {
+ 	/**
+ 	 * Handles freemove mode.
+ 	 * 
+ 	 * @param cursorWorldCoords — cursor world coordinates
+ 	 */
+ 	@RenderThreadOnly public void runFreemove(float[] cursorWorldCoords) {
 		
  		if(freemoveMode && currentArtboard != null) freemoveArtboard(cursorWorldCoords);
  		if(freemoveText && currentText != null) freemoveTextBox(cursorWorldCoords);
@@ -1164,24 +1430,43 @@ public class CSSSProject implements ShutDown {
 		
  	}
  	
+ 	/**
+ 	 * Returns whether {@code artboard} is a loose artboard.
+ 	 * 
+ 	 * @param artboard — an artboard
+ 	 * @return {@code true} if {@code artboard} is loose.
+ 	 */
  	public boolean isLoose(Artboard artboard) {
  		
  		return looseArtboards.contains(artboard);
  		
  	}
  	
+ 	/**
+ 	 * Returns whether to check collisions during freemove mode.
+ 	 * 
+ 	 * @return {@code true} if collisions are being checked during freemove mode.
+ 	 */
  	public boolean freemoveCheckCollisions() {
  		
  		return freemoveCheckCollisions;
  		
  	}
 
+ 	/**
+ 	 * Toggles on or off collision checking during freemove mode.
+ 	 */
  	public void toggleFreemoveCheckCollisions() {
  		
  		freemoveCheckCollisions = !freemoveCheckCollisions;
  		
  	}
  	
+ 	/**
+ 	 * Removes the given text box from this project.
+ 	 * 
+ 	 * @param text — text bxo to remove
+ 	 */
  	public void removeTextBox(VectorText text) {
  		
  		vectorTextBoxes.remove(text);
@@ -1189,6 +1474,9 @@ public class CSSSProject implements ShutDown {
  		
  	}
  	
+ 	/**
+ 	 * Toggles on or off whether currently moving text boxes.
+ 	 */
  	public void toggleMovingText() {
  		
  		freemoveText = !freemoveText;

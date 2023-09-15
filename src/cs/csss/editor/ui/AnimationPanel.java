@@ -33,13 +33,13 @@ import cs.core.utils.ShutDown;
 import cs.core.ui.CSNuklear.CSUI.CSRow;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.csss.editor.Editor;
-import cs.csss.editor.events.ModifyArtboardInAnimationStatusEvent;
+import cs.csss.editor.event.ModifyArtboardInAnimationStatusEvent;
 import cs.csss.engine.Engine;
 import cs.csss.project.Animation;
 import cs.csss.project.AnimationSwapType;
 import cs.csss.project.CSSSProject;
-import cs.csss.ui.decorators.UIAttachedElement;
 import cs.csss.ui.elements.ProgressBar;
+import cs.csss.ui.elements.UIAttachedElement;
 import cs.csss.ui.utils.UIUtils;
 
 /**
@@ -87,6 +87,12 @@ public class AnimationPanel implements ShutDown {
 	
 	private BooleanSupplier doLayout = () -> project != null && animation() != null;
 	
+	/**
+	 * Creates the animation panel.
+	 * 
+	 * @param editor — the editor
+	 * @param nuklear — the Nuklear factory
+	 */
 	public AnimationPanel(Editor editor , CSNuklear nuklear) {
 
 		ui = nuklear.new CSUserInterface("Animation Viewer" , 0.203f , 0.64f , 0.594f , 0.3320f);
@@ -316,6 +322,9 @@ public class AnimationPanel implements ShutDown {
 		
 	}
 
+	/**
+	 * Toggles on or off the animation panel.
+	 */
 	public void toggleShow() {
 		
 		show = !show;
@@ -366,18 +375,33 @@ public class AnimationPanel implements ShutDown {
 		
 	}
 	
+	/**
+	 * Returns whether this animation panel is showing. 
+	 * 
+	 * @return {@code true} if this animation panel is showing.
+	 */
 	public boolean showing() {
 		
 		return show;
 		
 	}
 	
+	/**
+	 * Returns the zoom value of the animation panel.
+	 * 
+	 * @return Zoom of the animation panel.
+	 */
 	public float zoom() {
 		
 		return zoom;
 		
 	}
 	
+	/**
+	 * Zooms in or out the animation panel.
+	 * 
+	 * @param out — {@code true} if the panel should zoom out
+	 */
 	public void zoom(boolean out) {
 
 		//0.1f is the default zoom factor for CSOrthographic camera, so we use it here
@@ -387,6 +411,11 @@ public class AnimationPanel implements ShutDown {
 		
 	}
 	
+	/**
+	 * Returns the matrix used for the translation of the animation panel.
+	 * 
+	 * @return Matrix for translating an animation panel.
+	 */
 	public Matrix4f moveToMatrix() {
 		
 		//make it identity so the user can move it into position
@@ -394,18 +423,34 @@ public class AnimationPanel implements ShutDown {
 		
 	}
 	
+	/**
+	 * Returns the x translation of the animation panel frame.
+	 * 
+	 * @return X translation of the animation panel frame.
+	 */
 	public float xTranslation() {
 		
 		return xTranslation;
 		
 	}
 
+	/**
+	 * Returns the y translation of the animation panel frame.
+	 * 
+	 * @return Y translation of the animation panel frame.
+	 */
 	public float yTranslation() {
 		
 		return yTranslation;
 		
 	}
 	
+	/**
+	 * Translates the animation panel frame. 
+	 * 
+	 * @param x — x translation value
+	 * @param y — y translation value
+	 */
 	public void translate(float x , float y) {
 		
 		xTranslation += x;
@@ -426,12 +471,22 @@ public class AnimationPanel implements ShutDown {
 		
 	}
 
+	/**
+	 * Returns the x position of the animation panel itself.
+	 * 
+	 * @return X position of the animation panel.
+	 */
 	public int xPosition() {
 		
 		return ui.xPosition();
 				
 	}
 	
+	/**
+	 * Returns the y position of the animation panel itself.
+	 * 
+	 * @return Y position of the animation panel.
+	 */
 	public int yPosition() {
 		
 		return ui.yPosition();

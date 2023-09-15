@@ -15,6 +15,7 @@ import cs.core.graphics.CSStandardRenderer;
 import cs.core.utils.Lambda;
 import cs.coreext.nanovg.NanoVG;
 import cs.coreext.nanovg.NanoVGFrame;
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.engine.Engine;
 import cs.csss.misc.graphcs.framebuffer.Framebuffer;
 import cs.csss.misc.graphcs.framebuffer.RenderBuffer;
@@ -87,7 +88,7 @@ import cs.csss.utils.ByteBufferUtils;
  * 
  * @author Chris Brown
  */
-public class ProjectExporter {
+@RenderThreadOnly public class ProjectExporter {
 
 	private final CSStandardRenderer renderer;
 	private final CSSSProject project;
@@ -98,7 +99,7 @@ public class ProjectExporter {
 	
 	private final String 
 		exportFolderPath ,
-		visualExportName;
+		exportName;
 	
 	private final ArrayList<ExportCallbackAndName> exporters;
 	
@@ -125,13 +126,32 @@ public class ProjectExporter {
 	
 	private final NanoVG nanoVG;
 	
-	ProjectExporter(
+	/**
+	 * Creates a project exporter which will export a project by the given parameters.
+	 * 
+	 * @param renderer — the standard renderer of the application 
+	 * @param swapBuffersCallback — a callback to swap buffers after rendering
+	 * @param project — a project to export
+	 * @param exporters — a list of exporters for the project; each will be used when the project is exported
+	 * @param exportFolderPath — absolute file path of the folder to export to
+	 * @param exportName — name given to exported files
+	 * @param nanoVG — the NanoVG object
+	 * @param windowSize — size in pixels of the window
+	 * @param exportPalettes — if {@code true}, the palettes will be exported alongside images
+	 * @param exportHiddenLayers — if {@code true}, layers that are currently hidden will also be exported
+	 * @param hideCheckeredBackground — if {@code true}, the checkered backgrounds will be hidden where possible.
+	 * @param exportNonVisualLayers — if {@code true}, nonvisual layers will be exported alongside other exported files
+	 * @param powerOfTwoSizes — if {@code true}, the width and height of the exported project will be powers of two
+	 * @param exportAsColor — if {@code true}, the resulting image is colors, not indices
+	 * @param exportAnimations — if {@code true}, the animations of the project will be exported as {@code .ctsa} files
+	 */
+	public ProjectExporter(
 		CSStandardRenderer renderer , 
 		Lambda swapBuffersCallback ,
 		CSSSProject project , 
 		ArrayList<ExportCallbackAndName> exporters ,
 		String exportFolderPath ,
-		String visualExportName ,
+		String exportName ,
 		NanoVG nanoVG ,
 		int[] windowSize ,
 		boolean exportPalettes , 
@@ -147,7 +167,7 @@ public class ProjectExporter {
 		this.project = project;
 		this.exporters = exporters;
 		this.exportFolderPath = exportFolderPath;
-		this.visualExportName = visualExportName;
+		this.exportName = exportName;
 		this.exportPalettes = exportPalettes;
 		this.exportHiddenLayers = exportHiddenLayers;
 		this.hideCheckeredBackground = hideCheckeredBackground;
@@ -196,6 +216,9 @@ public class ProjectExporter {
 		
 	}
 	
+	/**
+	 * Exports the project by the parameters given in the constructor.
+	 */
 	public void export() {
 		
 		prepareForExport();
@@ -260,7 +283,7 @@ public class ProjectExporter {
 			
 		}).get();
 		
-		exportDownload(visualExportName , download , exportColor ? visualChannels : 2);
+		exportDownload(exportName , download , exportColor ? visualChannels : 2);
 
 	}
 
@@ -285,7 +308,7 @@ public class ProjectExporter {
 			
 			}).get();
 			
-			exportDownload(visualExportName + " " + prototype.name() , download , exportColor ? prototype.sizeBytes() : 2);
+			exportDownload(exportName + " " + prototype.name() , download , exportColor ? prototype.sizeBytes() : 2);
 			
 		});
 		

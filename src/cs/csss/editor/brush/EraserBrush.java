@@ -1,11 +1,15 @@
 package cs.csss.editor.brush;
 
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
-import cs.csss.editor.events.CSSSEvent;
-import cs.csss.editor.events.ErasePixelsEvent;
+import cs.csss.editor.event.CSSSEvent;
+import cs.csss.editor.event.ErasePixelsEvent;
 import cs.csss.project.Artboard;
 
-public class EraserBrush extends CSSSModifyingBrush {
+/**
+ * Brush that erases areas of pixels.
+ */
+@RenderThreadOnly public class EraserBrush extends CSSSModifyingBrush {
 
 	public EraserBrush() {
 

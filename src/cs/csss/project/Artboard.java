@@ -23,6 +23,7 @@ import org.lwjgl.system.MemoryStack;
 import cs.core.graphics.CSRender;
 import cs.core.graphics.CSVAO;
 import cs.core.graphics.utils.VertexBufferBuilder;
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.engine.LookupPixel;
 import cs.csss.engine.VAOPosition;
 import cs.csss.project.ArtboardPalette.PalettePixel;
@@ -31,7 +32,7 @@ import cs.csss.project.utils.RegionIterator;
 import cs.csss.project.utils.StackOrHeapAllocation;
 
 /**
- * Artboard contains the data needed to display and edit a graphic in CSSS and has methods to operate on pixels and artboards.
+ * Artboard contains the data needed to display and edit a graphic in CSSS and has methods to operate on pixels and layers.
  * 
  * @author Chris Brown
  *
@@ -219,10 +220,10 @@ public class Artboard {
 	 * Renders this artboard on the GPU.
 	 * 
 	 */
-	public void draw() {
+	@RenderThreadOnly public void draw() {
 		
 		vao.activate();
-		vao.draw();
+		vao.draw(); 
 		vao.deactivate();
 				
 	}
@@ -233,7 +234,7 @@ public class Artboard {
 	 * @param x — amount to move this artboard horizontally
 	 * @param y — amount to move this artboard vertically
 	 */
-	public void translate(int x , int y) {
+	@RenderThreadOnly public void translate(int x , int y) {
 		
 		positions.translate(x, y);
 		
@@ -245,7 +246,7 @@ public class Artboard {
 	 * @param x — amount to translate horizontally
 	 * @param y — amount to translate vertically 
 	 */
-	public void translateByFloats(float x , float y) {
+	@RenderThreadOnly public void translateByFloats(float x , float y) {
 		
 		positions.translate(x, y);
 		
@@ -257,7 +258,7 @@ public class Artboard {
 	 * @param x — x position to move to
 	 * @param y — y position to move to
 	 */
-	public void moveTo(int x , int y) {
+	@RenderThreadOnly public void moveTo(int x , int y) {
 		
 		translate((int)-midX() + x, (int)-midY() + y);
 		
@@ -347,9 +348,10 @@ public class Artboard {
 	 * @param values — array of channel values for a color to put in the palette.
 	 * @return Array of indices into the palette where {@code values} is located.
 	 */
-	public short[] putInPalette(PalettePixel pixel) {
-		
-		return activeLayer().palette.putOrGetColors(pixel);
+	@RenderThreadOnly public LookupPixel putInPalette(PalettePixel pixel) {
+
+		short[] indices = activeLayer().palette.putOrGetColors(pixel);
+		return new IndexPixel(indices[0] , indices[1]);
 		
 	}
 	
@@ -373,12 +375,11 @@ public class Artboard {
 	 * @param height — number of pixels to extend upward from {@code yIndex} to put the color in
 	 * @param values — channel values to put in each pixel of the region.
 	 */
-	public void putColorInImage(int xIndex , int yIndex , int width , int height , final PalettePixel values) {
+	@RenderThreadOnly public void putColorInImage(int xIndex , int yIndex , int width , int height , final PalettePixel values) {
 
 		if(activeLayer().hiding() || activeLayer().locked()) return;
 		
-		short[] colorValueLookup = putInPalette(values);
-		IndexPixel indexPixel = new IndexPixel(colorValueLookup[0] , colorValueLookup[1]);
+		LookupPixel indexPixel = putInPalette(values);
 
 		bulkPutInActiveLayer(indexPixel , xIndex , yIndex , width , height);
 
@@ -421,35 +422,9 @@ public class Artboard {
 	 * @param height — number of pixels to extend upward from {@code yIndex} to put the color in
 	 * @param values — index pixel whose values provide a lookup into the palette
 	 */
-	public void putColorInImage(int bottomX , int bottomY , int width , int height , IndexPixel values) {
+	@RenderThreadOnly public void putColorInImage(int bottomX , int bottomY , int width , int height , LookupPixel values) {
 		
-		putColorInImage(bottomX , bottomY , width , height , getColorPointedToByIndexPixel(values));
-		
-	}
-
-	/**
-	 * Puts a single color at a region of the image. This method does logic for layers as well, only writing to the artboard when logic to
-	 * do so permits. 
-	 * <br><br>
-	 * A pixel is only updated if 
-	 * <ol>
-	 * 	<li> 
-	 * 		the current layer is the layer of the highest priority, or 
-	 * 	</li>
-	 * 	<li> 
-	 * 		no layers of a higher priority than the current one also modify the given pixel. 
-	 * 	</li>
-	 * </ol>
-	 * 
-	 * @param xIndex — x index of the bottom left corner of the region to put the color
-	 * @param yIndex — y index of the bottom left corner of the region to put the color
-	 * @param width — number of pixels to extend rightward from {@code xIndex} to put the color in
-	 * @param height — number of pixels to extend upward from {@code yIndex} to put the color in
-	 * @param values — layer pixel whose values provide a lookup into the palette
-	 */
-	public void putColorInImage(int bottomX , int bottomY , int width , int height , LayerPixel values) {
-		
-		putColorInImage(bottomX , bottomY , width , height , getColorPointedToByLayerPixel(values));
+		putColorInImage(bottomX , bottomY , width , height , getColorPointedToBy(values));		
 		
 	}
 	
@@ -462,7 +437,7 @@ public class Artboard {
 	 * @param height — height of the region
 	 * @param values — 2D array of pixel values
 	 */
-	public void putColorsInImage(int leftX , int bottomY , int width , int height , LookupPixel[][] values) {
+	@RenderThreadOnly public void putColorsInImage(int leftX , int bottomY , int width , int height , LookupPixel[][] values) {
 		
 		specify(leftX >= 0 && leftX < width() , leftX + " is an invalid x index");
 		specify(bottomY >= 0 && bottomY < height() , bottomY + " is an invalid y index");
@@ -494,7 +469,14 @@ public class Artboard {
 	 * @param palette — a palette of the user's choosing
 	 * @param pixel — A {@code PalettePixel} containing the pixel values the index texture's pixel will point to
 	 */
-	void writeToIndexTexture(int xIndex , int yIndex , int width , int height , ArtboardPalette palette , PalettePixel pixel) {
+	@RenderThreadOnly void writeToIndexTexture(
+		int xIndex , 
+		int yIndex , 
+		int width , 
+		int height , 
+		ArtboardPalette palette , 
+		PalettePixel pixel
+	) {
 		
 		short[] colorValueLookup = palette.putOrGetColors(pixel);
 		IndexPixel indexPixel = new IndexPixel(colorValueLookup[0], colorValueLookup[1]);
@@ -514,7 +496,7 @@ public class Artboard {
 	 * @param height — number of pixels to extend upward from {@code yIndex} to put the color in
 	 * @param pixel — A {@code PalettePixel} containing the pixel values the index texture's pixel will point to
 	 */
-	public void writeToIndexTexture(int xIndex , int yIndex , int width , int height , PalettePixel pixel) {
+	@RenderThreadOnly public void writeToIndexTexture(int xIndex , int yIndex , int width , int height , PalettePixel pixel) {
 
 		writeToIndexTexture(xIndex , yIndex , width , height , activeLayersPalette() , pixel);
 		
@@ -532,9 +514,9 @@ public class Artboard {
 	 * @param height — number of pixels to extend upward from {@code yIndex} to put the color in
 	 * @param pixel — A {@code LayerPixel} containing the pixel values the index texture's pixel will point to
 	 */
-	public void writeToIndexTexture(int xIndex , int yIndex , int width , int height , LayerPixel pixel) {
+	@RenderThreadOnly public void writeToIndexTexture(int xIndex , int yIndex , int width , int height , LookupPixel pixel) {
 		
-		writeToIndexTexture(xIndex, yIndex, width, height, getColorPointedToByLayerPixel(pixel));
+		writeToIndexTexture(xIndex, yIndex, width, height, getColorPointedToBy(pixel));
 		
 	}
 	
@@ -547,7 +529,7 @@ public class Artboard {
 	 * @param height — height of the region
 	 * @param pixels — 2D array of pixels representing a region of pixels
 	 */
-	public void writeToIndexTexture(int xIndex , int yIndex , int width , int height , LookupPixel[][] pixels) {
+	@RenderThreadOnly public void writeToIndexTexture(int xIndex , int yIndex , int width , int height , LookupPixel[][] pixels) {
 		
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			
@@ -570,7 +552,7 @@ public class Artboard {
 	 * @param yIndex — y index into texture of the pixel to get
 	 * @return Pixel located at the given coordinates.
 	 */
-	public IndexPixel getIndexPixelAtIndices(int xIndex , int yIndex) {
+	@RenderThreadOnly public IndexPixel getIndexPixelAtIndices(int xIndex , int yIndex) {
 		
 		return indexTexture.getPixelByIndex(xIndex, yIndex);
 		
@@ -589,7 +571,7 @@ public class Artboard {
 	 * @param height — number of pixels to extend from {@code yIndex}
 	 * @return 2D array containing all the pixels of the region specified.
 	 */
-	public IndexPixel[][] getRegionOfIndexPixels(int xIndex , int yIndex , int width , int height) {
+	@RenderThreadOnly public IndexPixel[][] getRegionOfIndexPixels(int xIndex , int yIndex , int width , int height) {
 		
 		ByteBuffer texelBuffer = indexTexture.texelBufferWithReformat(width , height , xIndex , yIndex);		
 		IndexPixel[][] region = new IndexPixel[height][width];
@@ -614,7 +596,7 @@ public class Artboard {
 	 * @param paletteYIndex — y index into the palette to retrieve a color
 	 * @return {@code PalettePixel} containing channel values for the pixel at the given indices.
 	 */
-	public PalettePixel getColorFromIndicesOfPalette(int paletteXIndex , int paletteYIndex) {
+	@RenderThreadOnly public PalettePixel getColorFromIndicesOfPalette(int paletteXIndex , int paletteYIndex) {
 		
 		paletteXIndex = Byte.toUnsignedInt((byte)paletteXIndex);
 		paletteYIndex = Byte.toUnsignedInt((byte)paletteYIndex);
@@ -632,7 +614,7 @@ public class Artboard {
 	 * @param paletteYIndex — y index into the palette to retrieve a color
 	 * @return Array of numbers containing channel values for the pixel at the given indices.
 	 */
-	public PalettePixel getColorFromIndicesOfPalette(ByteBuffer texelData , int paletteXIndex , int paletteYIndex) {
+	@RenderThreadOnly public PalettePixel getColorFromIndicesOfPalette(ByteBuffer texelData , int paletteXIndex , int paletteYIndex) {
 
 		paletteXIndex = Byte.toUnsignedInt((byte)paletteXIndex);
 		paletteYIndex = Byte.toUnsignedInt((byte)paletteYIndex);
@@ -647,24 +629,12 @@ public class Artboard {
 	 * @param pixel — an index pixel from the index texture
 	 * @return Color value stored at the indices of the palette referenced by {@code pixel}.
 	 */
-	public PalettePixel getColorPointedToByIndexPixel(IndexPixel pixel) {
+	@RenderThreadOnly public PalettePixel getColorPointedToBy(LookupPixel pixel) {
 		
-		return getColorFromIndicesOfPalette(pixel.xIndex, pixel.yIndex);
-		
-	}
-	
-	/**
-	 * Gets a color in the palette from the values of {@code pixel}.
-	 * 
-	 * @param pixel — a layer pixel from any layer
-	 * @return Color value stored at the indices of the palette referenced by {@code pixel}.
-	 */
-	public PalettePixel getColorPointedToByLayerPixel(LayerPixel pixel) {
-		
-		return getColorFromIndicesOfPalette(pixel.lookupX , pixel.lookupY);
+		return getColorFromIndicesOfPalette(pixel.lookupX(), pixel.lookupY());
 		
 	}
-	
+		
 	/**
 	 * Gets the index pixel located at {@code (indexImageXIndex , indexImageYIndex)}, and uses it to get the color in the color palette
 	 * pointed to by the pixel's {@code xIndex} and {@code yIndex}. 
@@ -673,7 +643,7 @@ public class Artboard {
 	 * @param indexImageYIndex — y index of a pixel in the index image
 	 * @return Color in the palette who the index pixel at {@code (indexImageXIndex , indexImageYIndex)} points to.
 	 */
-	public PalettePixel getColorPointedToByIndexPixel(int indexImageXIndex , int indexImageYIndex) {
+	@RenderThreadOnly public PalettePixel getColorPointedToByIndexPixel(int indexImageXIndex , int indexImageYIndex) {
 		
 		IndexPixel indicesOfPixelAtIndex = indexTexture.getPixelByIndex(indexImageXIndex, indexImageYIndex);		
 		return getColorFromIndicesOfPalette(indicesOfPixelAtIndex.xIndex , indicesOfPixelAtIndex.yIndex);
@@ -692,7 +662,7 @@ public class Artboard {
 	 * @param indexTextureYIndex — y index of a pixel in the index image
 	 * @return Color in the palette who the index pixel at {@code (indexImageXIndex , indexImageYIndex)} points to.
 	 */
-	public PalettePixel getColorPointedToByIndexPixel(
+	@RenderThreadOnly public PalettePixel getColorPointedToByIndexPixel(
 		ByteBuffer indexTexelBuffer , 
 		ByteBuffer paletteTexelBuffer , 
 		int indexTextureXIndex , 
@@ -723,43 +693,45 @@ public class Artboard {
 	}
 	
 	/**
-	 * Returns a read-only {@code ByteBuffer} containing the texel data of the index texture.
+	 * Returns a read-only {@link cs.csss.annotation.FreeAfterUse @FreeAfterUse} {@code ByteBuffer} containing the texel data of the index
+	 * texture.
 	 *  
-	 * @return Read-only {@code ByteBuffer} containing the texel data of the index texture.
+	 * @return Read-only {@code @FreeAfterUse ByteBuffer} containing the texel data of the index texture.
 	 */
-	public ByteBuffer indexTextureTexelBuffer() {
+	@RenderThreadOnly public ByteBuffer indexTextureTexelBuffer() {
 		
 		return indexTexture.allTexelData().asReadOnlyBuffer();
 		
 	}
 	
 	/**
-	 * Returns a read-only {@code ByteBuffer} containing the texel data of the index texture at the given offsets and of the given 
-	 * dimensions. The returned buffer's contents are exactly as expected.
+	 * Returns a read-only {@link cs.csss.annotation.FreeAfterUse @FreeAfterUse} {@code ByteBuffer} containing the texel data of the index
+	 * texture at the given offsets and of the given dimensions. The returned buffer's contents are exactly as expected.
 	 * 
 	 * @param x — left x index of the region in texel coordinates
 	 * @param y — bottom y index of the region in texel coordinates 
 	 * @param width — width of the region in texel coordinates
 	 * @param height — height of the region in texel coordinates
-	 * @return Read-only {@code ByteBuffer} containing the texel data of the index texture.
+	 * @return Read-only {@code @FreeAfterUse ByteBuffer} containing the texel data of the index texture.
 	 */
-	public ByteBuffer indexTextureTexelBufferFormatted(int x , int y , int width , int height) {
+	@RenderThreadOnly public ByteBuffer indexTextureTexelBufferFormatted(int x , int y , int width , int height) {
 		
 		return indexTexture.texelBufferWithReformat(width , height , x , y).asReadOnlyBuffer();
 		
 	}
 	
 	/**
-	 * Returns a read only {@code ByteBuffer} containing the texel data of the index texture at the given offsets and of the given 
-	 * dimensions. The returned buffer is not formatted at all and its contents may not be exactly as expected.
+	 * Returns a read only {@link cs.csss.annotation.FreeAfterUse @FreeAfterUse} {@code ByteBuffer} containing the texel data of the index
+	 * texture at the given offsets and of the given dimensions. The returned buffer is not formatted at all and its contents may not be
+	 * exactly as expected.
 	 * 
 	 * @param x — left x index of the region in texel coordinates
 	 * @param y — bottom y index of the region in texel coordinates 
 	 * @param width — width of the region in texel coordinates
 	 * @param height — height of the region in texel coordinates
-	 * @return Read-only {@code ByteBuffer} containing the texel data of the index texture.
+	 * @return Read-only {@code @FreeAfterUse ByteBuffer} containing the texel data of the index texture.
 	 */
-	public ByteBuffer indexTextureTexelBufferUnformatted(int x , int y , int width , int height) {
+	@RenderThreadOnly public ByteBuffer indexTextureTexelBufferUnformatted(int x , int y , int width , int height) {
 		
 		ByteBuffer texels = indexTexture.texelBuffer(width, height, x, y);
 		return texels != null ? texels.asReadOnlyBuffer() : null;
@@ -771,7 +743,7 @@ public class Artboard {
 	 * 
 	 * @return Read-only {@code ByteBuffer} containing the texel data of the palette texture.
 	 */
-	public ByteBuffer paletteTexelBuffer() {
+	@RenderThreadOnly public ByteBuffer paletteTexelBuffer() {
 		
 		return activeLayer().palette.texelData();
 		
@@ -795,7 +767,7 @@ public class Artboard {
 	 * @param paletteYIndex — y index into the palette texture to replace
 	 * @param replaceWithThis — pixel containing color data to put in the palette texture
 	 */
-	public void replacePalettePixelAtIndex(final int paletteXIndex , final int paletteYIndex , PalettePixel replaceWithThis) {
+	@RenderThreadOnly public void replacePalettePixelAtIndex(int paletteXIndex , int paletteYIndex , PalettePixel replaceWithThis) {
 		
 		activeLayer().palette.put(paletteXIndex , paletteYIndex , replaceWithThis);
 		
@@ -951,11 +923,11 @@ public class Artboard {
 	 * @param xPosition — x position of the pixel to copy
 	 * @param yPosition — y position of the pixel to copy
 	 */
-	public void putInActiveLayer(IndexPixel source , int xPosition , int yPosition) {
+	public void putInActiveLayer(LookupPixel source , int xPosition , int yPosition) {
 		
 		if(activeLayer() == null) return;
 		
-		LayerPixel pixel = new LayerPixel(xPosition , yPosition , source.xIndex , source.yIndex);		
+		LayerPixel pixel = new LayerPixel(xPosition , yPosition , source.lookupX() , source.lookupY());		
 		activeLayer().put(pixel);
 		
 	}
@@ -971,7 +943,7 @@ public class Artboard {
 	 * @param width — width of the region to copy
 	 * @param height — height of the region to copy
 	 */
-	public void bulkPutInActiveLayer(IndexPixel source , int xPosition , int yPosition , int width , int height) {
+	public void bulkPutInActiveLayer(LookupPixel source , int xPosition , int yPosition , int width , int height) {
 		
 		for(int row = 0 ; row < height ; row++) for(int col = 0 ; col < width ; col++) {
 			
@@ -1192,7 +1164,7 @@ public class Artboard {
 	 * 
 	 * @param layer — a layer whose visibility is to be toggled
 	 */
-	public void toggleHideLayer(VisualLayer layer) {
+	@RenderThreadOnly public void toggleHideLayer(VisualLayer layer) {
 		
 		if(!layer.hiding()) layer.hide(this);
 		else layer.show(this);
@@ -1259,7 +1231,7 @@ public class Artboard {
 	 * 
 	 * @param layer — a layer to remove
 	 */
-	public void removeLayer(Layer layer) {
+	@RenderThreadOnly public void removeLayer(Layer layer) {
 		
 		if(layer instanceof VisualLayer) visualLayers.remove(layer);
 		else nonVisualLayers.remove(layer);
@@ -1269,7 +1241,7 @@ public class Artboard {
 	/**
 	 * Hides all layers.
 	 */
-	public void hideAllVisualLayers() {
+	@RenderThreadOnly public void hideAllVisualLayers() {
 		
 		setToCheckeredBackground();
 		forEachVisualLayer(layer -> layer.hiding(true));
@@ -1280,7 +1252,7 @@ public class Artboard {
 	 * Shows all visual layers.
 	 * 
 	 */
-	public void showAllVisualLayers() {
+	@RenderThreadOnly public void showAllVisualLayers() {
 		
 		for(int i = visualLayers.size() - 1 ; i  >= 0 ; i--) visualLayers.get(i).show(this);
 		
@@ -1289,7 +1261,7 @@ public class Artboard {
 	/**
 	 * Invokes {@link cs.csss.project.VisualLayer#show(Artboard) show} on all layers of this artboard that are not marked as hidden.
 	 */
-	public void showAllNonHiddenVisualLayers() {
+	@RenderThreadOnly public void showAllNonHiddenVisualLayers() {
 		
 		for(int i = visualLayers.size() - 1 ; i  >= 0 ; i--) { 
 			
@@ -1308,7 +1280,7 @@ public class Artboard {
 	 * @param yIndex — y index of a pixel whose background is being checked
 	 * @return Palette pixel containing the values of a transparent background checker color.
 	 */
-	public PalettePixel getBackgroundColor(int xIndex , int yIndex) {
+	@RenderThreadOnly public PalettePixel getBackgroundColor(int xIndex , int yIndex) {
 
 		/*
 		 * Determine what quadrant of the checkered background the pixel at the given indices is in.
@@ -1329,12 +1301,26 @@ public class Artboard {
 		//flip darker if the y region is even
 		if((yRegion & 1) == 0) darker = !darker;
 				
-		return getColorPointedToByIndexPixel(
+		return getColorPointedToBy(
 			darker ? indexTexture.darkerTransparentBackground : indexTexture.lighterTransparentBackground
 		);
 		
 	}
 
+	/**
+	 * Gets the lookup pixel for the background color located at the given indices.
+	 * 
+	 * @param xIndex — x index of a background color to look up
+	 * @param yIndex — y index of a background color to look up
+	 * @return Lookup pixel containing the lookups for the background color that corresponds to the given indices.
+	 */
+	@RenderThreadOnly public LookupPixel getBackgroundColorIndices(int xIndex , int yIndex) {
+		
+		PalettePixel color = getBackgroundColor(xIndex , yIndex);
+		return putInPalette(color);
+		
+	}
+	
 	/**
 	 * Returns whether any layer at all (both visual and nonvisual) modifies the given pixel position.
 	 * 
@@ -1366,7 +1352,7 @@ public class Artboard {
 	 * @return Color stored by the highest ranking layer that modifies the given indices, or the color stored at the given indices if the
 	 * 		   active layer is nonvisual, or null if any 
 	 */
-	public PalettePixel getHighestRankingLayerModification(int xIndex , int yIndex) {
+	@RenderThreadOnly public PalettePixel getHighestRankingColorForLayerModification(int xIndex , int yIndex) {
 		
 		LayerPixel mod;
 
@@ -1434,7 +1420,7 @@ public class Artboard {
 	 * Overwrites the entire artboard image to the checkered background. No layers are modified. This method should only be called in 
 	 * conjuction with layer show methods.
 	 */
-	public void setToCheckeredBackground() {
+	@RenderThreadOnly public void setToCheckeredBackground() {
 		
 		indexTexture.setCheckerBackground();
 		
@@ -1577,7 +1563,7 @@ public class Artboard {
 	 * 
 	 * @return Randomly selected channel values into a pixel.
 	 */
-	public PalettePixel randomColor() {
+	@RenderThreadOnly public PalettePixel randomColor() {
 		
 		byte[] channelValues = new byte[activeLayerChannelsPerPixel()];
 		Random random = new Random();
@@ -1614,7 +1600,7 @@ public class Artboard {
 	 * @param xIndex — x index of the pixel to remove
 	 * @param yIndex — y index of the pixel to remove
 	 */
-	public void removePixel(int xIndex , int yIndex) {
+	@RenderThreadOnly public void removePixel(int xIndex , int yIndex) {
 		
 		Layer active = activeLayer;
 		if(!active.containsModificationTo(xIndex, yIndex)) return;
@@ -1643,7 +1629,7 @@ public class Artboard {
 	 * @param width — width of the region
 	 * @param height — height of the region
 	 */
-	public void removePixels(int leftX , int bottomY , int width , int height) {
+	@RenderThreadOnly public void removePixels(int leftX , int bottomY , int width , int height) {
 		
 		RegionIterator iter = Artboards.region(leftX, bottomY, width, height);
 		int[] x;
@@ -1653,6 +1639,42 @@ public class Artboard {
 			removePixel(x[0] , x[1]);
 			
 		}
+		
+	}
+	
+	/**
+	 * Returns a lookup for the highest ranking modification to the given indices. If the current layer is nonvisual, a lookup to the pixel
+	 * modifying the given indices is returned, or a background color lookup is returned.
+	 * 
+	 * @param xIndex — x index of a pixel whose highest lookup is being queried
+	 * @param yIndex — y index of a pixel whose highest lookup is being queried
+	 * @return {@code LookupPixel} containing lookups for the color at the given indices. 
+	 */
+	@RenderThreadOnly public LookupPixel highestPixelForIndex(int xIndex , int yIndex) {
+		
+		if(isActiveLayerVisual) {
+			
+ 			PalettePixel color = getHighestRankingColorForLayerModification(xIndex, yIndex);
+			if(color == null) color = getBackgroundColor(xIndex , yIndex);
+			return putInPalette(color);
+ 			
+		} else {
+			
+  			LookupPixel mod = activeLayer.get(xIndex, yIndex);
+			if(mod == null) mod = getBackgroundColorIndices(xIndex, yIndex);
+			return mod;
+		}
+		
+	}
+	
+	/**
+	 * Returns the name of this artboard.
+	 * 
+	 * @return Name of this artboard.
+	 */
+	public String name() {
+		
+		return name;
 		
 	}
 	

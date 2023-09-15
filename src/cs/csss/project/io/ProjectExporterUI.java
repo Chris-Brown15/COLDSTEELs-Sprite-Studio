@@ -18,6 +18,9 @@ import cs.csss.engine.Engine;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.project.CSSSProject;
 
+/**
+ * UI element for selecting options and begining the export of the project.
+ */
 public class ProjectExporterUI {
 	
 	/**
@@ -30,7 +33,7 @@ public class ProjectExporterUI {
 		UIHeight = 525;
 	
 	/**
-	 * Adds a file path to the list of export locations.
+	 * Sets the file path of export locations.
 	 * 
 	 * @param absoluteFilePath — String representing absolute filep path to export to
 	 */
@@ -52,13 +55,11 @@ public class ProjectExporterUI {
 		hideCheckeredBackground ,
 		exportNonVisualLayers ,
 		exportAnimationFiles ,
-		powerOfTwoSizes
-	;
+		powerOfTwoSizes;
 	
 	private final CSRadio
 		exportColor ,
-		exportIndices
-	;
+		exportIndices;
 	
 	private ArrayList<ExportCallbackAndName> exporters = new ArrayList<>();
 	
@@ -66,6 +67,13 @@ public class ProjectExporterUI {
 	
 	private CSCheckBox doExportScript;
 	
+	/**
+	 * Creates a project exporter UI.
+	 * 
+	 * @param engine — the engine
+	 * @param nuklear — the Nuklear factory
+	 * @param project — the project to export
+	 */
 	public ProjectExporterUI(final Engine engine , CSNuklear nuklear , final CSSSProject project) {
 	
 		int[] windowSize = engine.windowSize();
@@ -175,7 +183,7 @@ public class ProjectExporterUI {
 		
 			if(!verifyExportable()) return;
 			
-			new ProjectExporter(
+			ProjectExporter exporter = new ProjectExporter(
 				engine.renderer() , 
 				engine::windowSwapBuffers ,
 				project , 
@@ -191,7 +199,9 @@ public class ProjectExporterUI {
 				powerOfTwoSizes.checked() ,
 				exportColor.checked() ,
 				exportAnimationFiles.checked()
-			).export();
+			);
+			
+			exporter.export();
 			
 			onFinish.invoke();
 			

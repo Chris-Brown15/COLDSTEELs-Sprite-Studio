@@ -14,10 +14,19 @@ import cs.core.utils.Lambda;
 import cs.csss.engine.Control;
 import cs.csss.engine.Engine;
 
+/**
+ * UI menu for modifying the controls of Sprite Studio.
+ */
 public class ModifyControlsMenu {
 
 	private Lambda onFinish;
 	
+	/**
+	 * Creates a modify controls menu.
+	 * 
+	 * @param nuklear — the Nuklear factory
+	 * @param engine — the engine
+	 */
 	public ModifyControlsMenu(CSNuklear nuklear , Engine engine) {
 
 		CSUserInterface ui = nuklear.new CSUserInterface("Controls" , 0.5f - (0.33f / 2) , 0.5f - (0.35f / 2) , 0.33f , 0.35f);

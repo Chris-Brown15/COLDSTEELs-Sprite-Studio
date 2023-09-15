@@ -3,7 +3,7 @@ package cs.csss.project;
 import static cs.core.utils.CSUtils.specify;
 
 /**
- * Store of information for producing layers.
+ * Store of information for producing nonvisual layers.
  */
 public class NonVisualLayerPrototype {
 
@@ -11,12 +11,6 @@ public class NonVisualLayerPrototype {
 	
 	private final int sizeBytes;
 	private final String name;
-	
-	public static boolean isValidName(final String potentialName) {
-		
-		return Layer.isValidName(potentialName);
-				
-	}
 	
 	NonVisualLayerPrototype(int sizeBytes , String name) {
 		
@@ -28,12 +22,22 @@ public class NonVisualLayerPrototype {
 		
 	}
 
+	/**
+	 * Returns the size in bytes of this nonvisual layer prototype.
+	 * 
+	 * @return Size in bytes of this prototype.
+	 */
 	public int sizeBytes() {
 		
 		return sizeBytes;
 		
 	}
 	
+	/**
+	 * Returns the name of this nonvisual layer prototype.
+	 * 
+	 * @return Name of this nonvisual layer prototype.s
+	 */
 	public String name() {
 		
 		return name;

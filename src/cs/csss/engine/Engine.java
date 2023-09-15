@@ -54,10 +54,11 @@ import cs.coreext.nanovg.NanoVG;
 import cs.coreext.nanovg.NanoVGFrame;
 import cs.coreext.nanovg.NanoVGTypeface;
 import cs.coreext.python.CSJEP;
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
 import cs.csss.editor.brush.CSSSSelectingBrush;
-import cs.csss.editor.events.MoveLayerRankEvent;
-import cs.csss.editor.events.ShutDownProjectEvent;
+import cs.csss.editor.event.MoveLayerRankEvent;
+import cs.csss.editor.event.ShutDownProjectEvent;
 import cs.csss.misc.files.CSFile;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.misc.graphcs.memory.GPUMemoryViewer;
@@ -79,8 +80,8 @@ import cs.csss.ui.menus.NewProjectMenu;
 import cs.csss.ui.menus.NewVisualLayerMenu;
 import cs.csss.ui.menus.SelectScriptMenu;
 import cs.csss.ui.menus.SetAnimationFrameSwapTypeMenu;
-import cs.csss.ui.menus.TransparentBackgroundSettingsMenu;
-import cs.csss.ui.prefabs.DetailedInputBox;
+import cs.csss.ui.menus.CheckeredBackgroundSettingsMenu;
+import cs.csss.ui.menus.DetailedInputBox;
 import cs.csss.ui.utils.UIUtils;
 import cs.csss.utils.FloatReference;
 
@@ -442,6 +443,11 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Gets the screen coordinates of the cursor.
+	 * 
+	 * @return The screen coordinates of the cursor. 
+	 */
 	public int[] getCursorScreenCoords() {
 		
 		double[] cursorPos = display.window.cursorPosition();
@@ -449,42 +455,77 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Gets the current artboard.
+	 * 
+	 * @return The current artboard.
+	 */
 	public Artboard currentArtboard() {
 		
 		return currentProject.currentArtboard();
 		
 	}
 	
+	/**
+	 * Returns the NanoVG.
+	 * 
+	 * @return The NanoVG.
+	 */
 	public NanoVG nanoVG() {
 		
 		return nanoVG;
 		
 	}
 	
+	/**
+	 * Returns the standard renderer.
+	 * 
+	 * @return The standard renderer.
+	 */
 	public CSStandardRenderer renderer() {
 		
 		return display.renderer;
 		
 	}
 	
+	/**
+	 * Sets the camera's move rate.
+	 * 
+	 * @param moveSpeed — a new move rate for the camera
+	 */
 	public void cameraMoveRate(final int moveSpeed) {
 		
 		this.cameraMoveSpeed = moveSpeed;
 		
 	}
 
+	/**
+	 * Returns the camera move rate.
+	 * 
+	 * @return The camera move rate.
+	 */
 	public int cameraMoveRate() {
 		
 		return cameraMoveSpeed;
 		
 	}
 
+	/**
+	 * Returns the current project.
+	 * 
+	 * @return The current project.
+	 */
 	public CSSSProject currentProject() {
 		
 		return currentProject;
 		
 	}
 
+	/**
+	 * Returns the current animation.
+	 * 
+	 * @return The current animation.
+	 */
 	public Animation currentAnimation() {
 		
 		if(currentProject == null || currentProject.currentAnimation() == null) return null;
@@ -492,6 +533,11 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Sets the current project to {@link cs.csss.annotation.Nullable @Nullable} {@code project}. 
+	 * 
+	 * @param project — {@code @Nullable} new current project
+	 */
 	public void currentProject(CSSSProject project) {
 		
 	 	if(currentProject != null) editor.eventPush(new ShutDownProjectEvent(currentProject));		
@@ -512,6 +558,9 @@ public final class Engine implements ShutDown {
 	
 	/* UI ELEMENTS */
 	
+	/**
+	 * Creates an UI element for creating a project.
+	 */
 	public void startNewProject() {
 		
 		NewProjectMenu newProjectMenu = new NewProjectMenu(display.nuklear);
@@ -524,8 +573,7 @@ public final class Engine implements ShutDown {
 				CSSSProject project = new CSSSProject(
 					this ,
 					newProjectMenu.get() , 
-					newProjectMenu.channelsPerPixel() ,
-					true
+					newProjectMenu.channelsPerPixel()
 				);
 				
 				project.initialize();
@@ -536,7 +584,10 @@ public final class Engine implements ShutDown {
 		});		
 		
 	}
-	
+
+	/**
+	 * Creates an UI element for creating an animation.
+	 */
 	public void startNewAnimation() {
 		
 		if(currentProject == null) return;
@@ -545,6 +596,9 @@ public final class Engine implements ShutDown {
 		
 	}
 
+	/**
+	 * Creates an UI element for creating a new visual layer.
+	 */
 	public void startNewVisualLayer() {
 		
 		if(currentProject == null) return;
@@ -558,7 +612,10 @@ public final class Engine implements ShutDown {
 		});
 		
 	}
-	
+
+	/**
+	 * Creates an UI element for creating a new nonvisual layer.
+	 */
 	public void startNewNonVisualLayer() {
 		
 		if(currentProject == null) return;
@@ -566,12 +623,15 @@ public final class Engine implements ShutDown {
 		
 		THE_TEMPORAL.onTrue(newLayerMenu::isFinished , () -> {
 			
-			if(newLayerMenu.canCreate()) currentProject.createNonVisualLayer(newLayerMenu.name(), newLayerMenu.pixelSize());
+			if(newLayerMenu.canCreate()) currentProject.createNonVisualLayer(newLayerMenu.name(), newLayerMenu.channels());
 			
 		});
 		
 	}
-	
+
+	/**
+	 * Creates an UI element for creating an artboard.
+	 */
 	public void startNewArtboard() {
 		
 		if(currentProject == null) return;
@@ -594,19 +654,28 @@ public final class Engine implements ShutDown {
 		});
 		
 	}
-	
+
+	/**
+	 * Creates an UI element for editing controls.
+	 */
 	public void startNewControlsEditor() {
 		
 		new ModifyControlsMenu(display.nuklear , this);
 				
 	}
-	
-	public void startTransparentBackgroundSettings() {
+
+	/**
+	 * Creates an UI element for setting stats for the checkered background.
+	 */
+	public void startCheckeredBackgroundSettings() {
 		
-		new TransparentBackgroundSettingsMenu(editor , display.nuklear , currentProject);
+		new CheckeredBackgroundSettingsMenu(editor , display.nuklear , currentProject);
 		
 	}
-	
+
+	/**
+	 * Creates an UI element for selecing any type of script.
+	 */
 	public void startSelectScriptMenu(String scriptSubdirectory , Consumer<CSFile> onComplete) {
 		
 		if(currentProject == null) return;		
@@ -622,6 +691,11 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Creates an UI element for selecing a custom time input.
+	 * 
+	 * @param animationFrameIndex — an animation frame index
+	 */
 	public void startAnimationFrameCustomTimeInput(int animationFrameIndex) {
 		
 		String title = "Frame " + animationFrameIndex + " custom speed";
@@ -656,7 +730,12 @@ public final class Engine implements ShutDown {
 		});
 		
 	}
-	
+
+	/**
+	 * Creates an UI element for moving an animation frame position.
+	 * 
+	 * @param originalIndex — the original index of the animation frame  
+	 */
 	public void startSetAnimationFramePosition(int originalIndex) {
 		
 		Animation current = currentAnimation();
@@ -690,6 +769,9 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Creates an UI element for setting the simulation frame rate during realtime mode.
+	 */
 	public void startSetSimulationFrameRate() {
 		
 		new DetailedInputBox(
@@ -722,6 +804,11 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Creates an UI element for moving the rank of a visual layer.
+	 * 
+	 * @param layer — a layer to rearrange
+	 */
 	public void startMoveLayerRank(VisualLayer layer) {
 		
 		int rank = currentProject.currentArtboard().getLayerRank(layer);
@@ -740,6 +827,11 @@ public final class Engine implements ShutDown {
 			
 	}
 	
+	/**
+	 * Creates an UI element for setting the swap type of an animation frame.
+	 * 
+	 * @param frameIndex — index of an animation frame
+	 */
 	public void startSetAnimationFrameSwapType(int frameIndex) {
 		
 		SetAnimationFrameSwapTypeMenu animationFrameSwapTypeMenu = new SetAnimationFrameSwapTypeMenu(display.nuklear , frameIndex);
@@ -753,6 +845,13 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Creates an UI element for inputting arguments for scripts.
+	 * 
+	 * @param scriptName — name of a script
+	 * @param popupMessage — optional string for the UI that 
+	 * @param onFinish — code to invoke on completion of the UI element
+	 */
 	public void startScriptArgumentInput(String scriptName , Optional<String> popupMessage , Consumer<String> onFinish) {
 	
 		String description = "Input arguments to " + scriptName + ". Leave spaces between arguments. ";
@@ -773,6 +872,9 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Creates an UI element for loading project.
+	 */
 	public void startLoadProject() {
 		
 		LoadProjectMenu menu = new LoadProjectMenu(display.nuklear);
@@ -802,12 +904,18 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Creates a UI element for exporting a project.
+	 */
 	public void startExport() {
 		
 		if(currentProject != null) new ProjectExporterUI(this , display.nuklear , currentProject);
 		
 	}
 	
+	/**
+	 * Creates a UI element for adding text.
+	 */
 	public void startAddText() {
 		
 		if(currentProject == null) return;
@@ -825,6 +933,9 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Creates an UI element for saving projects under a new name.
+	 */
 	public void startProjectSaveAs() {
 
 		new InputBox(display.nuklear , "Save As" , .4f , .4f , 999 , CSNuklear.NO_FILTER , result -> {
@@ -836,6 +947,9 @@ public final class Engine implements ShutDown {
 		
 	}
 
+	/**
+	 * Creates an UI element for saving projects.
+	 */
 	public void saveProject() { 
 
 		if(currentProject == null) return;
@@ -843,6 +957,11 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Saves the current project under {@code name}.
+	 * 
+	 * @param name — name for a save file
+	 */
 	public void saveProject(String name) {
 
 		if(currentProject == null) return;
@@ -865,12 +984,18 @@ public final class Engine implements ShutDown {
 		
 	}
 
+	/**
+	 * Begins the exit process of Sprite Studio.
+	 */
 	public void exit() {
 		
 		display.window.close();
 		
 	}
 	
+	/**
+	 * Toggles on or off fullscreen mode.
+	 */
 	public void toggleFullScreen() { 
 		
 		isFullScreen = !isFullScreen;
@@ -879,18 +1004,33 @@ public final class Engine implements ShutDown {
 		
 	}
 
+	/**
+	 * Sets the realtime mode of the application to {@code mode}.
+	 * 
+	 * @param mode — {@code true} if the realtime mode is to be enabled
+	 */
 	public void realtimeMode(boolean mode) {
 		
 		this.realtimeMode = mode;
 		
 	}	
 		
+	/**
+	 * Returns the realtime mode of the application.
+	 * 
+	 * @return Realtime mode of the application.
+	 */
 	public boolean realtimeMode() {
 		
 		return realtimeMode;
 		
 	}
 	
+	/**
+	 * Returns whether the mouse was pressed down on a UI element.
+	 * 
+	 * @return Whether the mouse was pressed down on a UI element.
+	 */
 	public boolean wasMousePressedOverUI() {
 		
 		return wasMousePressedOverUI;
@@ -904,18 +1044,33 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Returns the time a frame should take in realtime mode.
+	 * 
+	 * @return Time a frame should take in realtime mode.
+	 */
 	public double realtimeFrameTime() {
 		
 		return realtimeFrameTime;
 		
 	}
 	
+	/**
+	 * Returns the amount of frames per second of the realtime mode.
+	 * 
+	 * @return Frames per second of the realtime mode.
+	 */
 	public int realtimeTargetFPS() {
 		
 		return realtimeTargetFPS;
 		
 	}
 	
+	/**
+	 * Returns the camera.
+	 * 
+	 * @return The camera.
+	 */
 	public CSSSCamera camera() {
 		
 		return camera;
@@ -1024,6 +1179,12 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Removes a render object from the renderer.
+	 * 
+	 * @param render — render to remove
+	 * @return {@code Await} object that will return finished once the object is freed.
+	 */
 	public Await removeRender(CSRender render) {
 		
 		return display.renderer.post(() -> {
@@ -1035,13 +1196,19 @@ public final class Engine implements ShutDown {
 		
 	}
 	
-	public void windowSwapBuffers() {
+	/**
+	 * Swaps buffers.
+	 */
+	@RenderThreadOnly public void windowSwapBuffers() {
 		
 		display.window.swapBuffers();
 		
 	}
 	
-	public void resetViewport() {
+	/**
+	 * Resets the viewport and background colors.
+	 */
+	@RenderThreadOnly public void resetViewport() {
 		
 		int[] framebufferSize = display.window.framebufferSize();
 		glViewport(0 , 0 , framebufferSize[0] , framebufferSize[1]);
@@ -1049,12 +1216,22 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Returns whether the renderer is currently rendering.
+	 * 
+	 * @return Whether the renderer is currently rendering.
+	 */
 	public boolean currentlyRendering() {
 		
 		return !renderScene.isFinished();
 		
 	}
 	
+	/**
+	 * Returns the window size.
+	 * 
+	 * @return The window size.
+	 */
 	public int[] windowSize() {
 		
 		return display.window.size();
@@ -1092,10 +1269,10 @@ public final class Engine implements ShutDown {
 		
 		nanoVG.shutDown();
 		
+		editor.shutDown();
+		
 		display.renderer.post(() -> CSJEP.interpreter().shutDown());
 		CSJEP.interpreter().shutDown();
-		
-		editor.shutDown();
 		
 		display.window.detachContext();
 		display.window.attachContext();

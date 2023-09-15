@@ -15,8 +15,14 @@ import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
 
+/**
+ * UI menu for creating vector text boxes.
+ */
 public class VectorTextMenu {
 
+	/**
+	 * Default option for vector text editor UI elements.
+	 */
 	public static final int TEXT_EDIT_OPTIONS = EDIT_FIELD|EDIT_MULTILINE|EDIT_TABBABLE;
 	
 	private final CSUserInterface ui;
@@ -26,6 +32,13 @@ public class VectorTextMenu {
 
 	private final CSTextEditor textEditor;
 	
+	/**
+	 * Creates a new vector text menu.
+	 * 
+	 * @param nuklear — the Nuklear factory
+	 * @param engine — the engine
+	 * @param currentProject — the current project
+	 */
 	public VectorTextMenu(CSNuklear nuklear , Engine engine , CSSSProject currentProject) {
 
 		Objects.requireNonNull(currentProject);
@@ -78,18 +91,33 @@ public class VectorTextMenu {
 		
 	}
 	
+	/**
+	 * Returns the selected typeface.
+	 * 
+	 * @return Selected typeface.
+	 */
 	public NamedNanoVGTypeface selectedTypeface() {
 		
 		return selectedTypeface;
 		
 	}
 	
+	/**
+	 * Returns the source text that was input.
+	 * 
+	 * @return Source text.
+	 */
 	public String inputString() {
 		
 		return textEditor.toString();
 		
 	}
 	
+	/**
+	 * Returns whether this UI is finished.
+	 * 
+	 * @return {@code true} if this UI is finished.
+	 */
 	public boolean finished() {
 		
 		return finished;

@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import cs.core.graphics.CSTexture;
 import cs.core.graphics.ThreadedRenderer;
 import cs.core.utils.files.CSGraphic;
+import cs.csss.engine.LookupPixel;
 import cs.csss.misc.utils.FlexableGraphic;
 
 /**
@@ -34,6 +35,9 @@ import cs.csss.misc.utils.FlexableGraphic;
  */
 public class IndexTexture extends CSTexture {
 
+	/**
+	 * Constant primitive data for index textures
+	 */
 	public static final int 
 		channelsPerPixel = 2 ,
 		bytesPerChannel = 1 ,
@@ -41,6 +45,9 @@ public class IndexTexture extends CSTexture {
 		glChannelType = GL_UNSIGNED_BYTE ,
 		pixelSizeBytes = 2;
 	
+	/**
+	 * OpenGL constants for methods.
+	 */
 	public static final int 
 		/**
 		 * min and mag filter MUST be NEAREST!
@@ -51,15 +58,12 @@ public class IndexTexture extends CSTexture {
 		zOffset = 0 , //always 0 for 2D texture as parameter into glGetTextureSubImage
 		depth = 1; //always 1 for 2D texture as parameter to glGetTextureSubImage
 		
+	/**
+	 * Checkered background values
+	 */
 	public static volatile int
 		backgroundWidth = 8 ,
 		backgroundHeight = 8;
-
-	public static int channels() {
-		
-		return channelsPerPixel;
-		
-	}
 	
 	IndexPixel 
 		darkerTransparentBackground = new IndexPixel(0 , 0) ,
@@ -131,7 +135,7 @@ public class IndexTexture extends CSTexture {
 	 * @param heightPixels — height of the region to recolor; extends from the {@code yIndex}
 	 * @param imageData — a pixel pointing to a position in the palette whose color will be rendered 
 	 */
-	void put(int xIndex , int yIndex , int widthPixels , int heightPixels , IndexPixel imageData) {
+	void put(int xIndex , int yIndex , int widthPixels , int heightPixels , LookupPixel imageData) {
 		
 		if(xIndex < 0) xIndex = 0;
 		if(yIndex < 0) yIndex = 0;
@@ -139,7 +143,7 @@ public class IndexTexture extends CSTexture {
 		//I HAVE NO IDEA WHY THESE NEED TO BE BUMPED, THEY JUST DO
 		int pixels = (widthPixels + 1) * (heightPixels + 1);
 		ByteBuffer imageDataAsPtr = memAlloc(pixels * pixelSizeBytes);
-		for(int i = 0 ; i < imageDataAsPtr.limit() ; i += 2) imageData.buffer(imageDataAsPtr);			
+		for(int i = 0 ; i < imageDataAsPtr.limit() ; i += 2) imageDataAsPtr.put(imageData.lookupX()).put(imageData.lookupY());			
 		imageDataAsPtr.rewind();
 
 		put(xIndex, yIndex, widthPixels, heightPixels, imageDataAsPtr);

@@ -10,17 +10,26 @@ import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
 import cs.csss.project.CSSSProject;
 
+/**
+ * UI menu for creating a new nonvisual layer prototype. 
+ */
 public class NewNonVisualLayerMenu {
 	
 	private volatile boolean isFinished = false;
 	
 	private final Lambda onFinish;
 	
-	private int pixelSize = -1;
+	private int channels = -1;
 	private String name;
 	
 	private final CSTextEditor nameInput;
 
+	/**
+	 * Creates a new nonvisual layer prototype menu.
+	 * 
+	 * @param project — the project to add the prototype to
+	 * @param nuklear — the Nuklear factory
+	 */
 	public NewNonVisualLayerMenu(CSSSProject project , CSNuklear nuklear) {
 	
 		CSUserInterface ui = nuklear.new CSUserInterface("New Nonvisual Layer" , 0.5f - (0.33f / 2) , 0.5f - (0.25f / 2) , 0.33f , 0.25f);
@@ -37,10 +46,10 @@ public class NewNonVisualLayerMenu {
 		ui.new CSDynamicRow(20).new CSText("Size in bytes of each \"pixel\"");
 		
  		CSDynamicRow sizeRow = ui.new CSDynamicRow();
-		sizeRow.new CSRadio("One Byte" , false , () -> pixelSize = 1);
-		sizeRow.new CSRadio("Two Bytes" , false , () -> pixelSize = 2);
-		sizeRow.new CSRadio("Three Bytes" , false , () -> pixelSize = 3);
-		sizeRow.new CSRadio("Four Bytes" , false , () -> pixelSize = 4);
+		sizeRow.new CSRadio("One Byte" , false , () -> channels = 1);
+		sizeRow.new CSRadio("Two Bytes" , false , () -> channels = 2);
+		sizeRow.new CSRadio("Three Bytes" , false , () -> channels = 3);
+		sizeRow.new CSRadio("Four Bytes" , false , () -> channels = 4);
 		
 		CSDynamicRow nameInputRow = ui.new CSDynamicRow();
 		nameInputRow.new CSText("Layer Name");
@@ -54,7 +63,7 @@ public class NewNonVisualLayerMenu {
 	
 	private void tryFinish() {
 		
-		if(pixelSize == -1) return;
+		if(channels == -1) return;
 		name = nameInput.toString();
 		if(name.equals("")) return;
 		
@@ -62,24 +71,44 @@ public class NewNonVisualLayerMenu {
 		
 	}
 	
-	public int pixelSize() {
+	/**
+	 * Returns the number of channels of the project.
+	 * 
+	 * @return Number of channels of the project.
+	 */
+	public int channels() {
 		
-		return pixelSize;
+		return channels;
 		
 	}
-	
+
+	/**
+	 * Returns the name of the project.
+	 * 
+	 * @return Name of the project.
+	 */
 	public String name() {
 		
 		return name;
 		
 	}
 
+	/**
+	 * Returns whether the project can be created by the current state of the UI.
+	 * 
+	 * @return Whether the project can be created by the current state of the UI.
+	 */
 	public boolean canCreate() {
 		
-		return pixelSize != -1 && !name.equals("");
+		return channels != -1 && !name.equals("");
 		
 	}
 	
+	/**
+	 * Returns whether the UI is finished.
+	 * 
+	 * @return Whether the UI is finished.
+	 */
 	public boolean isFinished() {
 		
 		return isFinished;

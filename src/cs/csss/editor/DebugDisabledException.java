@@ -1,5 +1,8 @@
 package cs.csss.editor;
 
+/**
+ * Used for using code that is blocked behind debug mode.
+ */
 public class DebugDisabledException extends Exception {
 
 	/**

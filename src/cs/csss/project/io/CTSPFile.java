@@ -111,6 +111,11 @@ public class CTSPFile {
 		
 	}
 	
+	/**
+	 * Writes the contents of a project to disk.
+	 * 
+	 * @throws IOException if an exception occurs in writing.
+	 */
 	public void write() throws IOException {
 		
 		CSFile.makeFile(projectRoot, fullFileName);
@@ -133,6 +138,11 @@ public class CTSPFile {
 		
 	}
 	
+	/**
+	 * Reads the contents of a project file from disk, storing the resulting data in {@code this}.
+	 * 
+	 * @throws IOException if an exception occurs in reading.
+	 */
 	public void read() throws IOException {
 		
 		specify(Files.exists(Paths.get(projectRoot.getRealPath() + CSFolder.separator + fullFileName)) , "File does not exist.");
@@ -487,6 +497,11 @@ public class CTSPFile {
 	
 	/* accessor methods for file data */
 	
+	/**
+	 * Returns the name of the loaded project.
+	 * 
+	 * @return Name of the loaded project.
+	 */
 	public String name() {
 
 		verifyReadValid();
@@ -494,6 +509,11 @@ public class CTSPFile {
 		
 	}
 	
+	/**
+	 * Returns the channels per pixel of the loaded project.
+	 * 
+	 * @return Channels per pixel of the loaded project.
+	 */
 	public byte channelsPerPixel() {
 
 		verifyReadValid();
@@ -501,13 +521,23 @@ public class CTSPFile {
 		
 	}
 	
+	/**
+	 * Returns the palette chunks of the loaded project.
+	 * 
+	 * @return Palette chunks of the loaded project.
+	 */
 	public PaletteChunk[] paletteChunks() {
 
 		verifyReadValid();
 		return palettes;
 		
 	}
-	
+
+	/**
+	 * Returns the artboard chunks of the loaded project.
+	 * 
+	 * @return Artboard chunks of the loaded project.
+	 */
 	public ArtboardChunk[] artboardChunks() {
 
 		verifyReadValid();
@@ -515,6 +545,11 @@ public class CTSPFile {
 		
 	}
 
+	/**
+	 * Returns the animation chunks of the loaded project.
+	 * 
+	 * @return Animation chunks of the loaded project.
+	 */
 	public AnimationChunk[] animationChunks() {
 
 		verifyReadValid();
@@ -522,6 +557,11 @@ public class CTSPFile {
 		
 	}
 	
+	/**
+	 * Returns the names of visual layers of the loaded project.
+	 * 
+	 * @return Names of visual layers of the loaded project.
+	 */
 	public String[] visualLayerNames() {
 
 		verifyReadValid();
@@ -529,6 +569,11 @@ public class CTSPFile {
 		
 	}
 
+	/**
+	 * Returns the nonvisual layer chunks of the loaded project.
+	 * 
+	 * @return Nonvisual layer chunks of the loaded project.
+	 */
 	public NonVisualLayerChunk[] nonVisualLayerChunks() {
 
 		verifyReadValid();
@@ -541,12 +586,18 @@ public class CTSPFile {
 		specify(project == null && projectName != null , "Read constructor was not called or read() was not called");
 		
 	}
-	
+
+	/**
+	 * Contains loaded metadata from a nonvisual layer chunk.
+	 */
 	public record NonVisualLayerChunk(
 		String name , 
 		int size
 	) {}
-	
+
+	/**
+	 * Contains loaded data from an artboard chunk.
+	 */
 	public record ArtboardChunk(
 		String name , 
 		int width , 
@@ -556,7 +607,10 @@ public class CTSPFile {
 		VisualLayerDataChunk[] visualLayers , 
 		NonVisualLayerDataChunk[] nonVisualLayers
 	) {}
-	
+
+	/**
+	 * Contains loaded data from a visual layer chunk.
+	 */
 	public record VisualLayerDataChunk(
 		String name , 
 		boolean locked , 
@@ -564,7 +618,10 @@ public class CTSPFile {
 		boolean isCompressed , 
 		byte[] pixelData
 	) {}
-	
+
+	/**
+	 * Contains loaded data from a nonvisual layer chunk.
+	 */
 	public record NonVisualLayerDataChunk(
 		String name , 
 		boolean locked , 
@@ -574,13 +631,19 @@ public class CTSPFile {
 		byte[] pixelData 
 	) {}
 
+	/**
+	 * Contains loaded data from a palette chunk.
+	 */
 	public record PaletteChunk(
 		int width , 
 		int height , 
 		byte channels , 
 		byte[] pixelData
 	) {}
-	
+
+	/**
+	 * Contains loaded data from an animation chunk.
+	 */
 	public record AnimationChunk(
 		String name , 
 		int numberFrames , 
@@ -589,7 +652,10 @@ public class CTSPFile {
 		String defaultSwapType , 
 		AnimationFrameChunk[] frames
 	) {}
-	
+
+	/**
+	 * Contains loaded data from an animation frame chunk.
+	 */
 	public record AnimationFrameChunk(
 		String artboardName ,
 		float frameTime ,

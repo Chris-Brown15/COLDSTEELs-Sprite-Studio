@@ -16,11 +16,20 @@ import cs.core.utils.Lambda;
 import cs.csss.misc.files.CSFile;
 import cs.csss.misc.files.CSFolder;
 
+/**
+ * UI menu used to select a script. This is used for all instances of selecting a script.
+ */
 public class SelectScriptMenu {
 
 	private CSFile selectedFile;
 	private CSUserInterface ui;
 	
+	/**
+	 * Creates a new select script menu.
+	 * 
+	 * @param nuklear — the Nuklear factory
+	 * @param scriptDirectory — directory to look in for script files to choose from
+	 */
 	public SelectScriptMenu(CSNuklear nuklear , String scriptDirectory) {
 
 		ui = nuklear.new CSUserInterface("Select a script" , 0.5f - (0.33f / 2) , 0.5f - (0.33f / 2) , 0.33f , 0.33f);
@@ -81,12 +90,22 @@ public class SelectScriptMenu {
 		
 	}
 	
+	/**
+	 * Returns whether this UI is ready to finish.
+	 * 
+	 * @return Whether this UI is ready to finish.
+	 */
 	public boolean readyToFinish() {
 		
 		return ui.isFreed();
 		
 	}
 
+	/**
+	 * Returns the file containing the selected script.
+	 * 
+	 * @return File containing the selected script.
+	 */
 	public CSFile selectedScript() {
 		
 		return selectedFile;

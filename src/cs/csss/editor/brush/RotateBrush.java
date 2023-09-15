@@ -1,12 +1,16 @@
 package cs.csss.editor.brush;
 
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
-import cs.csss.editor.events.CSSSEvent;
-import cs.csss.editor.events.RotateRegionEvent;
+import cs.csss.editor.event.CSSSEvent;
+import cs.csss.editor.event.RotateRegionEvent;
 import cs.csss.engine.Control;
 import cs.csss.project.Artboard;
 
-public class RotateBrush extends CSSSSelectingBrush {
+/**
+ * Brush used to rotate regions of pixels along their center.
+ */
+@RenderThreadOnly public class RotateBrush extends CSSSSelectingBrush {
 
 	private volatile boolean 
 		wasInteractingLastFrame = false ,
@@ -14,6 +18,9 @@ public class RotateBrush extends CSSSSelectingBrush {
 	
 	private float previousCursorY = Float.NEGATIVE_INFINITY;
 	
+	/**
+	 * Creates a new rotation brush.
+	 */
 	public RotateBrush() {
 		
 		super("Rotates the selected region.");		

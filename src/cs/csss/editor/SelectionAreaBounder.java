@@ -3,9 +3,10 @@ package cs.csss.editor;
 import static cs.core.utils.CSUtils.specify;
 
 import cs.coreext.nanovg.NanoVGFrame;
+import cs.csss.annotation.RenderThreadOnly;
 
 /**
- * Representation of a bounding box. This bounding box is used by selection brushes in order to select regions.
+ * Bounding box. This bounding box is used by selection brushes in order to select regions.
  */
 public class SelectionAreaBounder {
 	
@@ -18,7 +19,12 @@ public class SelectionAreaBounder {
 	public volatile int color = 0xffffffff;
 	public volatile float thickness = 1f;
 		
-	public void render(NanoVGFrame frame) {
+	/**
+	 * Renders this bounding box in the given {@code NanoVGFrame}.
+	 * 
+	 * @param frame — a nanovg frame
+	 */
+	@RenderThreadOnly public void render(NanoVGFrame frame) {
 		
 		frame.newPath()
 			.strokeColor(color)
@@ -32,6 +38,12 @@ public class SelectionAreaBounder {
 		
 	}
 	
+	/**
+	 * Moves a corner of this bounding box based on which corner is closest to the coordinates given.  
+	 * 
+	 * @param cursorX — {@code integer} x coordinate in world space of the cursor
+	 * @param cursorY — {@code integer} y coordinate in world space of the cursor
+	 */
 	public void moveCorner(int cursorX , int cursorY) {
 		
 		boolean left = false;
@@ -55,6 +67,12 @@ public class SelectionAreaBounder {
 				
 	}
 
+	/**
+	 * Moves a corner of this bounding box based on which corner is closest to the coordinates given.  
+	 * 
+	 * @param cursorX — {@code float} x coordinate in world space of the cursor
+	 * @param cursorY — {@code float} y coordinate in world space of the cursor
+	 */
 	public void moveCorner(float cursorX , float cursorY) {
 		
 		boolean left = false;
@@ -100,6 +118,14 @@ public class SelectionAreaBounder {
 				
 	}
 	
+	/**
+	 * Forces the corners of this bounding box to be within the given coordinates in world space.
+	 * 
+	 * @param leftX — left x coordinate in world space
+	 * @param rightX — right x coordinate in world space
+	 * @param bottomY — bottom x coordinate in world space
+	 * @param topY — top x coordinate in world space
+	 */
 	public void snapBounderToCoordinates(int leftX , int rightX , int bottomY , int topY) {
 
 		if(LX < leftX || LX >= rightX) LX = leftX;
@@ -112,12 +138,22 @@ public class SelectionAreaBounder {
 				
 	}
 	
+	/**
+	 * Gets and returns the midpoint of this bounder.
+	 * 
+	 * @return Midpoint of this bounder.
+	 */
 	public float[] midpoint() {
 		
 		return new float[] {LX + (width()) / 2 , BY + (height()) / 2};
 		
 	}
 	
+	/**
+	 * Gets and returns the width of this bounder.
+	 * 
+	 * @return Width of this bounder.
+	 */	
 	public int width() {
 		
 		int width = (int) (RX - LX);
@@ -127,7 +163,12 @@ public class SelectionAreaBounder {
 		return width;
 				
 	}
-	
+
+	/**
+	 * Gets and returns the height of this bounder.
+	 * 
+	 * @return Height of this bounder.
+	 */	
 	public int height() {
 		
 		int height = (int) (TY - BY);
@@ -138,6 +179,11 @@ public class SelectionAreaBounder {
 		
 	}
 
+	/**
+	 * Returns the left x coordinate of this bounder.
+	 * 
+	 * @return Left x coordinate of this bounder.
+	 */
 	public int LX() {
 
 		specify(LX < RX , LX + " is an invalid left X. Right X: " + RX);
@@ -146,6 +192,11 @@ public class SelectionAreaBounder {
 		
 	}
 
+	/**
+	 * Returns the right x coordinate of this bounder.
+	 * 
+	 * @return Right x coordinate of this bounder.
+	 */
 	public int RX() {
 
 		specify(LX < RX , LX + " is an invalid left X. Right X: " + RX);
@@ -154,6 +205,11 @@ public class SelectionAreaBounder {
 		
 	}
 
+	/**
+	 * Returns the bottom y coordinate of this bounder.
+	 * 
+	 * @return Bottom y coordinate of this bounder.
+	 */
 	public int BY() {
 
 		specify(BY < TY , BY + " is an invalid bottom Y. Top Y: " + TY);
@@ -162,6 +218,11 @@ public class SelectionAreaBounder {
 		
 	}
 
+	/**
+	 * Returns the top y coordinate of this bounder.
+	 * 
+	 * @return Top y coordinate of this bounder.
+	 */
 	public int TY() {
 
 		specify(BY < TY , BY + " is an invalid bottom Y. Top Y: " + TY);
@@ -170,6 +231,11 @@ public class SelectionAreaBounder {
 		
 	}
 	
+	/**
+	 * Sets the left x coordinate of this bounder.
+	 * 
+	 * @param lx — new left x coordinate
+	 */
 	public void LX(float lx) {
 		
 		specify(lx < RX , lx + " is less than RX (" + RX + ").");
@@ -178,6 +244,11 @@ public class SelectionAreaBounder {
 		
 	}
 
+	/**
+	 * Sets the right x coordinate of this bounder.
+	 * 
+	 * @param rx — new right x coordinate
+	 */
 	public void RX(float rx) {
 		
 		specify(rx > LX , rx + " is less than LX (" + LX + ").");
@@ -186,6 +257,11 @@ public class SelectionAreaBounder {
 		
 	}
 
+	/**
+	 * Sets the bottom y coordinate of this bounder.
+	 * 
+	 * @param by — new bottom y coordinate  
+	 */
 	public void BY(float by) {
 		
 		specify(by < TY , by + " is less than TY (" + TY + ").");
@@ -194,6 +270,11 @@ public class SelectionAreaBounder {
 		
 	}
 
+	/**
+	 * Sets the top y coordinate of this bounder.
+	 * 
+	 * @param by — new top y coordinate  
+	 */
 	public void TY(float ty) {
 		
 		specify(ty > BY , ty + " is less than BY (" + BY + ").");
@@ -202,6 +283,14 @@ public class SelectionAreaBounder {
 		
 	}
 	
+	/**
+	 * Sets all four positions of this bounder to the given ones.
+	 * 
+	 * @param leftX — new left x coordinate 
+	 * @param rightX — new right x coordinate 
+	 * @param bottomY — new bottom y coordinate
+	 * @param topY — new top y coordinate
+	 */
 	public void positions(int leftX , int rightX , int bottomY , int topY) {
 		
 		LX = leftX;

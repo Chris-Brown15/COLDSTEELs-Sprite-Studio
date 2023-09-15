@@ -1,12 +1,15 @@
 package cs.csss.editor.brush;
 
 import cs.csss.editor.Editor;
-import cs.csss.editor.events.CSSSEvent;
-import cs.csss.editor.events.SetActiveColorEvent;
+import cs.csss.editor.event.CSSSEvent;
+import cs.csss.editor.event.SetActiveColorEvent;
 import cs.csss.project.Artboard;
 import cs.csss.project.LayerPixel;
 import cs.csss.project.ArtboardPalette.PalettePixel;
 
+/**
+ * Sets the current color in the left hand side panel to a clicked pixel
+ */
 public class Eye_DropperBrush extends CSSSBrush {
 
 	public Eye_DropperBrush() {

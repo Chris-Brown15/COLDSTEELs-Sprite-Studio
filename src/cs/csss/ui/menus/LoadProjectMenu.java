@@ -11,6 +11,9 @@ import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
 
+/**
+ * UI menu for loading a project from disk.
+ */
 public class LoadProjectMenu {
 
 	private String selected = null;
@@ -18,6 +21,11 @@ public class LoadProjectMenu {
 	
 	private boolean readyToFinish = false;	
 	
+	/**
+	 * Creates a load project menu.
+	 * 
+	 * @param nuklear — the Nuklear factory
+	 */
 	public LoadProjectMenu(CSNuklear nuklear) {
 
 		CSUserInterface ui = nuklear.new CSUserInterface("Load Project" , 0.5f - (0.33f / 2) , 0.5f - (0.35f / 2) , 0.33f , 0.35f);
@@ -60,12 +68,22 @@ public class LoadProjectMenu {
 	 	
 	}
 	
+	/**
+	 * Returns the selected project.
+	 * 
+	 * @return The selected project
+	 */
 	public String get() {
 		
 		return selected;
 		
 	}
 	
+	/**
+	 * Returns whether the UI is in a state to finish.
+	 * 
+	 * @return {@code true} if this UI is ready to finish.
+	 */
 	public boolean readyToFinish() {
 		
 		return readyToFinish;

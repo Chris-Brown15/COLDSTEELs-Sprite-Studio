@@ -3,11 +3,19 @@ package cs.csss.project;
 import static cs.core.utils.CSFileUtils.readAllCharacters;
 
 import cs.core.graphics.CSTexture;
+import cs.csss.annotation.RenderThreadOnly;
 
-public class TextureShader extends CSSSShader {
+/**
+ * Impelmentation of {@link CSSSShader} used to render textures directly. This shader does not use the lookup and palette system, it renders
+ * textures as though they are color textures. 
+ */
+@RenderThreadOnly public class TextureShader extends CSSSShader {
 
 	private int textureLocation;
 	
+	/**
+	 * Initializes this shader by loading its source code from disk.
+	 */
 	public void initialize() {
 		
 		super.initialize(

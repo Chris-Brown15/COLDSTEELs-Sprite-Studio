@@ -3,13 +3,17 @@ package cs.csss.editor.brush;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
-import cs.csss.editor.events.CSSSEvent;
-import cs.csss.editor.events.ScaleRegionEvent;
+import cs.csss.editor.event.CSSSEvent;
+import cs.csss.editor.event.ScaleRegionEvent;
 import cs.csss.engine.Control;
 import cs.csss.project.Artboard;
 
-public class Scale_RegionBrush extends CSSSSelectingBrush {
+/**
+ * Brush used to increase or decrease the size of a region of pixels.
+ */
+@RenderThreadOnly public class Scale_RegionBrush extends CSSSSelectingBrush {
 
 	private boolean
 		wasScalingLastUpdate = false ,
@@ -17,6 +21,9 @@ public class Scale_RegionBrush extends CSSSSelectingBrush {
 
 	private float previousYPosition = Float.NEGATIVE_INFINITY;
 	
+	/**
+	 * Creates a new scaling brush.
+	 */
 	public Scale_RegionBrush() {
 		
 		super("Scales the selected region up or down.");

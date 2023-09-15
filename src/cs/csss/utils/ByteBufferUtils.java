@@ -122,6 +122,16 @@ public final class ByteBufferUtils {
 		
 	}
 
+	/**
+	 * Creates and returns a region of index pixels from the given buffer. Bytes read from the buffer will be tested by the {@code dropif} 
+	 * predicate, and if the test returns true, the values are not written into the array, so {@code null} is left there instead.
+	 * 
+	 * @param contents — buffer to read from
+	 * @param width — width of the region to read
+	 * @param height — height of the region to read
+	 * @param dropIf — test for if a pixel in the buffer should be ignored and not put in the resulting container
+	 * @return 2D array of index pixels created from {@code source}.
+	 */
 	public static IndexPixel[][] bufferToIndices(ByteBuffer contents , int width , int height , BiBytePredicate dropIf) {
 		
 		IndexPixel[][] pixelRegion = new IndexPixel[height][width];
@@ -333,6 +343,9 @@ public final class ByteBufferUtils {
 		int operationalHeight
 	) {}
 
+	/**
+	 * Container for corrected parameters and corrected offsets.
+	 */
 	public record CorrectedResult(CorrectedParameters params , CorrectedParameterOffsets offsets) {}
 	
 }

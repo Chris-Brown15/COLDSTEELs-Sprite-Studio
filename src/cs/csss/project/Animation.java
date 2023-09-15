@@ -19,6 +19,7 @@ import cs.core.utils.CSRefInt;
 import cs.core.utils.FloatConsumer;
 import cs.core.utils.FloatSupplier;
 import cs.core.utils.Timer;
+import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.ui.AnimationPanel;
 import cs.csss.engine.CSSSCamera;
 import cs.csss.misc.utils.ThrowingConsumer;
@@ -59,10 +60,24 @@ public class Animation {
 	
 	private volatile int currentFrame;
 
+	/**
+	 * Returns the default time in milliseconds a frame takes. 
+	 */
 	public final FloatSupplier getFrameTime = swapTime::get;
+	
+	/**
+	 * Sets the default time in milliseconds a frame takes. 
+	 */
 	public final FloatConsumer setFrameTime = swapTime::set;
 	
+	/**
+	 * Returns the default time in program updates a frame takes.
+	 */
 	public final IntSupplier getUpdates = swapOnUpdates::intValue;
+	
+	/**
+	 * sets the default time in program updates a frame takes.
+	 */
 	public final IntConsumer setUpdates = swapOnUpdates::set;
 	
 	private final DoubleSupplier realtimeFrameTime;
@@ -107,12 +122,23 @@ public class Animation {
 		
 	}
 	
+	/**
+	 * Returns the current animation frame of this animation.
+	 * 
+	 * @return Current animation frame of this animation.
+	 */
 	public AnimationFrame getCurrentFrame() {
 		
 		return getFrame(currentFrame);
 		
 	}
 	
+	/**
+	 * Gets an animaiton frame from the given index.
+	 * 
+	 * @param index — index of a frame
+	 * @return Animation frame of this animation.
+	 */
 	public AnimationFrame getFrame(int index) {
 		
 		if(frames.size() == 0) return null;
@@ -142,6 +168,12 @@ public class Animation {
 		
 	}
 	
+	/**
+	 * Sets the animation frame time at {@code index} to {@code newFrameTime}. 
+	 * 
+	 * @param index — index of an animation
+	 * @param newFrameTime — new frame time for the animation at {@code newFrameTime}
+	 */
 	public void setFrameAsNonDefault(int index , final float newFrameTime) {
 		
 		validateIndex(index);
@@ -149,6 +181,12 @@ public class Animation {
 		
 	}
 	
+	/**
+	 * Gets the time of an animation.
+	 * 
+	 * @param index — animation frame index
+	 * @return Time of the animation.
+	 */
 	public float getNonDefaultFrameTime(int index) {
 		
 		validateIndex(index);
@@ -156,12 +194,20 @@ public class Animation {
 		
 	}
 
+	/**
+	 * Returns whether this animation is playing.
+	 * 
+	 * @return Whether this animation is playing.
+	 */
 	public boolean playing() {
 		
 		return playing;
 		
 	}
 	
+	/**
+	 * Toggles on or off whether this animation is playing.
+	 */
 	public void togglePlaying() {
 		
 		if(playing) pause();
@@ -169,6 +215,9 @@ public class Animation {
 		
 	}
 	
+	/**
+	 * Starts playing this animation.
+	 */
 	public void start() {
 		
 		swapTimer.start();
@@ -177,6 +226,9 @@ public class Animation {
 		
 	}
 	
+	/**
+	 * Updates this animation.
+	 */
 	public void update() {
 		
 		if(!playing) return;
@@ -184,6 +236,9 @@ public class Animation {
 						
 	}
 	
+	/**
+	 * Pauses this animation.
+	 */
 	public void pause() {
 		
 		swapTimer.reset();
@@ -309,7 +364,7 @@ public class Animation {
 	 * @param screenHeight — needed because Nuklear's origin is top left but OpenGL represents its points as bottom left, so we need to get 
 	 * 						 the difference to get the bottom left point for the scissor test
 	 */
-	public void renderCurrentFrame(CSSSCamera camera , AnimationPanel renderOnto , int screenHeight ) {		
+	@RenderThreadOnly public void renderCurrentFrame(CSSSCamera camera , AnimationPanel renderOnto , int screenHeight ) {		
 	
 		AnimationFrame frame = getCurrentFrame();
 		
@@ -363,6 +418,11 @@ public class Animation {
 		
 	}
 
+	/**
+	 * Returns the width of a frame of this animation.
+	 * 
+	 * @return Width of frames of this animation
+	 */
 	public int frameWidth() {
 		
 		if(frames.size() == 0) return 0;
@@ -370,6 +430,11 @@ public class Animation {
 		
 	}
 
+	/**
+	 * Returns the height of a frame of this animation.
+	 * 
+	 * @return Height of frames of this animation.
+	 */
 	public int frameHeight() {
 		
 		if(frames.size() == 0) return 0;
@@ -388,48 +453,91 @@ public class Animation {
 		
 	}
 	
+	/**
+	 * Sets the current animation frame to {@code index}.
+	 * 
+	 * @param frame — new current frame index
+	 */
 	public void currentFrameIndex(int frame) {
 		
 		currentFrame = frame;
 		
 	}
 	
+	/**
+	 * Returns the current animation frame index.
+	 * 
+	 * @return Current animation frame index.
+	 */
 	public int currentFrameIndex() {
 		
 		return currentFrame;
 		
 	}
 	
+	/**
+	 * Returns the number of animation frames of this animation.
+	 * 
+	 * @return Number of animation frames of this animation.
+	 */
 	public int numberFrames() {
 		
 		return frames.size();
 		
 	}
 	
+	/**
+	 * Returns whether any animation frame has the given artboard.
+	 * 
+	 * @param artboard — some artboard
+	 * @return {@code true} if some frame of the animation uses {@code artboard} 
+	 */
 	public boolean hasArtboard(Artboard artboard) {
 		
 		return frames.stream().anyMatch(frameTime -> frameTime.board == artboard);
 		
 	}
 
+	/**
+	 * Invokes {@code callback} for each animation frame.
+	 * 
+	 * @param callback — code to invoke for each animation frame
+	 */
 	public void forAllArtboards(Consumer<Artboard> callback) {
 		
 		frames.stream().map(AnimationFrame::board).forEach(callback);
 		
 	}
 
+	/**
+	 * Invokes {@code callback} for each frame of this animation, which can throw a {@code Throwable}. 
+	 * 
+	 * @param <ThrowType> — type of throwable error
+	 * @param callback — code to invoke for each frame of this animation
+	 * @throws ThrowType if the code in {@code callback} throws an exception.
+	 */
 	public <ThrowType extends Throwable> void forAllFrames(ThrowingConsumer<ThrowType , AnimationFrame> callback) throws ThrowType {
 		
 		for(int i = 0 ; i < frames.size() ; i++) callback.acceptOrThrow(frames.get(i));
 		
 	}
 	
+	/**
+	 * Returns the default swap type of this animation. 
+	 * 
+	 * @return The default swap type of this animation.
+	 */
 	public AnimationSwapType defaultSwapType() {
 		
 		return defaultSwapType;
 		
 	}
 
+	/**
+	 * Sets the default swap type of this animation.
+	 *  
+	 * @param swapType — new default swap type
+	 */
 	public void defaultSwapType(AnimationSwapType swapType) {
 		
 		this.defaultSwapType = swapType;
@@ -451,18 +559,33 @@ public class Animation {
 		
 	}
 		
+	/**
+	 * Returns the name of this animation.
+	 * 
+	 * @return Name of this animation.
+	 */
 	public String name() {
 		
 		return name;
 		
 	}
 
+	/**
+	 * Sets the frame of the swap time.
+	 * 
+	 * @param time — a time for default frames
+	 */
 	public void setFrameTime(float time) {
 		
 		swapTime.set(time);
 		
 	}
 	
+	/**
+	 * Sets the update rate for the swap time.
+	 * 
+	 * @param updates — number of updates per frame for default frames
+	 */
 	public void setUpdates(int updates) {
 	
 		swapOnUpdates.set(updates);
@@ -475,6 +598,12 @@ public class Animation {
 		
 	}
 	
+	/**
+	 * Returns the index of an animation frame whose artboard is {@code artboard}.
+	 * 
+	 * @param artboard — an artboard
+	 * @return Index of an animation frame whose artboard is {@code artboard}.
+	 */
 	public int indexOf(Artboard artboard) {
 
 		for(int i = 0 ; i < frames.size() ; i++) if(frames.get(i).board == artboard) return i;
@@ -488,18 +617,35 @@ public class Animation {
 		
 	}
 	
+	/**
+	 * Returns the default swap time.
+	 * 
+	 * @return The default swap time.
+	 */
 	public FloatReference defaultSwapTime() {
 		
 		return swapTime;
 		
 	}
 
+	/**
+	 * Returns the default swap updates.
+	 * 
+	 * @return The default swap updates.
+	 */
 	public CSRefInt defaultUpdateAmount() {
 		
 		return swapOnUpdates;
 		
 	}
 
+	/**
+	 * Returns the left U of this animation.
+	 * 
+	 * @param projectLeftMostX — leftmost x coordinate of the project
+	 * @param projectRightMostX — rightmost x coordinate of the project
+	 * @return Left U coordinate for this animation.
+	 */
 	public float leftU(float projectLeftMostX , float projectRightMostX) {
 		
 		if(numberFrames() == 0) return -1f;				
@@ -509,6 +655,13 @@ public class Animation {
 		
 	}
 	
+	/**
+	 * Returns the bottom V of this animation.
+	 * 
+	 * @param projectBottomY — bottommost y coordinate of the project
+	 * @param projectTopY — topmost y coordinate of the project
+	 * @return Bottom V coordinate for this animation. 
+	 */
 	public float bottomV(float projectBottomY , float projectTopY) {
 		
 		if(numberFrames() == 0) return -1f;		
@@ -518,6 +671,13 @@ public class Animation {
 		
 	}
 	
+	/**
+	 * Returns the top V coordinate of this animation.
+	 * 
+	 * @param projectBottomY — bottommost y coordinate of the project
+	 * @param projectTopY — topmost y coordinate of the project
+	 * @return Top V coordinate for this animation.
+	 */
 	public float topV(float projectBottomY , float projectTopY) {
 		
 		if(numberFrames() == 0) return -1f;		
@@ -527,6 +687,13 @@ public class Animation {
 		
 	}
 	
+	/**
+	 * Returns the UV width of an animation frame.
+	 * 
+	 * @param projectLeftMostX — leftmost x coordinate of the project
+	 * @param projectRightMostX — rightmost x coordinate of the project
+	 * @return UV width of an animation frame.
+	 */
 	public float widthU(float projectLeftMostX , float projectRightMostX) {
 
 		if(numberFrames() == 0) return -1f;	
@@ -535,6 +702,11 @@ public class Animation {
 		
 	}
 
+	/**
+	 * Returns whether this animation is empty.
+	 * 
+	 * @return Whether this animation is empty.
+	 */
 	public boolean isEmpty() {
 		
 		return frames.isEmpty();
