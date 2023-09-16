@@ -1,18 +1,17 @@
 package cs.csss.editor.ui;
 
-import static cs.core.utils.CSUtils.require;
-
 import static cs.core.ui.CSUIConstants.*;
 import static cs.csss.ui.utils.UIUtils.toolTip;
 import java.util.Iterator;
-import java.util.function.BooleanSupplier;
 
 import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
 import static org.lwjgl.nuklear.Nuklear.nk_propertyi;
+import static org.lwjgl.nuklear.Nuklear.nk_text;
 import org.joml.Vector4f;
 
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
+import cs.core.ui.CSNuklear.CSUI.CSLayout;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSButton;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSColorPicker;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
@@ -39,6 +38,7 @@ public class LHSPanel {
 	private TwoChannelColorPicker twoDColor; 
 
 	private final Editor editor;
+	private byte[] colorBuffer = new byte[4];
 	
 	/**
 	 * Creates a left hand side panel.
@@ -67,9 +67,32 @@ public class LHSPanel {
 				
 				twoDColor.hasAlpha = channels() == 2;
 				twoDColor.layout();
+				colors(colorBuffer);
+
+				int channels = channels();
+				if(channels >= 3) {
+
+					nk_layout_row_dynamic(context , 20 , channels);
+					nk_text(context , String.format("Red: %d", (short)Byte.toUnsignedInt(colorBuffer[0])) , TEXT_LEFT);
+					nk_text(context , String.format("Green: %d", (short)Byte.toUnsignedInt(colorBuffer[1])) , TEXT_LEFT);
+					nk_text(context , String.format("Blue: %d", (short)Byte.toUnsignedInt(colorBuffer[2])) , TEXT_LEFT);
+					if(channels == 4) nk_text(context , String.format("Alpha: %d", colorBuffer[3]) , TEXT_LEFT);
+					
+				} else {}
 				
 			});
-
+			
+			CSDynamicRow grayRow = ui.new CSDynamicRow(30) ; grayRow.doLayout = () -> channels() >= 1 && channels() <= 2;
+			colorInput("Gray" , 0 , grayRow);
+			colorInput("Alpha" , 1 , grayRow);
+			
+			CSDynamicRow rgbRow = ui.new CSDynamicRow(30) ; rgbRow.doLayout = () -> channels() >= 3; 
+			CSDynamicRow alphaRow = ui.new CSDynamicRow(30) ; alphaRow.doLayout = () -> channels() == 4;
+			colorInput("Red" , 0 , rgbRow);
+			colorInput("Green" , 1 , rgbRow);
+			colorInput("Blue" , 2 , rgbRow);
+			colorInput("Alpha" , 3 , alphaRow);
+	
 			Iterator<CSSSBrush> brushes = CSSSBrush.allBrushes();
 			CSSSBrush iter;
 			
@@ -126,14 +149,6 @@ public class LHSPanel {
 				
 			});
 				
-			colorInput("Gray" , 0 , () -> channels() >= 1 && channels() <= 2);
-			colorInput("Alpha" , 1 , () -> channels() == 2);
-				
-			colorInput("Red" , 0 , () -> channels() >= 3);
-			colorInput("Green" , 1 , () -> channels() >= 3);
-			colorInput("Blue" , 2 , () -> channels() >= 3);
-			colorInput("Alpha" , 3 , () -> channels() == 4);
-	
 		});
 
 		if(Engine.isDebug()) {
@@ -166,23 +181,28 @@ public class LHSPanel {
 		
 	}	
 	
-	private void colorInput(final String color , int index , BooleanSupplier doLayout) {
+	private void colorInput(final String color , int index , CSLayout layout) {
 		
-		CSDynamicRow row = ui.new CSDynamicRow();
-		
-		row.doLayout = doLayout;
-		
-		CSButton button = row.new CSButton("Input " + color , () -> {
+		CSButton button = layout.new CSButton("Input " + color , () -> {
 			
-			new InputBox(nuklear , "Input " + color + " Value As Hex" , .4f , 0.4f , 9 , CSNuklear.HEX_FILTER , res -> {
+			new InputBox(nuklear , "Input " + color + " Value As Hex" , .4f , 0.4f , 3 , CSNuklear.HEX_FILTER , res -> {
 				
 				if(res.length() == 0) return;
 				
 				int value = CSUtils.parseHexInt(res, 0 , res.length());
 				
-				byte[] colors = colors();
-				colors[index] = (byte) value;
-				this.color.color(colors[0] , colors[1] , colors[2] , colors[3]);
+				if(channels() < 3) { 
+					
+					if(index == 0) twoDColor.gray = (short)value;
+					else twoDColor.alpha = (short)value;
+					
+				} else {
+					
+					byte[] colors = colors();
+					colors[index] = (byte) value;					
+					this.color.color(colors[0], colors[1], colors[2], channels() == 4 ? colors[3] : (byte)0xff);
+					
+				}				
 				
 			});
 			
@@ -200,9 +220,7 @@ public class LHSPanel {
 	 * @return {@code colors} after writing.
 	 */
 	public byte[] colors(byte[] colors) {
-		
-		require(colors.length == channels());
-		
+				
 		if(channels() > 2) {
 			
 			Vector4f colorVector = color.color();

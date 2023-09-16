@@ -12,6 +12,7 @@ import cs.core.ui.CSNuklear.CSUI.CSLayout.CSMenuBar;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSMenuBar.CSMenu;
 import cs.csss.editor.DebugDisabledException;
 import cs.csss.editor.Editor;
+import cs.csss.engine.Engine;
 import cs.csss.project.ArtboardPalette;
 import cs.csss.project.CSSSProject;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
@@ -42,10 +43,8 @@ public class FilePanel {
 			fileMenu = menuBar.new CSMenu("File" , 100 , 400) ,
 			editMenu = menuBar.new CSMenu("Edit" , 200 , 400) ,
 			projectMenu = menuBar.new CSMenu("Project" , 230 , 400) ,
-			optionsMenu = menuBar.new CSMenu("Options" , 349 , 400) ,
-			debugMenu = menuBar.new CSMenu("Debug" , 300 , 800)
-		;
-		
+			optionsMenu = menuBar.new CSMenu("Options" , 349 , 400);
+						
 		CSDynamicRow saveButtonRow = fileMenu.new CSDynamicRow() ; saveButtonRow.new CSButton("Save" , editor::saveProject);
 		CSDynamicRow saveAsButtonRow = fileMenu.new CSDynamicRow() ; saveAsButtonRow.new CSButton("Save As" , editor::startProjectSaveAs);
 		fileMenu.new CSDynamicRow().new CSButton("Load" , editor::startLoadProject);
@@ -62,7 +61,7 @@ public class FilePanel {
 //		editMenu.new CSDynamicRow().new CSButton("Add Text" , editor::startAddText);
 		editMenu.new CSDynamicRow().new CSButton("Run Artboard Script" , editor::startRunArtboardScript);
 		editMenu.new CSDynamicRow().new CSButton("Run Project Script" , editor::startRunProjectScript);
-		
+				
 		projectMenu.new CSDynamicRow().new CSButton("New Project" , editor::startNewProject);
 		
 		BooleanSupplier doLayoutProjectButtons = () -> editor.project() != null;
@@ -111,63 +110,72 @@ public class FilePanel {
 		
 		optionsMenu.new CSDynamicRow().new CSButton("Simulation Framerate" , editor::startSetSimulationFrameRate);
 		
-		debugMenu.new CSDynamicRow().new CSButton("Toggle Realtime Mode" , () -> {
+		if(Engine.isDebug()) {
 			
-			try {
+			CSMenu debugMenu = menuBar.new CSMenu("Debug" , 349 , 400);
 			
-				editor.toggleRealtime();
+			debugMenu.new CSDynamicRow().new CSButton("Toggle Realtime Mode" , () -> {
 				
-			} catch (DebugDisabledException e) {
-
-				e.printStackTrace();
-				
-			}
-			
-		});
-		
-		CSDynamicRow paletteRow1 = debugMenu.new CSDynamicRow();
-		CSDynamicRow paletteRow2 = debugMenu.new CSDynamicRow();
-		paletteRow1.doLayout = () -> editor.project() != null;
-		paletteRow2.doLayout = paletteRow1.doLayout;
-		paletteRow1.new CSText(() -> {
-			
-			return "Palette Size: " + editor.project().visualPalette().width() + ", " + editor.project().visualPalette().height();
-			
-		});
-		
-		paletteRow2.new CSText(() -> {
-			
-			return "Palette Position: " + editor.project().visualPalette().currentCol() + ", " + editor.project().visualPalette().currentRow();
-			
-		});
-				
-		debugMenu.new CSDynamicRow().new CSButton("Toggle Transparent Background" , () -> {
-			
-			showingCheckeredBackground = !showingCheckeredBackground;
-			editor.rendererPost(() -> {
-				
-				if(!showingCheckeredBackground) editor.project().forEachPalette(ArtboardPalette::hideCheckeredBackground);
-				else editor.project().forEachPalette(ArtboardPalette::showCheckeredBackground);
+				try {
+					
+					editor.toggleRealtime();
+					
+				} catch (DebugDisabledException e) {
+					
+					e.printStackTrace();
+					
+				}
 				
 			});
 			
-		});
-		
-		debugMenu.new CSDynamicRow().new CSButton("Reload Shaders" , () -> {
-			
-			editor.rendererPost(() -> CSSSProject.thePaletteShader().reload(
-				readAllCharacters("assets/shaders/vertexShader.glsl") , 
-				readAllCharacters("assets/shaders/fragmentPaletteShader.glsl")
-			));
-						
-		});
+			CSDynamicRow paletteRow1 = debugMenu.new CSDynamicRow();
+			CSDynamicRow paletteRow2 = debugMenu.new CSDynamicRow();
+			paletteRow1.doLayout = () -> editor.project() != null;
+			paletteRow2.doLayout = paletteRow1.doLayout;
+			paletteRow1.new CSText(() -> {
 				
-		debugMenu.new CSDynamicRow().new CSButton("Switch Shader" , () -> {
+				return "Palette Size: " + editor.project().visualPalette().width() + ", " + editor.project().visualPalette().height();
+				
+			});
 			
-			CSSSProject.setTheCurrentShader(CSSSProject.theTextureShader());
+			paletteRow2.new CSText(() -> {
+				
+				return 
+					"Palette Position: " + 
+					editor.project().visualPalette().currentCol() + 
+					", " + 
+					editor.project().visualPalette().currentRow();
+			});
 			
-		});
-		
+			debugMenu.new CSDynamicRow().new CSButton("Toggle Transparent Background" , () -> {
+				
+				showingCheckeredBackground = !showingCheckeredBackground;
+				editor.rendererPost(() -> {
+					
+					if(!showingCheckeredBackground) editor.project().forEachPalette(ArtboardPalette::hideCheckeredBackground);
+					else editor.project().forEachPalette(ArtboardPalette::showCheckeredBackground);
+					
+				});
+				
+			});
+			
+			debugMenu.new CSDynamicRow().new CSButton("Reload Shaders" , () -> {
+				
+				editor.rendererPost(() -> CSSSProject.thePaletteShader().reload(
+						readAllCharacters("assets/shaders/vertexShader.glsl") , 
+						readAllCharacters("assets/shaders/fragmentPaletteShader.glsl")
+						));
+				
+			});
+			
+			debugMenu.new CSDynamicRow().new CSButton("Switch Shader" , () -> {
+				
+				CSSSProject.setTheCurrentShader(CSSSProject.theTextureShader());
+				
+			});
+			
+			
+		}
 	}
 	
 }

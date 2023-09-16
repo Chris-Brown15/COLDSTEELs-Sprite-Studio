@@ -749,12 +749,15 @@ public final class Engine implements ShutDown {
 			.15f ,
 			.15f ,
 			CSNuklear.DECIMAL_FILTER ,
-			2 ,
+			3 ,
 			result -> {
 				
 				try {
 					
 					Integer asInt = Integer.parseInt(result);
+					int size = current.numberFrames(); 
+					if(asInt >= size) asInt = size - 1;
+					else if (asInt < 0) asInt = 0;
 					current.setFramePosition(originalIndex , asInt);
 
 				} catch(NumberFormatException e) {

@@ -36,6 +36,7 @@ import cs.csss.editor.Editor;
 import cs.csss.editor.event.ModifyArtboardInAnimationStatusEvent;
 import cs.csss.engine.Engine;
 import cs.csss.project.Animation;
+import cs.csss.project.AnimationFrame;
 import cs.csss.project.AnimationSwapType;
 import cs.csss.project.CSSSProject;
 import cs.csss.ui.elements.ProgressBar;
@@ -168,8 +169,7 @@ public class AnimationPanel implements ShutDown {
 		topRow.pushWidth(30);
 		CSButton 
 			playButton = topRow.new CSButton(SYMBOL_TRIANGLE_RIGHT , this::togglePlay) ,
-			stopButton = topRow.new CSButton(SYMBOL_RECT_SOLID , this::togglePlay)
-		;
+			stopButton = topRow.new CSButton(SYMBOL_RECT_SOLID , this::togglePlay);
 		
 		topRow.doLayout = doLayout; 
 		playButton.doLayout = () -> animation() != null && !animation().playing();
@@ -203,8 +203,9 @@ public class AnimationPanel implements ShutDown {
 			if(!doLayout.getAsBoolean()) return;
 			
 			CSRefInt currentAnimationFrameIndex = new CSRefInt(0);
-					
-			animation().forAllArtboards(artboard -> {
+			Animation animation = animation();		
+			
+			animation.forAllArtboards(artboard -> {
 				
 				int current = currentAnimationFrameIndex.intValue();
 				currentAnimationFrameIndex.inc();
@@ -227,11 +228,18 @@ public class AnimationPanel implements ShutDown {
 				
 				if(!isActiveFrame) return;
 				
-				nk_layout_row_begin(context , NK_DYNAMIC , 30 , 2);
+				nk_layout_row_begin(context , NK_DYNAMIC , 30 , 3);
 				nk_layout_row_push(context , .2f);
 				nk_spacer(context);
 				nk_layout_row_push(context , .4f);
-				nk_text(context , "Swaps by: " + animation().getFrame(current).swapType().shortenedName() , TEXT_LEFT|TEXT_CENTERED);
+				AnimationFrame frame = animation().getFrame(current);
+				AnimationSwapType swap = frame.swapType();
+				nk_text(context , "Swaps by: " + swap.shortenedName() , TEXT_LEFT|TEXT_CENTERED);
+				nk_layout_row_push(context , .4f);				
+				String rate;
+				if(swap == AnimationSwapType.SWAP_BY_TIME) rate = "Rate (Millis): " + frame.time();
+				else rate = "Rate: (Frames): " + frame.updates();
+				nk_text(context , rate , TEXT_LEFT|TEXT_CENTERED);
 				nk_layout_row_end(context);			
 				
 				nk_layout_row_begin(context , NK_DYNAMIC , 30 , 3);
@@ -252,6 +260,25 @@ public class AnimationPanel implements ShutDown {
 				if(nk_button_text(context , "Remove")) editor.eventPush(new ModifyArtboardInAnimationStatusEvent(project, artboard));
 				nk_layout_row_end(context);
 				
+				//if this is a nondefault frame. The float comparison is how Java recommends to compare floats for equality
+				if(
+					(swap == AnimationSwapType.SWAP_BY_TIME && Float.compare(frame.time(), animation.defaultSwapTime().get()) != 0) ||
+					(swap == AnimationSwapType.SWAP_BY_UPDATES && frame.updates() != animation.defaultUpdateAmount().intValue())
+				) {
+					
+					nk_layout_row_begin(context , NK_DYNAMIC , 30 , 2);
+					nk_layout_row_push(context , .2f);
+					nk_spacer(context);
+					nk_layout_row_push(context , .8f);
+					if(nk_button_text(context , "Remove Custom Time")) {
+					
+						frame.time(animation.defaultSwapTime());
+						frame.updates(animation.defaultUpdateAmount());
+						
+					}
+					
+					nk_layout_row_push(context , .4f);
+				}				
 			
 			});
 			
