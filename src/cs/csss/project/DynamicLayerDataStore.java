@@ -7,9 +7,16 @@ import java.util.function.Consumer;
 class DynamicLayerDataStore implements LayerDataStore {
 
 	private final LinkedList<LayerPixel> mods = new LinkedList<>();
+	private volatile int modCount;
 	
 	public DynamicLayerDataStore() {}
 
+	@Override public int mods() {
+		
+		return modCount;
+		
+	}
+	
 	@Override public boolean modifiesAtIndex(int xIndex, int yIndex) {
 
 		boolean modifies = false;
@@ -37,16 +44,11 @@ class DynamicLayerDataStore implements LayerDataStore {
 		int 
 			i = 0 ,
 			previousY = -1 ,
-			previousX = -1
-		; 
+			previousX = -1; 
 		
 		for(LayerPixel x : mods) {
 			
-			if(x.textureY != previousY) {
-				
-				if(previousY < putThis.textureY && putThis.textureY < x.textureY) break;				
-				
-			}
+			if(x.textureY != previousY) if(previousY < putThis.textureY && putThis.textureY < x.textureY) break;
 			
 			previousY = x.textureY;
 			
@@ -63,6 +65,7 @@ class DynamicLayerDataStore implements LayerDataStore {
 		}
 		
 		mods.add(i , putThis);
+		modCount++;
 		
 	}
 	
@@ -76,6 +79,7 @@ class DynamicLayerDataStore implements LayerDataStore {
 			if(x.textureX == xIndex && x.textureY == yIndex) {
 				
 				iter.remove();
+				modCount--;
 				break;
 				
 			}

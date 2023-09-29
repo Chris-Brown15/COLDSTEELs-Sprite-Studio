@@ -47,7 +47,7 @@ class UserSettings {
 			
 			Control x = controls.next();
 			format.bindBoolean(x.name + " isKB" , x.isKeyboard()).bindShort(x.name + " Code" , (short) x.key());
-			
+						
 		}
 				
 		CSFile.makeFile(directory, fileName);
@@ -58,8 +58,7 @@ class UserSettings {
 			
 		} catch (IOException e) {
 			
-			e.printStackTrace();
-			throw new IllegalStateException();
+			throw new IllegalStateException(e);
 			
 		}
 		
@@ -80,8 +79,7 @@ class UserSettings {
 			
 		} catch (IOException e) {
 			
-			e.printStackTrace();
-			throw new IllegalStateException();
+			throw new IllegalStateException(e);
 			
 		}
 		

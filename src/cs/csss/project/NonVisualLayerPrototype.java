@@ -44,18 +44,14 @@ public class NonVisualLayerPrototype {
 		
 	}
 	
-	@Override public String toString() {
+	/**
+	 * Displays the UI string for this layer.
+	 * 
+	 * @return UI friendly string for this record.
+	 */
+	public String UIString() {
 		
-		StringBuilder builder = new StringBuilder();
-		builder
-			.append("NonVisual Layer Prototype: ")
-			.append(name)
-			.append(", Size: ")
-			.append(sizeBytes)
-			.append(", Default Values: ")
-		;
-		
-		return builder.toString();
+		return new StringBuilder().append(name).append(", Size: ").append(sizeBytes).toString();
 	
 	}
 	

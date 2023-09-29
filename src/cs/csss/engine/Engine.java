@@ -20,7 +20,6 @@ import static org.lwjgl.opengl.GL30C.glViewport;
 
 import static org.lwjgl.stb.STBImageWrite.stbi_flip_vertically_on_write;
 
-import static cs.core.utils.CSUtils.wrapTry;
 import static cs.csss.engine.Logging.*;
 
 import cs.coreext.nanovg.CoordinateSpace;
@@ -37,7 +36,6 @@ import java.util.function.Consumer;
 
 import org.lwjgl.nuklear.NkPluginFilter;
 import org.lwjgl.system.Configuration;
-
 import cs.core.CSDisplay;
 import cs.core.graphics.CSRender;
 import cs.core.graphics.CSStandardRenderer;
@@ -45,8 +43,11 @@ import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSNuklearRender;
 import cs.core.ui.prefabs.InputBox;
 import cs.core.utils.CSRefInt;
+import cs.core.utils.CSUtils;
 import cs.core.utils.ShutDown;
 import cs.core.utils.Timer;
+import cs.core.utils.exceptions.RequirementFailedException;
+import cs.core.utils.exceptions.SpecificationBrokenException;
 import cs.core.utils.files.TTF;
 import cs.core.utils.threads.Await;
 import cs.core.utils.threads.CSThreads;
@@ -101,8 +102,20 @@ import cs.csss.utils.FloatReference;
  */
 public final class Engine implements ShutDown {
 
+	/**
+	 * Thread pool for the application, using a number of threads equal to {@code Runtime.getRuntime().availableProcessors() / 4}.
+	 */
 	public static final CSThreads THE_THREADS = new CSThreads(Runtime.getRuntime().availableProcessors() / 4);
+	
+	/**
+	 * Scheduler object that can receive code and execute it based on some predicate.
+	 */
 	public static final ConcurrentTemporal THE_TEMPORAL = new ConcurrentTemporal();
+	
+	/**
+	 * Version of the current application distribution.
+	 */
+	public static final String VERSION_STRING = String.format("%s %d.%d" , "Beta" , 1 , 0);
 	
 	private static boolean isDebug = false;
 
@@ -113,17 +126,23 @@ public final class Engine implements ShutDown {
 	 */
 	static void preinitialize(final String[] programArgs) {
 
+		stbi_flip_vertically_on_write(true);
+		//initialize logging
+		try {
+			
+			Logging.initialize(OP_TO_STD|OP_TO_FILE);
+			
+		} catch(IOException e) {
+			
+			e.printStackTrace();
+			System.exit(-1);
+			
+		}
+		
 		//parse arguemnts
 		List<String> args = List.of(programArgs);		
 		if(args.contains("-d")) preinitializeDebug();
 	
-		stbi_flip_vertically_on_write(true);
-		
-		//initialize logging
-		wrapTry(() -> Logging.initialize(OP_TO_STD));
-		//initialize python
-		THE_THREADS.async(() -> CSJEP.initialize());
-		
 	}
 	
 	/**
@@ -179,8 +198,7 @@ public final class Engine implements ShutDown {
 		/**
 		 * Used to track whether we should be in real time mode or event driven mode.
 		 */
-		realtimeMode = false
-	;
+		realtimeMode = false;
 
 	private int realtimeTargetFPS = 60;
 	private double realtimeFrameTime = 1000 / realtimeTargetFPS;
@@ -189,14 +207,13 @@ public final class Engine implements ShutDown {
  	
 	private final CSFolder
 		assetsRoot = CSFolder.establishRoot("assets") ,
-		extensionDataRoot = CSFolder.establishRoot("core_extension_data") ,
 		dataRoot = CSFolder.establishRoot("data") ,
 		programRoot = CSFolder.establishRoot("program") ,
 		exportsRoot = CSFolder.establishRoot("exports");
 	
 	public final CSFolder debugRoot;
 	
-	private final UserSettings settings = new UserSettings(programRoot);
+	private final UserSettings2 settings = new UserSettings2();
 	
 	private final NanoVG nanoVG;
 	
@@ -212,7 +229,7 @@ public final class Engine implements ShutDown {
 	Engine() {
 		
 		initializeDirectories();
-		debugRoot = isDebug ? CSFolder.establishRoot("debug") : null;
+		debugRoot = CSFolder.establishRoot("debug");
 		
 		display = new CSDisplay(true , "COLDSTEEL Sprite Studio" , 18 , "assets/fonts/FiraSansBold.ttf");
 		
@@ -227,10 +244,7 @@ public final class Engine implements ShutDown {
 		initializeNanoVGFonts();
 		
 		setControlCallback();
-				
-		//initialize main thread interpreter
-		CSJEP.interpreter().initializeCSPythonLibrary();
-		
+						
 		openGLStateInitialize();
 		
 		editor = new Editor(this , display);
@@ -241,6 +255,13 @@ public final class Engine implements ShutDown {
 
 		enqueueRender();	
 		
+		CSSSException.registerTheEngine(this);
+		
+		THE_THREADS.async(Logging::deleteOldLogs);
+		
+		CSUtils.onRequirementFailed = message -> new CSSSException(message , new RequirementFailedException(message));
+		CSUtils.onSpecificationBroken = message -> new CSSSException(message , new SpecificationBrokenException(message));
+	
 	}
 	
 	/**
@@ -968,12 +989,10 @@ public final class Engine implements ShutDown {
 	public void saveProject(String name) {
 
 		if(currentProject == null) return;
-		
-		CTSPFile ctsp = new CTSPFile(currentProject, name);
-		
+
 		try {
 			
-			ctsp.write();
+			new CTSPFile(currentProject, name).write();
 			
 		} catch (FileNotFoundException e) {
 			
@@ -984,7 +1003,7 @@ public final class Engine implements ShutDown {
 			e.printStackTrace();
 			
 		}
-		
+	
 	}
 
 	/**
@@ -1083,7 +1102,6 @@ public final class Engine implements ShutDown {
 	private void initializeDirectories() {
 
 		assetsRoot.seekExistingFiles();
-		extensionDataRoot.seekExistingFiles();
 		dataRoot.seekExistingFiles();
 		programRoot.seekExistingFiles();
 		exportsRoot.seekExistingFiles();
@@ -1100,9 +1118,6 @@ public final class Engine implements ShutDown {
 			GPUMemoryViewer.initialize();
 			
 			CSSSProject.initializeArtboardShaders();
-			
-			//initializes the render thread's python interpreter
-			CSJEP.interpreter().initializeCSPythonLibrary();
 
 			glClearColor(0.15f , 0.15f , 0.15f , 1.0f);
 

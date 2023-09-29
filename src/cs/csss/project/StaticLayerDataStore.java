@@ -7,8 +7,7 @@ class StaticLayerDataStore implements LayerDataStore {
 	private volatile LayerPixel[][] image;
 	private final int 
 		width ,
-		height
-	;
+		height;
 	
 	private volatile int mods = 0;
 	
@@ -21,7 +20,7 @@ class StaticLayerDataStore implements LayerDataStore {
 		
 	}
 	
-	public synchronized int mods() {
+	@Override public synchronized int mods() {
 		
 		return mods;
 		

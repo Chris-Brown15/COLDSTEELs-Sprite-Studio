@@ -1,7 +1,5 @@
 package cs.csss.editor;
 
-import static cs.core.utils.CSUtils.specify;
-
 import cs.coreext.nanovg.NanoVGFrame;
 import cs.csss.annotation.RenderThreadOnly;
 
@@ -62,8 +60,8 @@ public class SelectionAreaBounder {
 		if(LX >= RX) LX = RX - 1;
 		if(BY >= TY) BY = TY - 1;
 
-		specify(LX < RX , LX + " is an invalid left X. Right X: " + RX);
-		specify(BY < TY , BY + " is an invalid bottom Y. Top Y: " + TY);
+		assert LX < RX : LX + " is an invalid left X. Right X: " + RX;
+		assert BY < TY : BY + " is an invalid bottom Y. Top Y: " + TY;
 				
 	}
 
@@ -91,8 +89,8 @@ public class SelectionAreaBounder {
 		if(LX >= RX) LX = RX - 1;
 		if(BY >= TY) BY = TY - 1;
 
-		specify(LX < RX , LX + " is an invalid left X. Right X: " + RX);
-		specify(BY < TY , BY + " is an invalid bottom Y. Top Y: " + TY);
+		assert LX < RX : LX + " is an invalid left X. Right X: " + RX;
+		assert BY < TY : BY + " is an invalid bottom Y. Top Y: " + TY;
 				
 	}
 	
@@ -113,9 +111,9 @@ public class SelectionAreaBounder {
 		TY = moveToY + halfHeight;
 		BY = moveToY - halfHeight;
 
-		specify(LX < RX , LX + " is an invalid left X. Right X: " + RX);
-		specify(BY < TY , BY + " is an invalid bottom Y. Top Y: " + TY);
-				
+		assert LX < RX : LX + " is an invalid left X. Right X: " + RX;
+		assert BY < TY : BY + " is an invalid bottom Y. Top Y: " + TY;
+			
 	}
 	
 	/**
@@ -133,9 +131,9 @@ public class SelectionAreaBounder {
 		if(BY < bottomY || BY >= topY) BY = bottomY;
 		if(TY > topY || TY <= bottomY) TY = topY;
 
-		specify(LX < RX , LX + " is an invalid left X. Right X: " + RX);
-		specify(BY < TY , BY + " is an invalid bottom Y. Top Y: " + TY);
-				
+		assert LX < RX : LX + " is an invalid left X. Right X: " + RX;
+		assert BY < TY : BY + " is an invalid bottom Y. Top Y: " + TY;
+			
 	}
 	
 	/**
@@ -158,7 +156,7 @@ public class SelectionAreaBounder {
 		
 		int width = (int) (RX - LX);
 		
-		specify(width > 0 , width + " is an invalid width.");
+		assert width > 0 : width + " is an invalid width.";
 		
 		return width;
 				
@@ -173,7 +171,7 @@ public class SelectionAreaBounder {
 		
 		int height = (int) (TY - BY);
 
-		specify(height > 0 , height + " is an invalid height.");
+		assert height > 0 : height + " is an invalid height.";
 		
 		return height;
 		
@@ -186,7 +184,7 @@ public class SelectionAreaBounder {
 	 */
 	public int LX() {
 
-		specify(LX < RX , LX + " is an invalid left X. Right X: " + RX);
+		assert LX < RX : LX + " is an invalid left X. Right X: " + RX;
 				
 		return (int) LX;
 		
@@ -199,7 +197,7 @@ public class SelectionAreaBounder {
 	 */
 	public int RX() {
 
-		specify(LX < RX , LX + " is an invalid left X. Right X: " + RX);
+		assert LX < RX : LX + " is an invalid left X. Right X: " + RX;
 				
 		return (int) RX;
 		
@@ -212,7 +210,7 @@ public class SelectionAreaBounder {
 	 */
 	public int BY() {
 
-		specify(BY < TY , BY + " is an invalid bottom Y. Top Y: " + TY);
+		assert BY < TY : BY + " is an invalid bottom Y. Top Y: " + TY;
 		
 		return (int) BY;
 		
@@ -225,7 +223,7 @@ public class SelectionAreaBounder {
 	 */
 	public int TY() {
 
-		specify(BY < TY , BY + " is an invalid bottom Y. Top Y: " + TY);
+		assert BY < TY : BY + " is an invalid bottom Y. Top Y: " + TY;
 		
 		return (int) TY;
 		
@@ -238,7 +236,7 @@ public class SelectionAreaBounder {
 	 */
 	public void LX(float lx) {
 		
-		specify(lx < RX , lx + " is less than RX (" + RX + ").");
+		assert lx < RX : lx + " is less than RX (" + RX + ").";
 		
 		this.LX = lx;
 		
@@ -251,7 +249,7 @@ public class SelectionAreaBounder {
 	 */
 	public void RX(float rx) {
 		
-		specify(rx > LX , rx + " is less than LX (" + LX + ").");
+		assert rx > LX : rx + " is less than LX (" + LX + ").";
 		
 		this.RX = rx;
 		
@@ -264,7 +262,7 @@ public class SelectionAreaBounder {
 	 */
 	public void BY(float by) {
 		
-		specify(by < TY , by + " is less than TY (" + TY + ").");
+		assert by < TY : by + " is less than TY (" + TY + ").";
 		
 		this.BY = by;
 		
@@ -277,7 +275,7 @@ public class SelectionAreaBounder {
 	 */
 	public void TY(float ty) {
 		
-		specify(ty > BY , ty + " is less than BY (" + BY + ").");
+		assert ty > BY : ty + " is less than BY (" + BY + ").";
 		
 		this.TY = ty;
 		

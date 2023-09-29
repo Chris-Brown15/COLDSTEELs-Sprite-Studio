@@ -19,6 +19,7 @@ import cs.coreext.nanovg.NanoVGTypeface;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.engine.Control;
 import cs.csss.engine.Engine;
+import cs.csss.engine.Logging;
 import cs.csss.project.io.CTSPFile;
 import cs.csss.project.io.CTSPFile.AnimationChunk;
 import cs.csss.project.io.CTSPFile.AnimationFrameChunk;
@@ -201,8 +202,12 @@ public class CSSSProject implements ShutDown {
  		visualPalette = loadPalette(ctsp.paletteChunks()[0]);
  		for(int i = 1 ; i < 5 ; i ++) nonVisualPalettes.add(loadPalette(ctsp.paletteChunks()[i]));
  		
+ 		Logging.sysDebug("Constructed Palettes");
+ 		
  		//artboards
  		for(ArtboardChunk x : ctsp.artboardChunks()) loadArtboard(x);
+ 		
+ 		Logging.sysDebug("Constructed Artboards");
  		
  		//animations
  		for(AnimationChunk x : ctsp.animationChunks()) loadAnimation(x);
@@ -245,6 +250,27 @@ public class CSSSProject implements ShutDown {
 			
 			//makes the remove take place at a safe point
 			Engine.THE_TEMPORAL.onTrue(() -> true, () -> visualLayerPrototypes.remove(layer));
+			
+		}
+		
+	}
+	
+	@RenderThreadOnly public void deleteNonVisualLayer(NonVisualLayerPrototype layer) {
+		
+		synchronized(allArtboards) {
+			
+			allArtboards.forEach(artboard -> {
+				
+				if(copier.isCopy(artboard)) return;
+				
+				NonVisualLayer removed = artboard.getNonVisualLayer(layer);
+				if(!removed.hiding) removed.hide(artboard);
+				
+				artboard.removeLayer(removed);
+				
+			});
+			
+			Engine.THE_TEMPORAL.onTrue(() -> true, () -> nonVisualLayerPrototypes.remove(layer));
 			
 		}
 		

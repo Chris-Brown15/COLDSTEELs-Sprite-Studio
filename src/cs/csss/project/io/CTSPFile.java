@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import cs.core.utils.CSRefInt;
+import cs.csss.engine.Logging;
 import cs.csss.misc.files.CSFile;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.project.AnimationFrame;
@@ -136,6 +137,8 @@ public class CTSPFile {
 			
 		}
 		
+		Logging.sysDebug("File Write Complete");
+		
 	}
 	
 	/**
@@ -162,7 +165,10 @@ public class CTSPFile {
 			artboards = readArtboards(numberSourceArtboards , numberVisualLayers , numberNonVisualLayers , reader);
 			animations = readAnimationChunks(numberAnimations , reader);
 			
+			
 		}
+		
+		Logging.sysDebug("File Read Complete");
 		
 	}
 

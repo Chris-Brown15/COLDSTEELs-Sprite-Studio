@@ -4,6 +4,8 @@ import java.util.function.Consumer;
 
 interface LayerDataStore  {
 
+	public int mods();
+	
 	public boolean modifiesAtIndex(final int xIndex , final int yIndex);
 	
 	public LayerPixel get(final int xIndex , final int yIndex);

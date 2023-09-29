@@ -91,7 +91,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 
 		ui = nuklear.new CSUserInterface("Project" , 0.80f , -1f , 0.199f , 0.90f);
 		ui.setDimensions(ui.xPosition(), 77, ui.interfaceWidth(), ui.interfaceHeight());
-		ui.options = UI_BORDERED|UI_TITLED;
+		ui.options = UI_BORDERED|UI_TITLED|UI_ICONIFYABLE;
 		
 		ui.specifyLayout((context , stack) -> {
 			
@@ -167,8 +167,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 					
 					nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);
 					if(nk_button_text(context , "Delete")) Engine.THE_TEMPORAL.onTrue(() -> true, editor.project()::deleteAnimation);
-					
-					
+										
 				}
 				
 			});
@@ -197,11 +196,11 @@ import cs.csss.ui.menus.VectorTextMenu;
 					pad(context , TIER_TWO_PADDING);
 					
 					nk_layout_row_push(context , ui.interfaceWidth() - TIER_TWO_PADDING - 40);
-					nk_text(context , layer.toString() , dropdownTextOptions);
+					nk_text(context , layer.UIString() , dropdownTextOptions);
 													
 					nk_layout_row_end(context);				
 					
-					button(context , TIER_THREE_PADDING , "Delete" , () -> {
+					button(context , TIER_THREE_PADDING ,  30 , "Delete" , () -> {
 						
 						if(project.numberVisualLayers() == 1) new NotificationBox(
 							"Cannot Delete Layer" , 
@@ -248,9 +247,21 @@ import cs.csss.ui.menus.VectorTextMenu;
 				pad(context , TIER_TWO_PADDING);
 				
 				nk_layout_row_push(context , ui.interfaceWidth() - TIER_TWO_PADDING - 40);
-				nk_text(context , layer.toString() , dropdownTextOptions);
+				nk_text(context , layer.UIString() , dropdownTextOptions);
 				
-				nk_layout_row_end(context);				
+				nk_layout_row_end(context);
+				
+				button(context , TIER_THREE_PADDING , 30 , "Delete" , () -> {
+					 new ConfirmationBox(
+						nuklear , 
+						"Sure?" ,
+						"Are You Sure You Want To Delete " + layer.name() + "? This will remove this layer from every artboard." , 
+						0.4f , 
+						0.4f , 
+						() -> editor.rendererPost(() -> editor.project().deleteNonVisualLayer(layer)) , 
+						() -> {}
+					);
+				});
 				
 			});
 

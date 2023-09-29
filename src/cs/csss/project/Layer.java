@@ -85,7 +85,7 @@ public abstract class Layer {
 	public final String name;
 	protected final ArtboardPalette palette;
 	
-	protected volatile StaticLayerDataStore layerDataStore;
+	protected volatile LayerDataStore layerDataStore;
 		
 	/**
 	 * Constructs a layer with the given name, palette, width and height
@@ -102,7 +102,7 @@ public abstract class Layer {
 		this.name = name;
 		this.palette = palette;
 		
-		layerDataStore = new StaticLayerDataStore(width , height);
+		layerDataStore = new AtomicLayerDataStore(width , height);
 		
 	}
 	

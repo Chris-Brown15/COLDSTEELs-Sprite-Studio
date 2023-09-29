@@ -1,4 +1,4 @@
 /**
- * Container of the UI elmeents the editor uses.
+ * Container of the UI elements the editor uses.
  */
 package cs.csss.editor.ui;

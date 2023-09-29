@@ -36,6 +36,22 @@ public class CSFile {
 		
 	}
 	
+	public static CSFile delete(CSFile file) {
+		
+		try {
+			
+			Files.delete(Paths.get(file.getRealPath()));
+			
+		} catch (IOException e) {
+			
+			e.printStackTrace();
+			
+		}
+		
+		return null;
+		
+	}
+	
 	protected String name;
 	protected final CSFolder location;
 	protected FileComposition composition;

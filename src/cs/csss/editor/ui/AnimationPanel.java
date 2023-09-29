@@ -150,7 +150,7 @@ public class AnimationPanel implements ShutDown {
 			  		swapTypes[i] == animation().defaultSwapType() , 
 			  		() -> animation().defaultSwapType(swapTypes[j])
 			  	);
-			
+			  	
 			}
 			
 			CSRadio.groupAll(swapTypeRadios);
@@ -184,7 +184,7 @@ public class AnimationPanel implements ShutDown {
 		CSDynamicRow statsRow = optionGroup.ui.new CSDynamicRow();
 		statsRow.doLayout = doLayout;
 		
-		for(int i = 0 ; i < swapTypes.length ; i++) swapTypeRows[i] = optionGroup.ui.new CSDynamicRow();
+		for(int i = 0 ; i < swapTypes.length ; i++) (swapTypeRows[i] = optionGroup.ui.new CSDynamicRow()).doLayout = () -> animation() != null;
 		
 		statsRow.new CSText(() -> "Dimensions (WxH): " + animation().frameWidth() + ", " + animation().frameHeight() , textOptions);
 		

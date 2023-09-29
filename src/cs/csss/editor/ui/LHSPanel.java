@@ -52,7 +52,12 @@ public class LHSPanel {
 		this.nuklear = nuklear;
 		ui = nuklear.new CSUserInterface("Editor" , 0.001f , -1f , 0.199f , .90f);
 		ui.setDimensions(ui.xPosition() , 77 , ui.interfaceWidth() , ui.interfaceHeight());
-		ui.options = UI_BORDERED|UI_TITLED;
+		ui.options = UI_BORDERED|UI_TITLED|UI_ICONIFYABLE;
+		
+		CSDynamicRow addProjectRow = ui.new CSDynamicRow();
+		addProjectRow.new CSButton("New Project" , editor::startNewProject);
+		
+		addProjectRow.doLayout = () -> editor.project() == null;
 		
 		Engine.THE_TEMPORAL.onTrue(() -> editor.project() != null , () -> {
 
@@ -76,9 +81,9 @@ public class LHSPanel {
 					nk_text(context , String.format("Red: %d", (short)Byte.toUnsignedInt(colorBuffer[0])) , TEXT_LEFT);
 					nk_text(context , String.format("Green: %d", (short)Byte.toUnsignedInt(colorBuffer[1])) , TEXT_LEFT);
 					nk_text(context , String.format("Blue: %d", (short)Byte.toUnsignedInt(colorBuffer[2])) , TEXT_LEFT);
-					if(channels == 4) nk_text(context , String.format("Alpha: %d", colorBuffer[3]) , TEXT_LEFT);
+					if(channels == 4) nk_text(context , String.format("Alpha: %d", (short)Byte.toUnsignedInt(colorBuffer[3])) , TEXT_LEFT);
 					
-				} else {}
+				}
 				
 			});
 			

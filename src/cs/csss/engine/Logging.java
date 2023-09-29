@@ -2,13 +2,17 @@ package cs.csss.engine;
 
 import static cs.core.utils.CSUtils.require;
 
-import java.io.FileNotFoundException;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Iterator;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+
+import cs.csss.misc.files.CSFile;
+import cs.csss.misc.files.CSFolder;
 
 /**
  * Logging class providing utilities for logging and printing information about the running instance of Sprite Studio in an asynchronous
@@ -21,31 +25,42 @@ public class Logging {
 
 	public static final int
 		OP_TO_STD = 0b1,
-		OP_TO_FILE = 0b10
-	;
+		OP_TO_FILE = 0b10;
 
-	private static final String DEBUG_PRINT_PREFIX = "[DEBUG] ";	
-
+	private static final String 
+		DEBUG_PRINT_PREFIX = "[DEBUG] " ,
+		LOG_FILE_TYPE = ".txt";
+	
+	private static final int linefeed = System.lineSeparator().getBytes()[0];
+	
 	public static final String OBJECT_STRING_SEPARATOR = ", ";
 	
 	public static int operations = OP_TO_STD;
 
-	private static FileOutputStream logWriter;
+	private static volatile FileOutputStream logWriter;
 	
 	private static LoggingThread loggingThread = new LoggingThread();
 		
-	static void initialize(int _operations) throws FileNotFoundException {
+	private static final LocalDateTime now = LocalDateTime.now();
+	
+	static void initialize(int _operations) throws IOException {
 		
 		operations = _operations;
 		
 		if(has(OP_TO_FILE)) { 
 			
+			String nameString = String.format("Y %dD %dM %dS %d", now.getYear() , now.getDayOfYear(), now.getMinute() , now.getSecond());			
+			File log = new File("debug/log " + nameString + LOG_FILE_TYPE);
+			log.createNewFile();
+			logWriter = new FileOutputStream(log);			
+			log.deleteOnExit();			
 			sysout("Initialized Log Writer");
-			logWriter = new FileOutputStream("debug/log " + LocalDateTime.now());
 			
 		}
 		
 		loggingThread.start();
+		
+		sysout("Version " , Engine.VERSION_STRING);
 		
 	}
 	
@@ -72,7 +87,7 @@ public class Logging {
 	}
 	
 	/**
-	 * Prints the given objects only if debug mode is off.
+	 * Prints the given objects only if debug mode is on.
 	 * 
 	 * @param x — objects to print
 	 */
@@ -99,7 +114,7 @@ public class Logging {
 			
 			if(has(OP_TO_FILE)) try {
 				
-				logWriter.write(result.getBytes());
+				logWriter.write(result.getBytes()) ; logWriter.write(linefeed);
 					
 			} catch (IOException e) {}
 			
@@ -113,7 +128,7 @@ public class Logging {
 		
 		require(someOperation >= OP_TO_STD && someOperation <= OP_TO_FILE);
 		
-		return (operations & someOperation) == operations;
+		return (operations & someOperation) == someOperation;
 		
 	}
 	
@@ -136,6 +151,42 @@ public class Logging {
 		
 	}
 
+	/**
+	 * Deletes any log 7 days old or older. 
+	 */
+	static void deleteOldLogs() {
+		
+		CSFolder debug = CSFolder.getRoot("debug");
+		Iterator<CSFile> files = debug.files();
+		final int day = now.getDayOfYear();
+		
+		FindOldFiles: while(files.hasNext()) {
+			
+			CSFile next = files.next();
+			String name = next.name();			
+			char[] chars = name.toCharArray();
+			for(int i = 0 ; i < chars.length ; i++) if(chars[i] == 'D') {
+								
+				//go the first number
+				i += 2;
+				
+				int j = i;
+				while(chars[j] != 'M') j++;
+				String asString = new String(chars , i , j - i);
+				int logDay = Integer.parseInt(asString);				
+				if(day >= logDay + 7) { 
+					
+					files.remove();
+					next = CSFile.delete(next);
+					continue FindOldFiles;
+					
+				}
+				
+			}
+			
+		}
+		
+	}
 	private static class LoggingThread extends Thread {
 		
 		private final AtomicBoolean persist = new AtomicBoolean(true);
@@ -196,5 +247,6 @@ public class Logging {
 		}
 		
 	}
+	
 	
 }

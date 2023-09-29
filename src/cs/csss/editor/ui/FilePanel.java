@@ -12,6 +12,7 @@ import cs.core.ui.CSNuklear.CSUI.CSLayout.CSMenuBar;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSMenuBar.CSMenu;
 import cs.csss.editor.DebugDisabledException;
 import cs.csss.editor.Editor;
+import cs.csss.engine.CSSSException;
 import cs.csss.engine.Engine;
 import cs.csss.project.ArtboardPalette;
 import cs.csss.project.CSSSProject;
@@ -174,8 +175,14 @@ public class FilePanel {
 				
 			});
 			
+			debugMenu.new CSDynamicRow().new CSButton("Throw Exception" , () -> {
+				
+				throw new CSSSException(new RuntimeException());
+				
+			});
 			
 		}
+		
 	}
 	
 }
