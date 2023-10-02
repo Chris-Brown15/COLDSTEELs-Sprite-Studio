@@ -54,7 +54,7 @@ import cs.csss.project.VisualLayer;
  */
 public class CTSPFile {
 	
-	private static final CSFolder projectRoot = CSFolder.getRoot("data").getSubdirectory("projects");
+	private static final CSFolder projectRoot = CSFolder.getRoot("data").getOrCreateSubdirectory("projects");
 	
 	public static final String FILE_EXTENSION = ".ctsp";
 

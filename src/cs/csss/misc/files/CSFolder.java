@@ -413,11 +413,25 @@ public final class CSFolder {
 	public CSFolder getSubdirectory(String name) {
 		
 		CSFolder result = subdirectories.get(name);
-		specify(result , name + " is not in this directory.");		
+		specify(result , name + " is not in this directory.");		 
 		return result;
 		
 	}
-	
+	 
+	/**
+	 * Gets an existing subdirectory of the given name, or creates a new, empty one if none is found.
+	 * 
+	 * @param name — name of a subdirectory within this directory
+	 * @return An existing subdirectory if one exists already, or a new empty one.
+	 */
+	public CSFolder getOrCreateSubdirectory(String name) {
+		
+		CSFolder result = subdirectories.get(name);
+		if(result == null) return createSubdirectory(name);
+		return result;
+		
+	}
+	 
 	public CSFile getFile(String name) {
 		
 		CSFile file = files.get(name);

@@ -31,7 +31,7 @@ public class NewProjectMenu {
 		
 		Engine.THE_THREADS.async(() -> {
 			
-			CSFolder projectsFolder = CSFolder.getRoot("data").getSubdirectory("projects");
+			CSFolder projectsFolder = CSFolder.getRoot("data").getOrCreateSubdirectory("projects");
 			projectsFolder.seekExistingFiles();
 		 	Iterator<CSFile> projects = projectsFolder.files();					
 		 	while(projects.hasNext()) existingProjects.add(projects.next().name());

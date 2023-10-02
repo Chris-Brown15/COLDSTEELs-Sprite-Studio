@@ -41,7 +41,7 @@ public class Logging {
 	
 	private static LoggingThread loggingThread = new LoggingThread();
 		
-	private static final LocalDateTime now = LocalDateTime.now();
+	private static final LocalDateTime launchTime = LocalDateTime.now();
 	
 	static void initialize(int _operations) throws IOException {
 		
@@ -49,10 +49,17 @@ public class Logging {
 		
 		if(has(OP_TO_FILE)) { 
 			
-			String nameString = String.format("Y %dD %dM %dS %d", now.getYear() , now.getDayOfYear(), now.getMinute() , now.getSecond());			
-			File log = new File("debug/log " + nameString + LOG_FILE_TYPE);
-			log.createNewFile();
-			logWriter = new FileOutputStream(log);			
+			CSFolder logs = Engine.debugRoot.getOrCreateSubdirectory("log");
+			String nameString = String.format(
+				"Y %dD %dM %dS %d" , 
+				launchTime.getYear() , 
+				launchTime.getDayOfYear(), 
+				launchTime.getMinute() , 
+				launchTime.getSecond()
+			);
+			
+			File log = CSFile.makeFile(logs, nameString + LOG_FILE_TYPE);
+			logWriter = new FileOutputStream(log);	
 			log.deleteOnExit();			
 			sysout("Initialized Log Writer");
 			
@@ -158,7 +165,7 @@ public class Logging {
 		
 		CSFolder debug = CSFolder.getRoot("debug");
 		Iterator<CSFile> files = debug.files();
-		final int day = now.getDayOfYear();
+		final int day = launchTime.getDayOfYear();
 		
 		FindOldFiles: while(files.hasNext()) {
 			

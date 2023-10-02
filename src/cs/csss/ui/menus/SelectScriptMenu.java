@@ -35,7 +35,7 @@ public class SelectScriptMenu {
 		ui = nuklear.new CSUserInterface("Select a script" , 0.5f - (0.33f / 2) , 0.5f - (0.33f / 2) , 0.33f , 0.33f);
 		ui.options = UI_TITLED|UI_BORDERED;
 		
-		CSFolder scriptsDir = CSFolder.getRoot("program").getSubdirectory("scripts").getSubdirectory(scriptDirectory);
+		CSFolder scriptsDir = CSFolder.getRoot("program").getOrCreateSubdirectory("scripts").getOrCreateSubdirectory(scriptDirectory);
 		
 		scriptsDir.seekExistingFiles();
 		

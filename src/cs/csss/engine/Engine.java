@@ -79,6 +79,7 @@ import cs.csss.ui.menus.NewArtboardMenu;
 import cs.csss.ui.menus.NewNonVisualLayerMenu;
 import cs.csss.ui.menus.NewProjectMenu;
 import cs.csss.ui.menus.NewVisualLayerMenu;
+import cs.csss.ui.menus.PythonNotFoundNotificationBox;
 import cs.csss.ui.menus.SelectScriptMenu;
 import cs.csss.ui.menus.SetAnimationFrameSwapTypeMenu;
 import cs.csss.ui.menus.CheckeredBackgroundSettingsMenu;
@@ -116,8 +117,20 @@ public final class Engine implements ShutDown {
 	 * Version of the current application distribution.
 	 */
 	public static final String VERSION_STRING = String.format("%s %d.%d" , "Beta" , 1 , 0);
+
+	/**
+	 * Containers for program files and assets.
+	 */
+	public static final CSFolder
+		assetsRoot = CSFolder.establishRoot("assets") ,
+		dataRoot = CSFolder.establishRoot("data") ,
+		programRoot = CSFolder.establishRoot("program") ,
+		exportsRoot = CSFolder.establishRoot("exports") ,
+		debugRoot = CSFolder.establishRoot("debug");
 	
-	private static boolean isDebug = false;
+	private static boolean 
+		isDebug = false ,
+		isPythonInstalled = false;
 
 	/**
 	 * Called from the main method to do any initialization that must occur before any other code from the program is invoked.
@@ -131,6 +144,8 @@ public final class Engine implements ShutDown {
 		try {
 			
 			Logging.initialize(OP_TO_STD|OP_TO_FILE);
+			PythonChecker findPython = new PythonChecker();
+			isPythonInstalled = findPython.findResult();
 			
 		} catch(IOException e) {
 			
@@ -170,6 +185,17 @@ public final class Engine implements ShutDown {
 	}
 	
 	/**
+	 * Returns whether a valid version of Python is installed so that scripts can be invoked.
+	 * 
+	 * @return {@code true} if a valid version of Python is installed.
+	 */
+	public static boolean isPythonInstalled() {
+		
+		return isPythonInstalled;
+		
+	}
+	
+	/**
 	 * Frees static memory associated with COLDSTEEL Core and the program.
 	 */
 	static void finalShutDown() {
@@ -205,14 +231,6 @@ public final class Engine implements ShutDown {
 
  	private Timer frameTimer = new Timer();
  	
-	private final CSFolder
-		assetsRoot = CSFolder.establishRoot("assets") ,
-		dataRoot = CSFolder.establishRoot("data") ,
-		programRoot = CSFolder.establishRoot("program") ,
-		exportsRoot = CSFolder.establishRoot("exports");
-	
-	public final CSFolder debugRoot;
-	
 	private final UserSettings2 settings = new UserSettings2();
 	
 	private final NanoVG nanoVG;
@@ -229,7 +247,6 @@ public final class Engine implements ShutDown {
 	Engine() {
 		
 		initializeDirectories();
-		debugRoot = CSFolder.establishRoot("debug");
 		
 		display = new CSDisplay(true , "COLDSTEEL Sprite Studio" , 18 , "assets/fonts/FiraSansBold.ttf");
 		
@@ -695,20 +712,25 @@ public final class Engine implements ShutDown {
 	}
 
 	/**
-	 * Creates an UI element for selecing any type of script.
+	 * Creates an UI element for selecing any type of script if a valid Python installation was found at startup. If none was found, an error
+	 * notification appears which has a link to download Python.
 	 */
 	public void startSelectScriptMenu(String scriptSubdirectory , Consumer<CSFile> onComplete) {
 		
-		if(currentProject == null) return;		
-		SelectScriptMenu script = new SelectScriptMenu(display.nuklear , scriptSubdirectory);
-		
-		THE_TEMPORAL.onTrue(script::readyToFinish , () -> {
+		if(isPythonInstalled) {
 			
-			CSFile selected;			
-			if((selected = script.selectedScript()) == null) return;			
-			onComplete.accept(selected);
+			if(currentProject == null) return;		
+			SelectScriptMenu script = new SelectScriptMenu(display.nuklear , scriptSubdirectory);
 			
-		});
+			THE_TEMPORAL.onTrue(script::readyToFinish , () -> {
+				
+				CSFile selected;			
+				if((selected = script.selectedScript()) == null) return;			
+				onComplete.accept(selected);
+				
+			});
+			
+		} else new PythonNotFoundNotificationBox(display.nuklear , windowSize()[1]);
 		
 	}
 	
@@ -1105,7 +1127,7 @@ public final class Engine implements ShutDown {
 		dataRoot.seekExistingFiles();
 		programRoot.seekExistingFiles();
 		exportsRoot.seekExistingFiles();
-		
+		debugRoot.seekExistingFiles();
 		settings.read(this);
 		
 	}
@@ -1258,7 +1280,7 @@ public final class Engine implements ShutDown {
 		
 	private void initializeNanoVGFonts() {
 		
-		CSFolder fonts = CSFolder.getRoot("assets").getSubdirectory("fonts");
+		CSFolder fonts = CSFolder.getRoot("assets").getOrCreateSubdirectory("fonts");
 		Iterator<CSFile> files = fonts.files();
 		while(files.hasNext()) {
 			

@@ -66,6 +66,10 @@ import jep.python.PyObject;
  */
 public class Editor implements ShutDown {
 	
+	private static final int 
+		DEFAULT_UNDO_REDO_STACK_SIZE = 1024 ,
+		DEFAULT_HASH_MAP_SIZE = 13;
+		
 	//create the brushes used by all editors
 	static final PencilBrush thePencilBrush = new PencilBrush();
 	static final EraserBrush theEraserBrush = new EraserBrush();
@@ -155,17 +159,17 @@ public class Editor implements ShutDown {
 	private volatile CSSSBrush currentBrush = thePencilBrush;
 	
 	private ConcurrentLinkedDeque<CSSSEvent> events = new ConcurrentLinkedDeque<>();
-	private UndoRedoStack redos = new UndoRedoStack(100);
-	private UndoRedoStack undos = new UndoRedoStack(100);
+	private UndoRedoStack redos = new UndoRedoStack(DEFAULT_UNDO_REDO_STACK_SIZE);
+	private UndoRedoStack undos = new UndoRedoStack(DEFAULT_UNDO_REDO_STACK_SIZE);
 	
 	private volatile CSCHashMap<EventScriptMeta , String> 
-		loadedArtboardScripts = new CSCHashMap<>(13) ,
-		loadedProjectScripts = new CSCHashMap<>(13);
+		loadedArtboardScripts = new CSCHashMap<>(DEFAULT_HASH_MAP_SIZE) ,
+		loadedProjectScripts = new CSCHashMap<>(DEFAULT_HASH_MAP_SIZE);
 	
 	private volatile CSCHashMap<BrushScriptMeta , String>
-		loadedSimpleBrushScripts = new CSCHashMap<>(13) ,
-		loadedModifyingBrushScripts = new CSCHashMap<>(13) ,
-		loadedSelectingBrushScripts = new CSCHashMap<>(13);
+		loadedSimpleBrushScripts = new CSCHashMap<>(DEFAULT_HASH_MAP_SIZE) ,
+		loadedModifyingBrushScripts = new CSCHashMap<>(DEFAULT_HASH_MAP_SIZE) ,
+		loadedSelectingBrushScripts = new CSCHashMap<>(DEFAULT_HASH_MAP_SIZE);
 	
 	private final AnimationPanel animationPanel;
 	
