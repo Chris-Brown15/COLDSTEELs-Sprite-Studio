@@ -79,7 +79,7 @@ public final class ByteBufferUtils {
 		return reformat.flip();
 		
 	}
-	
+		
 	private static ByteBuffer reformatToOddChannels(ByteBuffer source, ByteBuffer reformat , int newDesiredChannels) {
 
 		int difference = 4 - newDesiredChannels;
@@ -160,7 +160,7 @@ public final class ByteBufferUtils {
 	 * @param bottomY — a bottom y coordinate
 	 * @param width — width of the region
 	 * @param height — height of the region
-	 * @return Array containing the corrected bottom left coordinate and dimensions.
+	 * @return Container for the corrected bottom left coordinate and dimensions.
 	 */
 	public static CorrectedResult correctifyIndices(Artboard artboard , int leftX , int bottomY , int width , int height) {
 

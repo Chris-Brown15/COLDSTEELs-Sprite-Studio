@@ -93,7 +93,7 @@ class ScriptBrushPythonData implements ShutDown {
 	
 	@Override public void shutDown() {
 
-		if(!isFreed());
+		if(isFreed()) return;
 		
 		//wrap in try because there may not be a shutdown method
 		try(PyCallable shutDown = (PyCallable) brush.getAttr("shutDown")) {

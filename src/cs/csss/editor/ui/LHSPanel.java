@@ -2,12 +2,17 @@ package cs.csss.editor.ui;
 
 import static cs.core.ui.CSUIConstants.*;
 import static cs.csss.ui.utils.UIUtils.toolTip;
+
+import java.util.Arrays;
 import java.util.Iterator;
 
 import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
 import static org.lwjgl.nuklear.Nuklear.nk_propertyi;
 import static org.lwjgl.nuklear.Nuklear.nk_text;
+import static org.lwjgl.nuklear.Nuklear.nk_button_color;
 import org.joml.Vector4f;
+import org.lwjgl.nuklear.NkColor;
+import org.lwjgl.system.MemoryStack;
 
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
@@ -19,12 +24,14 @@ import cs.csss.editor.DebugDisabledException;
 import cs.csss.editor.Editor;
 import cs.csss.editor.brush.CSSSBrush;
 import cs.csss.editor.brush.CSSSModifyingBrush;
+import cs.csss.editor.palette.ColorPalette;
+import cs.csss.engine.ChannelBuffer;
+import cs.csss.engine.ColorPixel;
 import cs.csss.engine.Engine;
-import cs.csss.project.ArtboardPalette.PalettePixel;
+import cs.csss.project.Artboard;
 import cs.csss.project.CSSSProject;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.ui.prefabs.InputBox;
-import cs.core.utils.CSUtils;
 
 /**
  * Left hand side panel. This panel contains buttons and UI elements for modifying artboards.
@@ -34,11 +41,12 @@ public class LHSPanel {
 	private final CSUserInterface ui;
 	private final CSNuklear nuklear;
 	
-	private CSColorPicker color;
+	private CSColorPicker rgbaChooser , rgbChooser;
 	private TwoChannelColorPicker twoDColor; 
 
 	private final Editor editor;
-	private byte[] colorBuffer = new byte[4];
+	private byte[] previousFrameColorBuffer = new byte[4] , currentColorBuffer = new byte[4];
+	private boolean equals;
 	
 	/**
 	 * Creates a left hand side panel.
@@ -61,43 +69,88 @@ public class LHSPanel {
 		
 		Engine.THE_TEMPORAL.onTrue(() -> editor.project() != null , () -> {
 
-			CSDynamicRow threeDColorRow = ui.new CSDynamicRow(200);
-			color = threeDColorRow.new CSColorPicker(editor.project().channelsPerPixel() == 4 ? RGBA : RGB);
-			threeDColorRow.doLayout = () -> channels() >= 3;			
-			
+			CSDynamicRow rgbaColorRow = ui.new CSDynamicRow(200);
+			CSDynamicRow rgbColorRow = ui.new CSDynamicRow(200);
+			rgbaChooser = rgbaColorRow.new CSColorPicker(RGBA);
+			rgbChooser = rgbColorRow.new CSColorPicker(RGB);
 			twoDColor = new TwoChannelColorPicker(nuklear.context());
+			rgbaColorRow.doLayout = () -> channels() == 4;
+			rgbColorRow.doLayout = () -> channels() == 3;
 			twoDColor.doLayout = () -> channels() <= 2;
 			
 			ui.attachedLayout((context , stack) -> {
 				
-				twoDColor.hasAlpha = channels() == 2;
-				twoDColor.layout();
-				colors(colorBuffer);
-
 				int channels = channels();
+				
+				twoDColor.hasAlpha = channels == 2;
+				twoDColor.layout();
+				colors(currentColorBuffer);
+				
 				if(channels >= 3) {
 
 					nk_layout_row_dynamic(context , 20 , channels);
-					nk_text(context , String.format("Red: %d", (short)Byte.toUnsignedInt(colorBuffer[0])) , TEXT_LEFT);
-					nk_text(context , String.format("Green: %d", (short)Byte.toUnsignedInt(colorBuffer[1])) , TEXT_LEFT);
-					nk_text(context , String.format("Blue: %d", (short)Byte.toUnsignedInt(colorBuffer[2])) , TEXT_LEFT);
-					if(channels == 4) nk_text(context , String.format("Alpha: %d", (short)Byte.toUnsignedInt(colorBuffer[3])) , TEXT_LEFT);
-					
+					nk_text(context , String.format("Red: %d", (short)Byte.toUnsignedInt(currentColorBuffer[0])) , TEXT_LEFT);
+					nk_text(context , String.format("Green: %d", (short)Byte.toUnsignedInt(currentColorBuffer[1])) , TEXT_LEFT);
+					nk_text(context , String.format("Blue: %d", (short)Byte.toUnsignedInt(currentColorBuffer[2])) , TEXT_LEFT);
+					if(channels == 4) nk_text(context , String.format("Alpha: %d", (short)Byte.toUnsignedInt(currentColorBuffer[3])) , TEXT_LEFT);
+				
 				}
 				
 			});
 			
-			CSDynamicRow grayRow = ui.new CSDynamicRow(30) ; grayRow.doLayout = () -> channels() >= 1 && channels() <= 2;
-			colorInput("Gray" , 0 , grayRow);
-			colorInput("Alpha" , 1 , grayRow);
-			
+			CSDynamicRow grayRow = ui.new CSDynamicRow(30) ; grayRow.doLayout = () -> channels() == 1 || channels() == 2;
 			CSDynamicRow rgbRow = ui.new CSDynamicRow(30) ; rgbRow.doLayout = () -> channels() >= 3; 
-			CSDynamicRow alphaRow = ui.new CSDynamicRow(30) ; alphaRow.doLayout = () -> channels() == 4;
+			CSDynamicRow alphaRow1 = ui.new CSDynamicRow(30) ; alphaRow1.doLayout = () -> channels() == 4;
+			CSDynamicRow alphaRow2 = ui.new CSDynamicRow(30) ; alphaRow2.doLayout = () -> channels() == 2;
+			colorInput("Gray" , 0 , grayRow);			
+			colorInput("Alpha" , 1 , alphaRow2);
 			colorInput("Red" , 0 , rgbRow);
 			colorInput("Green" , 1 , rgbRow);
 			colorInput("Blue" , 2 , rgbRow);
-			colorInput("Alpha" , 3 , alphaRow);
+			colorInput("Alpha" , 3 , alphaRow1);
+			
+			/*
+			 * Color Palettes
+			 */
 	
+			ui.attachedLayout((context , stack) -> {
+				
+				Artboard currentArtboard = editor.currentArtboard();
+				if(currentArtboard == null) return;
+				
+				Iterator<ColorPalette> generators = ColorPalette.palettes();
+				while(generators.hasNext()) {
+					
+					ColorPalette next = generators.next();
+					
+					if(!next.show()) continue;
+					
+					nk_layout_row_dynamic(context , 20 , 1);
+					nk_text(context , next.name + ":", TEXT_LEFT|TEXT_CENTERED);
+					
+					nk_layout_row_dynamic(context , 30 , 15);					
+					ColorPixel currentColor = new ChannelBuffer(
+						currentColorBuffer[0] , 
+						currentColorBuffer[1] , 
+						currentColorBuffer[2] , 
+						currentColorBuffer[3]
+					);
+					
+					ColorPixel[] pixels;
+					if(!equals) pixels = next.generate(currentColor , editor.project().getChannelsPerPixelOfCurrentLayer());
+					else pixels = next.get();
+					
+					for(ColorPixel x : pixels) if(nk_button_color(context , colorForCurrentChannels(x , stack))) editor.setSelectedColor(x);
+				
+				}
+				
+				nk_layout_row_dynamic(context , 30 , 2);
+				nk_text(context , "Selected Color: " , TEXT_CENTERED|TEXT_LEFT);
+				ColorPixel currentColor = editor.selectedColors();
+				nk_button_color(context , colorForCurrentChannels(currentColor , stack));	
+				
+			});
+			
 			Iterator<CSSSBrush> brushes = CSSSBrush.allBrushes();
 			CSSSBrush iter;
 			
@@ -144,13 +197,17 @@ public class LHSPanel {
 							
 				if(editor.currentBrush() instanceof CSSSModifyingBrush) {
 				
-					CSSSModifyingBrush asModifying = (CSSSModifyingBrush) editor.currentBrush();
-					
+					CSSSModifyingBrush asModifying = (CSSSModifyingBrush) editor.currentBrush();					
 					nk_layout_row_dynamic(context , 30 , 1);			 	
 					int maxWidth = editor.currentArtboard() != null ? (editor.currentArtboard().height() / 2) - 1 : 999;				
 					asModifying.radius(nk_propertyi(context , "Brush Radius" , 1 , asModifying.radius() + 1 , maxWidth , 1 , 1 ) - 1);
 					
 				}
+				
+				//set the last frame color value and update the editor if the last frame color doesnt match the current 
+				equals = Arrays.equals(previousFrameColorBuffer, currentColorBuffer);
+				if(!equals) editor.setSelectedColor(currentColorBuffer[0], currentColorBuffer[1], currentColorBuffer[2], currentColorBuffer[3]);
+				for(int i = 0 ; i < previousFrameColorBuffer.length ; i++) previousFrameColorBuffer[i] = currentColorBuffer[i];
 				
 			});
 				
@@ -161,7 +218,7 @@ public class LHSPanel {
 			CSDynamicRow debugProjectRow = ui.new CSDynamicRow();
 			
 			debugProjectRow.new CSButton("add debug proj" , () -> {
-				
+
 				try {
 
 					editor.requestDebugProject();
@@ -190,11 +247,11 @@ public class LHSPanel {
 		
 		CSButton button = layout.new CSButton("Input " + color , () -> {
 			
-			new InputBox(nuklear , "Input " + color + " Value As Hex" , .4f , 0.4f , 3 , CSNuklear.HEX_FILTER , res -> {
+			new InputBox(nuklear , "Input " + color + " Value" , .4f , 0.4f , 4 , CSNuklear.DECIMAL_FILTER , res -> {
 				
 				if(res.length() == 0) return;
 				
-				int value = CSUtils.parseHexInt(res, 0 , res.length());
+				int value = Integer.parseInt(res);
 				
 				if(channels() < 3) { 
 					
@@ -205,7 +262,7 @@ public class LHSPanel {
 					
 					byte[] colors = colors();
 					colors[index] = (byte) value;					
-					this.color.color(colors[0], colors[1], colors[2], channels() == 4 ? colors[3] : (byte)0xff);
+					this.rgbPicker().color(colors[0], colors[1], colors[2], channels() == 4 ? colors[3] : (byte)0xff);
 					
 				}				
 				
@@ -228,7 +285,7 @@ public class LHSPanel {
 				
 		if(channels() > 2) {
 			
-			Vector4f colorVector = color.color();
+			Vector4f colorVector = rgbPicker().color();
 			for(int i = 0 ; i < colors.length ; i++) colors[i] = (byte) (colorVector.get(i) * 255);
 			return colors;
 			
@@ -258,14 +315,20 @@ public class LHSPanel {
 	 * 
 	 * @param pixel — a new color  
 	 */
-	public void setColor(PalettePixel pixel) {
+	public void setColor(ColorPixel pixel) {
 		
 		if(channels() <= 2) {
 
-			twoDColor.gray = (short) Byte.toUnsignedInt(pixel.red());
-			if(channels() == 2) twoDColor.alpha = (short) Byte.toUnsignedInt(pixel.green());
+			twoDColor.gray = (short) Byte.toUnsignedInt(pixel.r());
+			if(channels() == 2) twoDColor.alpha = (short) Byte.toUnsignedInt(pixel.g());
 			
-		} else color.color(pixel.red(), pixel.green(), pixel.blue(), pixel.alpha());
+		} else rgbPicker().color(pixel.r(), pixel.g(), pixel.b(), pixel.a());
+		
+	}
+	
+	private CSColorPicker rgbPicker() {
+		
+		return channels() == 4 ? rgbaChooser : rgbChooser;
 		
 	}
 	
@@ -279,6 +342,21 @@ public class LHSPanel {
 		
 		return editor.project().getChannelsPerPixelOfCurrentLayer();
 		
+	}
+	
+	private NkColor colorForCurrentChannels(ColorPixel source , MemoryStack stack) {
+		
+		int channels = channels();
+		byte max = (byte) 0xff;
+		return switch(channels) {
+			case 1 -> NkColor.malloc(stack).set(source.r() , source.r() , source.r() , max);
+			case 2 -> NkColor.malloc(stack).set(source.r() , source.r() , source.r() , source.a());
+			case 3 -> NkColor.malloc(stack).set(source.r() , source.g() , source.b() , max);
+			case 4 -> NkColor.malloc(stack).set(source.r() , source.g() , source.b() , source.a());
+			default -> throw new IllegalArgumentException("Unexpected value: " + channels);
+		
+		};
+				
 	}
 
 }

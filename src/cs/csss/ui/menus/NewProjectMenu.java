@@ -57,26 +57,23 @@ public class NewProjectMenu {
 	 */
 	public NewProjectMenu(final CSNuklear nuklear) {
 
-		this.ui = nuklear.new CSUserInterface("New Project" , 0.5f - (0.33f / 2) , 0.5f - (0.35f / 2) , 0.33f , 0.35f);
+		this.ui = nuklear.new CSUserInterface("New Project" , 0.5f - (0.33f / 2) , 0.5f - (0.245f / 2) , 0.33f , 0.245f);
 		ui.options = UI_TITLED|UI_BORDERED;
 
-		ui.new CSDynamicRow(20).new CSText("Select Number of Channels:");
-		CSDynamicRow channelsSelector = ui.new CSDynamicRow();
-		CSRadio 
-			oneChannel = channelsSelector.new CSRadio("Grayscale" , false , () -> channelsPerPixel = 1) ,
-			twoChannels = channelsSelector.new CSRadio("Grayscale + Alpha" , false , () -> channelsPerPixel = 2) ,
-			threeChannels = channelsSelector.new CSRadio("RGB" , false , () -> channelsPerPixel = 3) ,
-			fourChannels = channelsSelector.new CSRadio("RGB + Alpha" , true , () -> channelsPerPixel = 4)
-		;
+		CSDynamicRow nameRow = ui.new CSDynamicRow(30);
+		nameRow.new CSText("Project Name:" , TEXT_CENTERED|TEXT_LEFT);
+		textInput = nameRow.new CSTextEditor(100);
+		
+		ui.new CSDynamicRow(20).new CSText("Select Number of Channels:" , TEXT_CENTERED|TEXT_LEFT);		
+		CSRadio oneChannel = ui.new CSDynamicRow(25).new CSRadio("Grayscale" , false , () -> channelsPerPixel = 1);
+		CSRadio twoChannels = ui.new CSDynamicRow(25).new CSRadio("Grayscale + Alpha" , false , () -> channelsPerPixel = 2);
+		CSRadio threeChannels = ui.new CSDynamicRow(25).new CSRadio("RGB" , false , () -> channelsPerPixel = 3);
+		CSRadio fourChannels = ui.new CSDynamicRow(25).new CSRadio("RGB + Alpha" , true , () -> channelsPerPixel = 4);
 		
 		channelsPerPixel = 4;
 		
 		CSRadio.groupAll(oneChannel , twoChannels , threeChannels , fourChannels);
 		
-		CSDynamicRow nameRow = ui.new CSDynamicRow();
-		nameRow.new CSText("Project Name:");
-		textInput = nameRow.new CSTextEditor(100);
-
 	 	ui.attachedLayout((context , stack) -> {
 	 		
 	 		for(String x : existingProjects) if(x.equals(textInput.toString())) {

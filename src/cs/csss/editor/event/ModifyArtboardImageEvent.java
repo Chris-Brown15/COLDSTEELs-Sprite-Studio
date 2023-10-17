@@ -1,10 +1,10 @@
 package cs.csss.editor.event;
 
 import cs.csss.annotation.RenderThreadOnly;
+import cs.csss.engine.ColorPixel;
 import cs.csss.project.Artboard;
 import cs.csss.project.Layer;
 import cs.csss.project.LayerPixel;
-import cs.csss.project.ArtboardPalette.PalettePixel;
 import cs.csss.project.IndexPixel;
 
 /**
@@ -24,7 +24,7 @@ import cs.csss.project.IndexPixel;
 		height
 	;
 	
-	private final PalettePixel color;
+	private final ColorPixel color;
 	
 	private final IndexPixel[][] regionPreviousIndices;
 	private final LayerPixel[][] regionPreviousLayerMods;
@@ -39,7 +39,7 @@ import cs.csss.project.IndexPixel;
 	 * @param height — height of a region
 	 * @param color — color to put in the region
 	 */
-	public ModifyArtboardImageEvent(Artboard artboard , int xIndex , int yIndex , int width , int height , PalettePixel color) {
+	public ModifyArtboardImageEvent(Artboard artboard , int xIndex , int yIndex , int width , int height , ColorPixel color) {
 
 		super(true , false);
 

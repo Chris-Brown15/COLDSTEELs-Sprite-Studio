@@ -67,7 +67,7 @@ public class Logging {
 		
 		loggingThread.start();
 		
-		sysout("Version " , Engine.VERSION_STRING);
+		sysout(String.format("Version: %s" , Engine.VERSION_STRING));
 		
 	}
 	

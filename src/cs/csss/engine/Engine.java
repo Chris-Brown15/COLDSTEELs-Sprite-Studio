@@ -44,6 +44,7 @@ import cs.core.ui.CSNuklear.CSNuklearRender;
 import cs.core.ui.prefabs.InputBox;
 import cs.core.utils.CSRefInt;
 import cs.core.utils.CSUtils;
+import cs.core.utils.Lambda;
 import cs.core.utils.ShutDown;
 import cs.core.utils.Timer;
 import cs.core.utils.exceptions.RequirementFailedException;
@@ -70,6 +71,7 @@ import cs.csss.project.Artboard;
 import cs.csss.project.CSSSProject;
 import cs.csss.project.VisualLayer;
 import cs.csss.project.io.CTSPFile;
+import cs.csss.project.io.ImageImporter;
 import cs.csss.project.io.ProjectExporterUI;
 import cs.csss.ui.menus.VectorTextMenu;
 import cs.csss.ui.menus.LoadProjectMenu;
@@ -252,7 +254,7 @@ public final class Engine implements ShutDown {
 		
 		CSNuklearRender.BUFFER_INITIAL_SIZE(8 * 1024);
 		UIUtils.setFontWidthGetter(display.nuklear.font().width());
-		
+				
 		initializeCamera();
 
 		nanoVG = display.renderer.make(() -> new NanoVG(display.window , camera , true)).get();
@@ -269,7 +271,8 @@ public final class Engine implements ShutDown {
 		setOnScroll();	
 		setOnMouseInput();		
 		setOnFileDrop();
-
+		setOnIconify();
+		
 		enqueueRender();	
 		
 		CSSSException.registerTheEngine(this);
@@ -1188,14 +1191,34 @@ public final class Engine implements ShutDown {
 			
 			for(String x : files) {
 				
-				File asFile = new File(x);				
-				if(asFile.exists() && asFile.isDirectory()) { 
+				File asFile = new File(x);
+				if(asFile.exists()) {
 					
-					THE_TEMPORAL.onTrue(() -> !currentlyRendering() , () -> ProjectExporterUI.registerExportLocation(x));
+					if(asFile.isDirectory()) {
+						
+						THE_TEMPORAL.onTrue(() -> !currentlyRendering() , () -> ProjectExporterUI.registerExportLocation(x));
+						
+					} else if(currentProject != null && (x.endsWith(".png") /* TODO: || x.endsWith(".jpg") */|| x.endsWith(".bmp"))) {
+						
+						ImageImporter.registerNewImportFilePaths(x);
+						
+					}
 					
 				}
 				
 			}
+			
+			if(currentProject != null) importSelectedFiles();
+			
+		});
+		
+	}
+	
+	private void setOnIconify() {
+		
+		display.window.onIconify(isIconified -> {
+			
+			if(isIconified) editor.animationPanel().hide();
 			
 		});
 		
@@ -1278,6 +1301,28 @@ public final class Engine implements ShutDown {
 		
 	}
 		
+	public void importSelectedFiles() {
+		
+		ImageImporter.forEachImportPath(x -> {
+			
+			File asFile = new File(x);
+			String name = asFile.getName();
+			ImageImporter importer = new ImageImporter(x , currentProject.channelsPerPixel());
+			display.renderer.post(() -> {
+				
+				Artboard newArtboard = currentProject.createArtboard(name, importer.width(), importer.height() , false);
+				importer.copyToArtboard(newArtboard);
+				importer.shutDown();
+				
+			});
+			
+		});
+		
+		//will happen after all the render events are posted
+		display.renderer.post(() -> ImageImporter.clearRegisteredImportFilePaths());
+		
+	}
+	
 	private void initializeNanoVGFonts() {
 		
 		CSFolder fonts = CSFolder.getRoot("assets").getOrCreateSubdirectory("fonts");
@@ -1301,29 +1346,28 @@ public final class Engine implements ShutDown {
 		
 	@Override public void shutDown() {
 		
-		Await writeFiles = THE_THREADS.async(() -> {
-			
-			settings.write(this);
-			
-		});
+		Await writeFiles = THE_THREADS.async(() -> settings.write(this));
 		
-		nanoVG.shutDown();
-		
-		editor.shutDown();
-		
-		display.renderer.post(() -> CSJEP.interpreter().shutDown());
-		CSJEP.interpreter().shutDown();
-		
-		display.window.detachContext();
-		display.window.attachContext();
+		display.renderer.post(() -> debugLoggedShutDown(() -> CSJEP.interpreter().shutDown(), "Renderer Python Interpreter"));
 
-		if(CSSSSelectingBrush.render != null) CSSSSelectingBrush.render.shutDown();
-		if(currentProject != null) currentProject.shutDown();
+		debugLoggedShutDown(nanoVG::shutDown, "NanoVG");
+		debugLoggedShutDown(editor::shutDown, "Editor");
+				
+		debugLoggedShutDown(() -> CSJEP.interpreter().shutDown(), "Main Python Interpreter");
+				
+		display.window.detachContext();
+		sysDebug("Detached render context.");
+		display.window.attachContext();
+		sysDebug("Attached render context.");
+
+		if(CSSSSelectingBrush.render != null) debugLoggedShutDown(() -> CSSSSelectingBrush.render.shutDown(), "Selecting Brush Render");
+		if(currentProject != null) debugLoggedShutDown(currentProject::shutDown, "Project");
 		
 		if(!display.isFreed()) { 
 
-			display.window.detachContext();			
-			display.shutDown();
+			display.window.detachContext();
+			sysDebug("Detached context.");
+			debugLoggedShutDown(display::shutDown, "Display");
 						
 		}
 		
@@ -1334,6 +1378,14 @@ public final class Engine implements ShutDown {
 	@Override public boolean isFreed() {
 		
 		return display.isFreed();
+		
+	}
+	
+	private void debugLoggedShutDown(Lambda code , String shutDownName) {
+		
+		sysDebug("Shutting down " + shutDownName + "...");
+		code.invoke();
+		sysDebug(shutDownName + " shut down.");
 		
 	}
 	

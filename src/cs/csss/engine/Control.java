@@ -62,8 +62,11 @@ public final class Control {
 			"Moves the selection area if one is present." , 
 			GLFW_MOUSE_BUTTON_RIGHT , 
 			false
-		)
-	;
+		) ,
+		MOVE_OBJECT_UP = new Control("Move Object Up" , "Moves an object up." , GLFW_KEY_UP , true) ,
+		MOVE_OBJECT_DOWN = new Control("Move Object Down" , "Moves an object down." , GLFW_KEY_DOWN , true) ,
+		MOVE_OBJECT_LEFT = new Control("Move Object Left" , "Moves an object left." , GLFW_KEY_LEFT , true) ,
+		MOVE_OBJECT_RIGHT = new Control("Move Object Right" , "Moves an object right." , GLFW_KEY_RIGHT , true);
 	
 	/**
 	 * Sets the callback to invoke to determine whether a key is pressed or not.

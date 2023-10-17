@@ -15,8 +15,6 @@ import cs.csss.project.CSSSProject;
  */
 public class NewVisualLayerMenu {
 
-	private int channelsPerPixel = -1;
-
 	private volatile boolean isFinished = false;
 	private final Lambda onFinish;
 	
@@ -32,7 +30,7 @@ public class NewVisualLayerMenu {
  	 */
 	public NewVisualLayerMenu(CSSSProject project , CSNuklear nuklear) {
 
-		CSUserInterface ui = nuklear.new CSUserInterface("New Visual Layer" , 0.5f - (0.33f / 2) , 0.5f - (0.46f / 2) , 0.33f , 0.46f);
+		CSUserInterface ui = nuklear.new CSUserInterface("New Visual Layer" , 0.5f - (0.33f / 2) , 0.5f - (0.12f / 2) , 0.33f , 0.12f);
 		ui.options = UI_TITLED|UI_BORDERED;
 		
 		onFinish = () -> {
@@ -45,19 +43,8 @@ public class NewVisualLayerMenu {
 		
 		this.project = project;
 
-		channelsPerPixel = project.channelsPerPixel();
-		
-		CSDynamicRow bpcDisplay = ui.new CSDynamicRow();
-		bpcDisplay.new CSText("Bytes Per Channel");
-
-		CSDynamicRow cppDisplay = ui.new CSDynamicRow();
-		cppDisplay.new CSText("Channels per Pixel");
-		cppDisplay.new CSText(() -> "" + channelsPerPixel);
-
-		ui.new CSDynamicRow(40).new CSText("Default values for the channels of this layer:");
-		
 		CSDynamicRow nameRow = ui.new CSDynamicRow();
-		nameRow.new CSText("Layer Name");
+		nameRow.new CSText("Layer Name", TEXT_CENTERED|TEXT_LEFT);
 		nameInput = nameRow.new CSTextEditor(100);
 		
 		CSDynamicRow finishAndCancelRow = ui.new CSDynamicRow();

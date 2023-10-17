@@ -1,15 +1,15 @@
 package cs.csss.editor.event;
 
 import cs.csss.editor.Editor;
+import cs.csss.engine.ColorPixel;
 import cs.csss.project.Artboard;
-import cs.csss.project.ArtboardPalette.PalettePixel;
 
 /**
  * Sets the active color in the left hand side panel to some color.
  */
 public class SetActiveColorEvent extends CSSSEvent {
 
-	private final PalettePixel 
+	private final ColorPixel 
 		pixel ,
 		previous;
 	
@@ -22,25 +22,25 @@ public class SetActiveColorEvent extends CSSSEvent {
 	 * @param artboard — an artboard
 	 * @param pixel — a new active color
 	 */
-	public SetActiveColorEvent(final Editor editor , Artboard artboard , final PalettePixel pixel) {
+	public SetActiveColorEvent(final Editor editor , Artboard artboard , final ColorPixel pixel) {
 
 		super(true , false);
 
 		this.pixel = pixel;
-		this.previous = editor.selectedColors(artboard);
+		this.previous = editor.selectedColors();
 		this.editor = editor;
 		
 	}
 
 	@Override public void _do() {
 
-		editor.setSelectedColor(pixel);
+		editor.setLHSSelectedColor(pixel);
 		
 	}
 
 	@Override public void undo() {
 		
-		editor.setSelectedColor(previous);
+		editor.setLHSSelectedColor(previous);
 		
 	}
 

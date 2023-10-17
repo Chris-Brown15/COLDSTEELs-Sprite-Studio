@@ -33,6 +33,20 @@ import cs.csss.project.LayerPixel;
 		if(render != null) render.draw();
 		
 	}
+
+	/**
+	 * Resets the render of the of the current selection area. 
+	 */
+	public static void resetRender() {
+		
+		if(render != null) { 
+
+			render.shutDown();
+			render = null;
+			
+		}
+		
+	}
 	
 	protected final SelectionAreaBounder selectionBounder = new SelectionAreaBounder();
 	
@@ -135,5 +149,5 @@ import cs.csss.project.LayerPixel;
 		if(Control.MOVE_SELECTION_AREA.pressed()) updateBounder(x, y);
 		
 	}
-	
+
 }

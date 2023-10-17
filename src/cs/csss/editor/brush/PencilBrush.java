@@ -4,11 +4,11 @@ import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
 import cs.csss.editor.event.CSSSEvent;
 import cs.csss.editor.event.ModifyArtboardImageEvent;
+import cs.csss.engine.ColorPixel;
 import cs.csss.engine.LookupPixel;
 import cs.csss.project.Artboard;
 import cs.csss.project.Layer;
 import cs.csss.project.LayerPixel;
-import cs.csss.project.ArtboardPalette.PalettePixel;
 
 /**
  * Creates events that modify singular regions of the artboard.
@@ -23,11 +23,11 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 
 	@Override public CSSSEvent use(Artboard artboard, Editor editor, int xIndex, int yIndex) {
 		
-		if(radius == 0) return new ModifyArtboardImageEvent(artboard, xIndex, yIndex, 1, 1 , editor.selectedColors(artboard));
+		if(radius == 0) return new ModifyArtboardImageEvent(artboard, xIndex, yIndex, 1, 1 , editor.selectedColors());
 
 		int[] region = centerAroundRadius(xIndex, yIndex , artboard.width() , artboard.height());
 		
-		return new ModifyArtboardImageEvent(artboard , region[0] , region[1] , region[2] , region[3] , editor.selectedColors(artboard));
+		return new ModifyArtboardImageEvent(artboard , region[0] , region[1] , region[2] , region[3] , editor.selectedColors());
 		
 	}
 
@@ -43,7 +43,7 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 		//modification.
 		int[] region = centerAroundRadius(xIndex, yIndex , artboard.width() , artboard.height());
 		
-		PalettePixel editorActive = editor.selectedColors(artboard);
+		ColorPixel editorActive = editor.selectedColors();
 		LookupPixel indices = artboard.putInPalette(editorActive);
 		
 		Layer activeLayer = artboard.activeLayer();

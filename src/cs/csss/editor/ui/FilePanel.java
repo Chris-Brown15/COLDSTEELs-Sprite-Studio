@@ -2,6 +2,12 @@ package cs.csss.editor.ui;
 
 import static cs.core.utils.CSFileUtils.readAllCharacters;
 
+import static cs.csss.ui.utils.UIUtils.toByte;
+
+import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
+import static org.lwjgl.nuklear.Nuklear.nk_checkbox_text;
+
+import java.util.Iterator;
 import java.util.function.BooleanSupplier;
 
 import static cs.core.ui.CSUIConstants.*;
@@ -12,8 +18,10 @@ import cs.core.ui.CSNuklear.CSUI.CSLayout.CSMenuBar;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSMenuBar.CSMenu;
 import cs.csss.editor.DebugDisabledException;
 import cs.csss.editor.Editor;
+import cs.csss.editor.palette.ColorPalette;
 import cs.csss.engine.CSSSException;
 import cs.csss.engine.Engine;
+import cs.csss.misc.graphcs.memory.GPUMemoryViewer;
 import cs.csss.project.ArtboardPalette;
 import cs.csss.project.CSSSProject;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
@@ -40,17 +48,17 @@ public class FilePanel {
 		ui.options |= UI_TITLED|UI_BORDERED|UI_UNSCROLLABLE;
 		
 		CSMenuBar menuBar = ui.new CSDynamicRow().new CSMenuBar(); 
-		CSMenu 
-			fileMenu = menuBar.new CSMenu("File" , 100 , 400) ,
-			editMenu = menuBar.new CSMenu("Edit" , 200 , 400) ,
-			projectMenu = menuBar.new CSMenu("Project" , 230 , 400) ,
+		 
+		CSMenu fileMenu = menuBar.new CSMenu("File" , 100 , 400),
+			editMenu = menuBar.new CSMenu("Edit" , 200 , 400),
+			projectMenu = menuBar.new CSMenu("Project" , 230 , 400),
 			optionsMenu = menuBar.new CSMenu("Options" , 349 , 400);
 						
 		CSDynamicRow saveButtonRow = fileMenu.new CSDynamicRow() ; saveButtonRow.new CSButton("Save" , editor::saveProject);
 		CSDynamicRow saveAsButtonRow = fileMenu.new CSDynamicRow() ; saveAsButtonRow.new CSButton("Save As" , editor::startProjectSaveAs);
 		fileMenu.new CSDynamicRow().new CSButton("Load" , editor::startLoadProject);
 		
-		CSDynamicRow exportButtonRow = fileMenu.new CSDynamicRow() ; exportButtonRow.new CSButton("Export" , editor::startExport);
+		CSDynamicRow exportButtonRow = fileMenu.new CSDynamicRow() ; exportButtonRow.new CSButton("Export" , editor::startExport);		
 		fileMenu.new CSDynamicRow().new CSButton("Exit" , editor::exit);
 		
 		saveButtonRow.doLayout = () -> editor.project() != null;
@@ -62,22 +70,34 @@ public class FilePanel {
 //		editMenu.new CSDynamicRow().new CSButton("Add Text" , editor::startAddText);
 		editMenu.new CSDynamicRow().new CSButton("Run Artboard Script" , editor::startRunArtboardScript);
 		editMenu.new CSDynamicRow().new CSButton("Run Project Script" , editor::startRunProjectScript);
+		editMenu.new CSDynamicRow().new CSButton("Run Palette Script" , editor::startRunPaletteScript);
+		editMenu.attachedLayout((context , stack) -> {
+			
+			Iterator<ColorPalette> palettes = ColorPalette.palettes();
+			while(palettes.hasNext()) {
+				
+				ColorPalette next = palettes.next();
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_checkbox_text(context , "Show " + next.name , toByte(stack , next.show()))) next.toggleShow();
+				
+			}
+			
+		});
 				
 		projectMenu.new CSDynamicRow().new CSButton("New Project" , editor::startNewProject);
 		
 		BooleanSupplier doLayoutProjectButtons = () -> editor.project() != null;
 		
-		CSDynamicRow
+		CSDynamicRow addArtboardRow = projectMenu.new CSDynamicRow() , 
 			addAnimationRow = projectMenu.new CSDynamicRow() ,
 			addVisualLayerRow = projectMenu.new CSDynamicRow() ,
 			addNonVisualLayerRow = projectMenu.new CSDynamicRow() ,
-			addArtboardRow = projectMenu.new CSDynamicRow() ,
 			toggleAnimationPanelRow = projectMenu.new CSDynamicRow();
 		
+		addArtboardRow.new CSButton("Add Artboard" , editor::startNewArtboard);
 		addAnimationRow.new CSButton("Add Animation" , editor::startNewAnimation);
 		addVisualLayerRow.new CSButton("Add Visual Layer" , editor::startNewVisualLayer);
 		addNonVisualLayerRow.new CSButton("Add Nonvisual Layer" , editor::startNewNonVisualLayer);
-		addArtboardRow.new CSButton("Add Artboard" , editor::startNewArtboard);
 		toggleAnimationPanelRow.new CSCheckBox("Animation Panel" , false , editor::toggleAnimationPanel);
 		
 		addAnimationRow.doLayout = doLayoutProjectButtons;
@@ -129,8 +149,8 @@ public class FilePanel {
 				
 			});
 			
-			CSDynamicRow paletteRow1 = debugMenu.new CSDynamicRow();
-			CSDynamicRow paletteRow2 = debugMenu.new CSDynamicRow();
+			CSDynamicRow paletteRow1 = debugMenu.new CSDynamicRow(20);
+			CSDynamicRow paletteRow2 = debugMenu.new CSDynamicRow(20);
 			paletteRow1.doLayout = () -> editor.project() != null;
 			paletteRow2.doLayout = paletteRow1.doLayout;
 			paletteRow1.new CSText(() -> {
@@ -147,6 +167,21 @@ public class FilePanel {
 					", " + 
 					editor.project().visualPalette().currentRow();
 			});
+			
+			int conversion = 1024 * 1024;
+			CSDynamicRow memoryRow1 = debugMenu.new CSDynamicRow(20);
+			memoryRow1.new CSText(() -> String.format(
+				"Heap Size: %d, Available: %d" ,
+				Runtime.getRuntime().totalMemory() / conversion , 
+				Runtime.getRuntime().freeMemory() / conversion
+			));
+			
+			CSDynamicRow memoryRow2 = debugMenu.new CSDynamicRow(20);
+			memoryRow2.new CSText(() -> String.format(
+				"VRAM: %d, Remaining: %d", 
+				editor.rendererMake(GPUMemoryViewer::getTotalAvailableVRAM).get() ,
+				editor.rendererMake(GPUMemoryViewer::getCurrentAvailableVRAM).get()
+			));
 			
 			debugMenu.new CSDynamicRow().new CSButton("Toggle Transparent Background" , () -> {
 				

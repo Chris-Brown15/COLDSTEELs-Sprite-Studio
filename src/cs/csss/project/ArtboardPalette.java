@@ -20,15 +20,15 @@ import org.lwjgl.system.MemoryStack;
 
 import cs.core.graphics.CSTexture;
 import cs.csss.annotation.RenderThreadOnly;
+import cs.csss.engine.ColorPixel;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.misc.utils.FlexableGraphic;
 import cs.csss.project.io.ExportFileTypes;
 
 /**
- * Extender of {@code CSTexture} used extensively as a container of color values. The indices of pixels in the artboard are the values 
- * pixels of {@code ArtboardTexture} will contain, which are used in shaders to lookup and display the correct color. Each 
- * {@code ArtboardPalette} has a {@link ArtboardPalette#defaultColor defaultColor} which is always stored at the very last position in the
- * palette.
+ * Implementation of {@code CSTexture} used extensively as a container of color values. The indices of pixels in the artboard are the values 
+ * pixels of {@link cs.csss.project.IndexTexture IndexTexture} will contain, which are used in shaders to lookup and display the correct 
+ * color. 
  * 
  * @author Chris Brown
  *
@@ -38,24 +38,13 @@ import cs.csss.project.io.ExportFileTypes;
 	/**
 	 * OpenGL constant for the channel type for GL functions.
 	 */
-	public static final int glChannelType = GL_UNSIGNED_BYTE;
+	public static final int glChannelType = GL_UNSIGNED_BYTE;	
 	
-	short
-		currentRow = 0 ,
-		currentCol = 0;
+	short currentRow = 0 , currentCol = 0;	
 	
-	final int channelsPerPixel;
+	final int channelsPerPixel;	
 	
-	private int	
-		glDataFormat ,
-		pixelSizeBytes ,
-		paletteWidth = 256 ,
-		paletteHeight = 256;
-
-	/**
-	 * Notates how many additional rows the palette gains when a resize occurs.
-	 */
-	private int resizeInterval = 16;
+	private int	glDataFormat , pixelSizeBytes , paletteWidth = 256 , paletteHeight = 256;
 	
 	private volatile ByteBuffer paletteMemory;
 	
@@ -63,9 +52,7 @@ import cs.csss.project.io.ExportFileTypes;
 	 * For these arrays, if there is an alpha channel available, it will contain either -1 or 0 depending upon if the background is 
 	 * visible. In the case there is no alpha value, the background will always be visible
 	 */
-	final byte[] 
-		darkerCheckeredBackground ,
-		lighterCheckeredBackground;
+	final byte[] darkerCheckeredBackground , lighterCheckeredBackground;
 	
 	/**
 	 * Creates an artboard palette.
@@ -122,13 +109,21 @@ import cs.csss.project.io.ExportFileTypes;
 		}
 		
 		if(currentRow == paletteHeight) {
-
-			paletteHeight += resizeInterval;
-			resizeInterval <<= 1;
 			
-			resizeAndCopy(paletteWidth , paletteHeight);
+			syserr("Too many colors have been added to this artboard, resetting palette.");
+			currentRow = 0;
+			currentCol = 3;
 			
 		}
+		
+//		if(currentRow == paletteHeight) {
+//
+//			paletteHeight += resizeInterval;
+//			resizeInterval <<= 1;
+//			
+//			resizeAndCopy(paletteWidth , paletteHeight);
+//			
+//		}
 		
 	}
 	
@@ -401,14 +396,13 @@ import cs.csss.project.io.ExportFileTypes;
 	 * @author Chris Brown
 	 *
 	 */
-	public class PalettePixel implements Comparable<PalettePixel> {
+	public class PalettePixel implements ColorPixel , Comparable<ColorPixel> {
 
 		private byte
 			red ,
 			green ,
 			blue ,
-			alpha
-		;
+			alpha;
 		
 		PalettePixel(ByteBuffer paletteBuffer , int pixelXIndex , int pixelYIndex) {
 						
@@ -419,6 +413,12 @@ import cs.csss.project.io.ExportFileTypes;
 			
 			for(int i = 0 ; i < channelsPerPixel ; i++) setByIndex(slice.get() , i);
 					
+		}
+		
+		PalettePixel(ByteBuffer source) {
+			
+			for(int i = 0 ; i < channelsPerPixel ; i++) setByIndex(source.get(), i);
+			
 		}
 		
 		PalettePixel(byte[] channelValues) {
@@ -436,6 +436,12 @@ import cs.csss.project.io.ExportFileTypes;
 			
 		}
 		
+		PalettePixel(ColorPixel other) {
+			
+			this(other.r() , other.g() , other.b() , other.a());
+			
+		}
+		
 		/**
 		 * Stores this pixel in {@code buffer}. 
 		 * 
@@ -449,58 +455,6 @@ import cs.csss.project.io.ExportFileTypes;
 			
 		}
 		
-		@Override public int compareTo(PalettePixel o) {
-
-			if(o == null) return -1;			
-			for(int i = 0 ; i < channelsPerPixel ; i++) if(o.index(i) != this.index(i)) return -1;			
-			return 0;
-			
-		}
-		
-		/**
-		 * Returns the red channel of this pixel.
-		 * 
-		 * @return The red channel of this pixel.
-		 */
-		public byte red() {
-			
-			return red;
-			
-		}
-
-		/**
-		 * Returns the green channel of this pixel.
-		 * 
-		 * @return The green channel of this pixel.
-		 */
-		public byte green() {
-			
-			return green;
-			
-		}
-
-		/**
-		 * Returns the blue channel of this pixel.
-		 * 
-		 * @return The blue channel of this pixel.
-		 */
-		public byte blue() {
-			
-			return blue;
-			
-		}
-
-		/**
-		 * Returns the alpha channel of this pixel.
-		 * 
-		 * @return The alpha channel of this pixel.
-		 */
-		public byte alpha() {
-			
-			return alpha;
-			
-		}
-
 		/**
 		 * Returns the color channel corresponding to {@code index}.
 		 * 
@@ -549,6 +503,54 @@ import cs.csss.project.io.ExportFileTypes;
 			asString.append("]");
 		
 			return asString.toString();
+			
+		}
+
+		@Override public byte r() {
+
+			return red;
+			
+		}
+
+		@Override public byte g() {
+
+			return green;
+			
+		}
+
+		@Override public byte b() {
+
+			return blue;
+			
+		}
+
+		@Override public byte a() {
+
+			return alpha;
+			
+		}
+
+		@Override public short ur() {
+
+			return (short)Byte.toUnsignedInt(red);
+			
+		}
+
+		@Override public short ug() {
+
+			return (short)Byte.toUnsignedInt(green);
+			
+		}
+
+		@Override public short ub() {
+
+			return (short)Byte.toUnsignedInt(blue);
+			
+		}
+
+		@Override public short ua() {
+
+			return (short)Byte.toUnsignedInt(alpha);
 			
 		}
 

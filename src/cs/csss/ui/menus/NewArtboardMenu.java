@@ -36,7 +36,7 @@ public class NewArtboardMenu {
 	 */
 	public NewArtboardMenu(CSSSProject currentProject , CSNuklear nuklear) {
 		
-		ui = nuklear.new CSUserInterface("New Artboard" , 0.5f - (0.33f / 2) , 0.5f - (0.25f / 2) , 0.33f , 0.25f);
+		ui = nuklear.new CSUserInterface("New Artboard" , 0.5f - (0.33f / 2) , 0.5f - (0.16f / 2) , 0.33f , 0.16f);
 		ui.options |= UI_TITLED|UI_BORDERED;
 		
 		onFinish = () -> {

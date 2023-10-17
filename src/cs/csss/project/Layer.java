@@ -11,7 +11,6 @@ import static org.lwjgl.util.lz4.LZ4.LZ4_decompress_safe;
 import static cs.core.utils.CSUtils.require;
 
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -34,8 +33,6 @@ import cs.csss.annotation.Invalidated;
  */
 public abstract class Layer {
 
-	static final LinkedList<String> invalidNameContents = new LinkedList<>();
-	
 	/**
 	 * Writes the contents of {@code source} into {@code destination}. Each pixel will occupy two bytes in the destination and for any 
 	 * pixels that are {@code null}, the values {@code (0 , 0)} are written.  

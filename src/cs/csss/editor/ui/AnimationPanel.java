@@ -288,7 +288,7 @@ public class AnimationPanel implements ShutDown {
 		//empty group that will contain the frame of the image.
 		new UIAttachedElement(topPartSections , () -> {
 			
-			nk_group_begin(nuklear.context() , "UNSEEN IDENTIFIER FOR SAFETY" , UI_BORDERED);
+			if(!nk_group_begin(nuklear.context() , "UNSEEN IDENTIFIER FOR SAFETY" , UI_BORDERED)) return;
 			
 			try(MemoryStack stack = MemoryStack.stackPush()) {
 				
@@ -303,9 +303,8 @@ public class AnimationPanel implements ShutDown {
 			}
 			
 			nk_group_end(nuklear.context());
-			
+						
 		});
-
 		
 		CSGroup secondOptionGroup = topPartSections.new CSGroup("Select");
 		secondOptionGroup.ui.options = UI_TITLED|UI_BORDERED;
@@ -366,6 +365,24 @@ public class AnimationPanel implements ShutDown {
 			frameTimeRow.computeValues();
 			
 		}
+		
+	}
+	
+	/**
+	 * Shows the UI element.
+	 */
+	public void show() {
+		
+		show = true;
+		
+	}
+	
+	/**
+	 * Hides the UI element.
+	 */
+	public void hide() {
+		
+		show = false;
 		
 	}
 	

@@ -63,6 +63,34 @@ public final class GPUMemoryViewer {
 				
 	}
 	
+	public static int getCurrentAvailableVRAM() {
+		
+		return switch(currentVendor) {
+		
+		case NVIDIA -> {
+		
+			try(MemoryStack stack = MemoryStack.stackPush()) {
+				
+				IntBuffer result = stack.ints(1);
+				glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX , result);
+				yield result.get() / 1024;
+				
+			}
+			
+		}
+		
+		case ATI -> {
+		
+			yield -1;
+			
+		}
+		
+		default -> -1;
+		
+		};
+		
+	}
+	
 	private GPUMemoryViewer() {}
 	
 }

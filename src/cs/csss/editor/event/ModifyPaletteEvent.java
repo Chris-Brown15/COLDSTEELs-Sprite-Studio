@@ -1,8 +1,8 @@
 package cs.csss.editor.event;
 
 import cs.csss.annotation.RenderThreadOnly;
+import cs.csss.engine.ColorPixel;
 import cs.csss.project.Artboard;
-import cs.csss.project.ArtboardPalette.PalettePixel;
 
 /**
  * Overwrites a palette pixel to a new value. Every index pixel that pointed to that value will display a different color after this.
@@ -13,7 +13,7 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 		xIndex ,
 		yIndex;
 
-	private final PalettePixel 
+	private final ColorPixel 
 		newValue ,
 		oldValue;
 	
@@ -27,7 +27,7 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 	 * @param paletteYIndex — y index of the palette pixel to change
 	 * @param newValue — new color to write in the palette
 	 */
-	public ModifyPaletteEvent(Artboard artboard , int paletteXIndex , int paletteYIndex , PalettePixel newValue) {
+	public ModifyPaletteEvent(Artboard artboard , int paletteXIndex , int paletteYIndex , ColorPixel newValue) {
 		
 		super(true , false);
 		this.artboard = artboard;

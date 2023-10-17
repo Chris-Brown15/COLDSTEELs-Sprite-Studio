@@ -832,7 +832,7 @@ public class CSSSProject implements ShutDown {
 			if(currentArtboard.activeLayer() instanceof VisualLayer) return channelsPerPixel;
 			else return ((NonVisualLayer) currentArtboard.activeLayer()).bytesPerPixel();
 		
-		} else return 4;
+		} else return channelsPerPixel;
 		
 	}
 	
@@ -1064,11 +1064,26 @@ public class CSSSProject implements ShutDown {
 	 * @param name — name of the artboard
 	 * @param width — width of the artboard
 	 * @param height — height of the artboard
-	 * @return The new Artboard
+	 * @return The new Artboard.
 	 */
 	@RenderThreadOnly public Artboard createArtboard(String name , int width , int height) {
 
-		Artboard artboard = createArtboardDontArrange(name , width , height);		
+		return createArtboard(name , width, height , true);
+		
+	}
+	
+	/**
+	 * Creates a new artboard.
+	 * 
+	 * @param name — name of the artboard
+	 * @param width — width of the artboard
+	 * @param height — height of the artboard
+	 * @param setCheckeredBackground — whether to set the checkered background
+	 * @return The new Artboard.
+	 */
+	@RenderThreadOnly public Artboard createArtboard(String name , int width , int height , boolean setCheckeredBackground) {
+
+		Artboard artboard = createArtboardDontArrange(name , width , height , setCheckeredBackground);		
 		arrangeArtboards();
 		return artboard;
 		
@@ -1080,11 +1095,12 @@ public class CSSSProject implements ShutDown {
 	 * @param name — name of the artboard
 	 * @param width — width of the artboard
 	 * @param height — height of the artboard
+	 * @param setCheckeredBackground — whether to set the texture to a checkered background
 	 * @return The new Artboard
 	 */
-	private Artboard createArtboardDontArrange(String name , int width , int height) {
+	private Artboard createArtboardDontArrange(String name , int width , int height , boolean setCheckeredBackground) {
 
-		Artboard newArtboard = new Artboard(name , width , height);
+		Artboard newArtboard = new Artboard(name , width , height , setCheckeredBackground);
 		
 		forEachVisualLayerPrototype(vlP -> {
 			
@@ -1599,7 +1615,7 @@ public class CSSSProject implements ShutDown {
  	
  	private Artboard loadArtboard(ArtboardChunk chunk) {
  		
- 		Artboard newArtboard = createArtboardDontArrange(chunk.name() , chunk.width() , chunk.height());
+ 		Artboard newArtboard = createArtboardDontArrange(chunk.name() , chunk.width() , chunk.height() , true);
  		 		
  		//also set up visual layer ranks here. the order the chunks are found are the ranks the layers are supposed to be in
  		int i = 0;

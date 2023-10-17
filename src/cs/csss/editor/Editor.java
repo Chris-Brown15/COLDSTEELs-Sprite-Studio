@@ -24,6 +24,7 @@ import cs.coreext.python.CSJEP;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.brush.CSSSBrush;
 import cs.csss.editor.brush.CSSSSelectingBrush;
+import cs.csss.editor.brush.Copy_RegionBrush;
 import cs.csss.editor.brush.Delete_RegionBrush;
 import cs.csss.editor.brush.EraserBrush;
 import cs.csss.editor.brush.Eye_DropperBrush;
@@ -38,20 +39,28 @@ import cs.csss.editor.brush.ScriptBrush;
 import cs.csss.editor.brush.SelectingScriptBrush;
 import cs.csss.editor.event.CSSSEvent;
 import cs.csss.editor.event.ShutDownEventEvent;
+import cs.csss.editor.palette.AnalogousPalette;
+import cs.csss.editor.palette.ColorPalette;
+import cs.csss.editor.palette.ComplementaryPalette;
+import cs.csss.editor.palette.MonochromaticPalette;
+import cs.csss.editor.palette.PaletteScriptMeta;
+import cs.csss.editor.palette.ScriptColorPalette;
 import cs.csss.editor.event.RunScriptEvent;
 import cs.csss.editor.ui.AnimationPanel;
 import cs.csss.editor.ui.FilePanel;
 import cs.csss.editor.ui.LHSPanel;
 import cs.csss.editor.ui.RHSPanel;
 import cs.csss.engine.CSSSCamera;
+import cs.csss.engine.ChannelBuffer;
+import cs.csss.engine.ColorPixel;
 import cs.csss.engine.Control;
 import cs.csss.engine.Engine;
 import cs.csss.engine.Logging;
 import cs.csss.misc.files.CSFile;
+import cs.csss.misc.utils.MiscUtils;
 import cs.csss.project.Animation;
 import cs.csss.project.Artboard;
 import cs.csss.project.ArtboardPalette;
-import cs.csss.project.ArtboardPalette.PalettePixel;
 import cs.csss.project.CSSSProject;
 import cs.csss.project.VisualLayer;
 import jep.JepException;
@@ -80,6 +89,7 @@ public class Editor implements ShutDown {
 	static final Delete_RegionBrush theDeleteRegion = new Delete_RegionBrush();
 	static final RotateBrush theRotateBrush = new RotateBrush();
 	static final Scale_RegionBrush theScaleBrush = new Scale_RegionBrush();
+	static final Copy_RegionBrush theCopyBrush = new Copy_RegionBrush();
 	static volatile ScriptBrush theScriptBrush = null;
 	static volatile ModifyingScriptBrush theModifyingScriptBrush = null;
 	static volatile SelectingScriptBrush theSelectingScriptBrush = null;
@@ -159,8 +169,7 @@ public class Editor implements ShutDown {
 	private volatile CSSSBrush currentBrush = thePencilBrush;
 	
 	private ConcurrentLinkedDeque<CSSSEvent> events = new ConcurrentLinkedDeque<>();
-	private UndoRedoStack redos = new UndoRedoStack(DEFAULT_UNDO_REDO_STACK_SIZE);
-	private UndoRedoStack undos = new UndoRedoStack(DEFAULT_UNDO_REDO_STACK_SIZE);
+	private UndoRedoStack redos = new UndoRedoStack(DEFAULT_UNDO_REDO_STACK_SIZE) , undos = new UndoRedoStack(DEFAULT_UNDO_REDO_STACK_SIZE);
 	
 	private volatile CSCHashMap<EventScriptMeta , String> 
 		loadedArtboardScripts = new CSCHashMap<>(DEFAULT_HASH_MAP_SIZE) ,
@@ -171,7 +180,11 @@ public class Editor implements ShutDown {
 		loadedModifyingBrushScripts = new CSCHashMap<>(DEFAULT_HASH_MAP_SIZE) ,
 		loadedSelectingBrushScripts = new CSCHashMap<>(DEFAULT_HASH_MAP_SIZE);
 	
+	private volatile CSCHashMap<PaletteScriptMeta , String> loadedPaletteScripts = new CSCHashMap<>(DEFAULT_HASH_MAP_SIZE);
+	
 	private final AnimationPanel animationPanel;
+	
+	private ChannelBuffer currentColor = new ChannelBuffer();
 	
 	/**
 	 * Creates an editor object. 
@@ -182,7 +195,7 @@ public class Editor implements ShutDown {
 	public Editor(Engine engine , CSDisplay display) {
 		
 		this.engine = engine;
-
+		
 		setCameraMoveRate = engine::cameraMoveRate;
 		getCameraMoveRate = engine::cameraMoveRate;
 
@@ -190,7 +203,11 @@ public class Editor implements ShutDown {
 		new FilePanel(this , display.nuklear);
 		new RHSPanel(this , display.nuklear , engine);
 		animationPanel = new AnimationPanel(this , display.nuklear);
-	
+
+		new MonochromaticPalette(15);
+		new AnalogousPalette(15);
+		new ComplementaryPalette(6);
+		
 	}
 
 	/**
@@ -225,11 +242,7 @@ public class Editor implements ShutDown {
 		}
 
 		CSSSEvent removed = undos.push(event);
-		if(removed != null && removed instanceof ShutDown asShutDown) { 
-			
-			events.add(new ShutDownEventEvent(removed.isRenderEvent , asShutDown));
-			
-		}
+		if(removed != null && removed instanceof ShutDown asShutDown) events.add(new ShutDownEventEvent(removed.isRenderEvent , asShutDown));
 	
 	}
 
@@ -299,7 +312,7 @@ public class Editor implements ShutDown {
 	 */
 	private void updateCurrentBrush() {
 		
-		if(currentBrush != null && currentBrush.stateful) { 
+		if(currentBrush != null && currentBrush.stateful) {
 		
 			CSSSProject project = project();
 			rendererPost(() -> currentBrush.update(project == null ? null : project.currentArtboard() , this)).await();
@@ -396,30 +409,16 @@ public class Editor implements ShutDown {
 	
 	/**
 	 * Returns a {@link cs.csss.project.ArtboardPalette.PalettePixel PalettePixel} containing the colors of the currently selected color in
-	 * the color picker in the left hand side panel.
+	 * the color picker in the left hand side panel or the color chosen from.
 	 * 
-	 * @param artboard — some artboard
 	 * @return A created palette pixel.
 	 */
-	public PalettePixel selectedColors(Artboard artboard) {
+	public ColorPixel selectedColors() {
 		
-		return artboard.createPalettePixel(leftSidePanel.colors());
+		return currentColor; 
 		
 	}
 
-	/**
-	 * Returns a {@link cs.csss.project.ArtboardPalette.PalettePixel PalettePixel} containing the colors of the currently selected color in
-	 * the color picker in the left hand side panel.
-	 * 
-	 * @return A created palette pixel.
-	 * @throws NullPointerException if the current artboard is null.
-	 */
-	public PalettePixel selectedColors() throws NullPointerException { 
-		
-		return currentArtboard().createPalettePixel(leftSidePanel.colors());
-		
-	}
-	
 	/**
 	 * Returns the undo stack's capacity.
 	 * 
@@ -459,10 +458,35 @@ public class Editor implements ShutDown {
 	 * 
 	 * @param pixel — a new color to be selected in the left hand side panel
 	 */
-	public void setSelectedColor(final PalettePixel pixel) {
+	public void setLHSSelectedColor(final ColorPixel pixel) {
 		
 		leftSidePanel.setColor(pixel);
 	
+	}
+	
+	/**
+	 * Sets the color the editor considers to be the current color value.
+	 * 
+	 * @param other — source for the channel values of the pixel now considered to be the selected color
+	 */
+	public void setSelectedColor(ColorPixel other) {
+		
+		setSelectedColor(other.r() , other.g() , other.b() , other.a());
+		
+	}
+	
+	/**
+	 * Sets the color the editor considers to be the current color value.
+	 * 
+	 * @param r — red channel for the new selected color
+	 * @param g — green channel for the new selected color
+	 * @param b — blue channel for the new selected color
+	 * @param a — alpha channel for the new selected color
+	 */
+	public void setSelectedColor(byte r , byte g , byte b , byte a) { 
+		
+		currentColor.set(r, g, b, a);
+		
 	}
 	
 	/**
@@ -704,10 +728,8 @@ public class Editor implements ShutDown {
 	 */
 	public boolean cursorHoveringAnimationFramePanel(int cursorScreenX , int cursorScreenY , int windowHeight) {
 
-		int[] 
-			frameCorner = animationPanel.topLeftPointOfAnimationFrameSlot() ,
-			frameDimensions = animationPanel.dimensionsOfAnimationFrameSlot()
-		;
+		int[] frameCorner = animationPanel.topLeftPointOfAnimationFrameSlot();
+		int[] frameDimensions = animationPanel.dimensionsOfAnimationFrameSlot();
 		
 		//these two steps transform the cursor Y and the frame corner Y so that 0 would be the bottom of the window rather than the top. 
 		frameCorner[1] = windowHeight - frameCorner[1] - frameDimensions[1];
@@ -998,6 +1020,42 @@ public class Editor implements ShutDown {
 	}
 
 	/**
+	 * Creates an UI element for selecting script for a custom palette.
+	 */
+	public void startRunPaletteScript() {
+		
+		engine.startSelectScriptMenu("palettes", file -> {
+			
+			String title = file.name();
+			//already has the given entry, return, only happens in nondebug mode
+			if (loadedPaletteScripts.hasKey(title)) return;
+			
+			PaletteScriptMeta meta = initializeOrGetPaletteScriptMeta(file);
+						
+			if(meta == null) {
+				
+				Logging.syserr("Failed to run script due to an error, aborting operation."); 
+				return;
+				
+			}
+			
+			CSJEP jep = CSJEP.interpreter();
+			String functionName = asScriptName(file.name());
+			
+			//try to remove a palette of the name of the palette we are adding from the data structures.
+			//this only happens in debug mode.
+			ColorPalette.remove(meta.name());			
+			
+			ScriptColorPalette palette = new ScriptColorPalette(meta.name());
+			PyObject paletteObject = invokeScriptFunction(jep , functionName , null , palette , null);			
+			palette.setScriptData(paletteObject);
+			palette.setValueScale(meta.defaultValueScale());
+			
+		});
+		
+	}
+	
+	/**
 	 * Creates an UI element for selecting a script for the script brush to use.
 	 * 
 	 * @param radioButton — a button whose tooltip will be set to the tooltip of the brush script selected
@@ -1195,10 +1253,9 @@ public class Editor implements ShutDown {
 	) throws JepException { 
 		
 		//set up argument array to pass to Python
-		int argumentsInfo = 0;
+		int argumentsInfo = MiscUtils.numberNonNull(argument1 , argument2);
 		if(args != null && args.size() > 0) argumentsInfo++;
-		if(argument1 != null) argumentsInfo++;
-		if(argument2 != null) argumentsInfo++;
+
 		Object[] arguments = new Object[argumentsInfo];
 		argumentsInfo = 0;
 		if(argument1 != null) arguments[argumentsInfo++] = argument1;
@@ -1206,11 +1263,11 @@ public class Editor implements ShutDown {
 		if(args != null && args.size() > 0) arguments[argumentsInfo++] = args;
 		
 		//use arguments to invoke function
-		Object event = jep.invoke(functionName , arguments);
-		Objects.requireNonNull(event);
+		Object result = jep.invoke(functionName , arguments);
+		Objects.requireNonNull(result);
 		
-		if(!(event instanceof PyObject)) throw new NotEventTypeException(event);
-		return (PyObject) event;
+		if(!(result instanceof PyObject)) throw new NotEventTypeException(result);
+		return (PyObject) result;
 		
 	}
 	
@@ -1289,8 +1346,7 @@ public class Editor implements ShutDown {
 			}).await();
 			
 			return scriptMetadata;
-		
-		
+	
 		}
 		
 	}
@@ -1335,6 +1391,37 @@ public class Editor implements ShutDown {
 			if(!Engine.isDebug()) targetMap.put(scriptMeta, title);
 			
 			return scriptMeta;
+			
+		}
+		
+	}
+
+	private PaletteScriptMeta initializeOrGetPaletteScriptMeta(CSFile file) {
+		
+		synchronized(loadedPaletteScripts) {
+			
+			String title = file.name();
+			CSHashMapEntry<PaletteScriptMeta , String> metaEntry = loadedPaletteScripts.getEntry(title);
+			if(metaEntry != null) return metaEntry.value();
+			
+			try {
+				
+				CSJEP jep = CSJEP.interpreter();
+				jep.run(file.getRealPath());
+			
+				String paletteName = getOrDefault(jep , "name" , title + " Palette");
+				long initialValueScale = jep.get("initialValueScale");
+				PaletteScriptMeta meta = new PaletteScriptMeta(paletteName , (int)initialValueScale);
+				//don't add the metadata to the hashmap in debug mode for the sake of hot reloading
+				if(!Engine.isDebug()) loadedPaletteScripts.put(meta, title);
+				return meta;
+				
+			} catch(Exception exception) { 
+				
+				exception.printStackTrace();
+				return null;
+				
+			}
 			
 		}
 		

@@ -86,9 +86,7 @@ public final class Artboards {
 	 */
 	public static StackOrHeapAllocation stackOrHeapBuffer(MemoryStack stackFrame , int size) { 
 		
-	 	long stackAvailable = stackFrame.getSize() - stackFrame.address() - 100L;
-	 	boolean isStackAllocated = stackAvailable > size;		 
-		
+	 	boolean isStackAllocated = stackFrame.getPointer() > size;		
 	 	return new StackOrHeapAllocation(isStackAllocated ? stackFrame.malloc(size) : memAlloc(size) , isStackAllocated);
 	
 	}

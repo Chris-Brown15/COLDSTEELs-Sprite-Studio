@@ -37,6 +37,21 @@ public class SelectionAreaBounder {
 	}
 	
 	/**
+	 * Translates thsi bounding box by the given translation amounts.
+	 * 
+	 * @param x — x translation amount
+	 * @param y — y translation amount
+	 */
+	public void translate(int x , int y) {
+		
+		LX += x;
+		RX += x;
+		BY += y;
+		TY += y;
+		
+	}
+	
+	/**
 	 * Moves a corner of this bounding box based on which corner is closest to the coordinates given.  
 	 * 
 	 * @param cursorX — {@code integer} x coordinate in world space of the cursor

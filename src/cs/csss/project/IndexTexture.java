@@ -19,11 +19,15 @@ import static org.lwjgl.system.MemoryUtil.memFree;
 
 import java.nio.ByteBuffer;
 
+import org.lwjgl.system.MemoryStack;
+
 import cs.core.graphics.CSTexture;
 import cs.core.graphics.ThreadedRenderer;
 import cs.core.utils.files.CSGraphic;
 import cs.csss.engine.LookupPixel;
 import cs.csss.misc.utils.FlexableGraphic;
+import cs.csss.project.utils.Artboards;
+import cs.csss.project.utils.StackOrHeapAllocation;
 
 /**
  * Extender of {@linkplain cs.core.graphics.CSTexture CSTexture} used to allow for modification of texel data. This texture object is used
@@ -55,6 +59,7 @@ public class IndexTexture extends CSTexture {
 		 * Stack Overflow answer helped solve this 
 		 */
 		textureOptions = MIN_FILTER_NEAREST|MAG_FILTER_NEAREST|S_WRAP_MIRRORED|T_WRAP_MIRRORED ,
+		level = 0, 
 		zOffset = 0 , //always 0 for 2D texture as parameter into glGetTextureSubImage
 		depth = 1; //always 1 for 2D texture as parameter to glGetTextureSubImage
 		
@@ -65,24 +70,22 @@ public class IndexTexture extends CSTexture {
 		backgroundWidth = 8 ,
 		backgroundHeight = 8;
 	
-	IndexPixel 
-		darkerTransparentBackground = new IndexPixel(0 , 0) ,
-		lighterTransparentBackground = new IndexPixel(1 , 0);
+	IndexPixel darkerTransparentBackground = new IndexPixel(0 , 0);
+	IndexPixel lighterTransparentBackground = new IndexPixel(1 , 0);
 	
-	int 
-		width ,
-		height;
+	int width;
+	int height;
 		
 	/**
 	 * Tracks some additional variables but does not modify the behavior of {@linkplain IndexTexture#initialize(CSGraphic, int) initialize}.
 	 */
-	void initialize(int width , int height) {
+	void initialize(int width , int height , boolean setCheckeredBackground) {
 
-		this.initialize(width, height , new short[] {0 , 0});
+		this.initialize(width, height , new short[] {0 , 0} , setCheckeredBackground);
 		
 	}
 	
-	void initialize(int width , int height , short[] defaultValueForPixels) {
+	void initialize(int width , int height , short[] defaultValueForPixels , boolean setCheckeredBackground) {
 
 		require(defaultValueForPixels.length == 2);
 		
@@ -102,7 +105,7 @@ public class IndexTexture extends CSTexture {
 		this.width = graphic.width();
 		this.height = graphic.height();
 		
-		setCheckerBackground();
+		if(setCheckeredBackground) setCheckerBackground();
 		
 	}
 	
@@ -142,34 +145,36 @@ public class IndexTexture extends CSTexture {
 		
 		//I HAVE NO IDEA WHY THESE NEED TO BE BUMPED, THEY JUST DO
 		int pixels = (widthPixels + 1) * (heightPixels + 1);
-		ByteBuffer imageDataAsPtr = memAlloc(pixels * pixelSizeBytes);
-		for(int i = 0 ; i < imageDataAsPtr.limit() ; i += 2) imageDataAsPtr.put(imageData.lookupX()).put(imageData.lookupY());			
-		imageDataAsPtr.rewind();
-
-		put(xIndex, yIndex, widthPixels, heightPixels, imageDataAsPtr);
-		
-		memFree(imageDataAsPtr);
+		try(MemoryStack stack = MemoryStack.stackPush()) {
+			
+			StackOrHeapAllocation allocation = Artboards.stackOrHeapBuffer(stack , pixels * pixelSizeBytes);
+			ByteBuffer imageDataAsPtr = allocation.buffer();	
+			
+			for(int i = 0 ; i < imageDataAsPtr.limit() ; i += 2) imageDataAsPtr.put(imageData.lookupX()).put(imageData.lookupY());			
+			imageDataAsPtr.rewind();
+			
+			put(xIndex, yIndex, widthPixels, heightPixels, imageDataAsPtr);
+			
+			allocation.free();
+			
+		}
 		
 	}
 	
 	void setCheckerBackground() {
 		
 		/* Initializes the gray boxes that give the background transparency effect */
-
-		boolean 
-			//tracks whether to use the darker color (located at location 1) or the less dark color (located at location 2)
-			lower = true ,
-			previousLower = true
-		;
+		
+		//tracks whether to use the darker color (located at location 1) or the less dark color (located at location 2)
+		boolean lower = true;
+		boolean previousLower = true;
 			
 		for(int row = 0 ; row < height ; row += backgroundHeight) {
 		
 			for(int col = 0 ; col < width ; col += backgroundWidth) {
 				
-				int 
-					regionWidth = backgroundWidth ,
-					regionHeight = backgroundHeight
-				;
+				int regionWidth = backgroundWidth;
+				int regionHeight = backgroundHeight;
 					
 				IndexPixel pixel = lower ? darkerTransparentBackground : lighterTransparentBackground;
 				
@@ -236,7 +241,7 @@ public class IndexTexture extends CSTexture {
 		//activates the texture we are sampling from (this class instance)
 		activate();		
 		//retreives a region of this texture into texels
-		glGetTextureSubImage(textureID , 0 , xIndex , yIndex , zOffset , width , height , depth , glDataFormat , glChannelType , texels);
+		glGetTextureSubImage(textureID , level , xIndex , yIndex , zOffset , width , height , depth , glDataFormat , glChannelType , texels);
 		//checks for GL errors
 		ThreadedRenderer.checkErrors();
 		//deactivates this texture
@@ -270,31 +275,34 @@ public class IndexTexture extends CSTexture {
 	/**
 	 * Gets a {@code ByteBuffer} containing texels of this image. This method does not reformat the buffer the GPU returns. This method is
 	 * not suitable for most purposes.
-	 * 
+	 * @param leftX — x coordinate of the bottom left pixel to begin at
+	 * @param bottomY — y coordinate of the bottom left pixel to begin at
 	 * @param width — width of the region in pixels
 	 * @param height — height of the region in pixels
-	 * @param xOffset — x coordinate of the bottom left pixel to begin at
-	 * @param yOffset — y coordinate of the bottom left pixel to begin at
+	 * 
 	 * @return Buffer containing bytes of pixels at the region specified.
 	 */
-	ByteBuffer texelBuffer(int width , int height , int xOffset , int yOffset) {
+	ByteBuffer texelBuffer(int leftX , int bottomY , int width , int height) {
 
 		specify(width > 0 && width <= this.width , width + " is not a valid width.");
 		specify(height > 0 && height <= this.height, height + " is not a valid height.");
-		specify(xOffset >= 0 && xOffset < this.width , xOffset + " is not a valid x value.");
-		specify(yOffset >= 0 && yOffset < this.height , yOffset + " is not a valid y value.");
-		specify(xOffset + width <= this.width , (xOffset + width) + " is out of bounds x wise.");
-		specify(yOffset + height <= this.height , (yOffset + height) + " is out of bounds y wise.");
+		specify(leftX >= 0 && leftX < this.width , leftX + " is not a valid x value.");
+		specify(bottomY >= 0 && bottomY < this.height , bottomY + " is not a valid y value.");
+		specify(leftX + width <= this.width , (leftX + width) + " is out of bounds x wise.");
+		specify(bottomY + height <= this.height , (bottomY + height) + " is out of bounds y wise.");
 		
-		ByteBuffer texels = memAlloc(width * height * pixelSizeBytes);
+		ByteBuffer texels = memAlloc((width + 1) * (height + 1) * pixelSizeBytes);
 		
 		activate();
-		glGetTextureSubImage(textureID , 0 , xOffset , yOffset , zOffset , width , height , depth , glDataFormat , glChannelType , texels);
+		glGetTextureSubImage(textureID , level , leftX , bottomY , zOffset , width , height , depth , glDataFormat , glChannelType , texels);
+		
+		texels.limit(width * height * pixelSizeBytes);
+		
 		boolean errored = ThreadedRenderer.checkErrors();
 		
 		if(errored) { 
 			
-			System.err.printf("Values: [%d , %d , %d , %d]\n" , xOffset , yOffset , width , height);
+			System.err.printf("Values: [%d , %d , %d , %d]\n" , leftX , bottomY , width , height);
 			
 			memFree(texels);
 			texels = null;

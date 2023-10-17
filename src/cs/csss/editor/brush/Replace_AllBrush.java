@@ -24,7 +24,7 @@ import cs.csss.project.IndexPixel;
 	@Override public CSSSEvent use(Artboard artboard, Editor editor, int xIndex, int yIndex) {
 
 		IndexPixel clickedPixel = artboard.getIndexPixelAtIndices(xIndex, yIndex);		
-		return new ModifyPaletteEvent(artboard , clickedPixel.xIndex , clickedPixel.yIndex , editor.selectedColors(artboard));
+		return new ModifyPaletteEvent(artboard , clickedPixel.xIndex , clickedPixel.yIndex , editor.selectedColors());
 
 	}
 

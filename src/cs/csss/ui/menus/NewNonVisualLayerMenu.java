@@ -5,6 +5,7 @@ import static cs.core.ui.CSUIConstants.UI_BORDERED;
 
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
+import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
@@ -32,7 +33,7 @@ public class NewNonVisualLayerMenu {
 	 */
 	public NewNonVisualLayerMenu(CSSSProject project , CSNuklear nuklear) {
 	
-		CSUserInterface ui = nuklear.new CSUserInterface("New Nonvisual Layer" , 0.5f - (0.33f / 2) , 0.5f - (0.25f / 2) , 0.33f , 0.25f);
+		CSUserInterface ui = nuklear.new CSUserInterface("New Nonvisual Layer" , 0.5f - (0.33f / 2) , 0.5f - (0.177f / 2) , 0.33f , 0.177f);
 		ui.options = UI_TITLED|UI_BORDERED;
 		
 		onFinish = () -> {
@@ -43,13 +44,15 @@ public class NewNonVisualLayerMenu {
 			
 		};
 		
-		ui.new CSDynamicRow(20).new CSText("Size in bytes of each \"pixel\"");
+		ui.new CSDynamicRow(20).new CSText("Size in bytes of each \"pixel:\"");
 		
  		CSDynamicRow sizeRow = ui.new CSDynamicRow();
-		sizeRow.new CSRadio("One Byte" , false , () -> channels = 1);
-		sizeRow.new CSRadio("Two Bytes" , false , () -> channels = 2);
-		sizeRow.new CSRadio("Three Bytes" , false , () -> channels = 3);
-		sizeRow.new CSRadio("Four Bytes" , false , () -> channels = 4);
+		CSRadio oneByte = sizeRow.new CSRadio("One Byte" , false , () -> channels = 1);
+		CSRadio twoBytes = sizeRow.new CSRadio("Two Bytes" , false , () -> channels = 2);
+		CSRadio threeBytes = sizeRow.new CSRadio("Three Bytes" , false , () -> channels = 3);
+		CSRadio fourBytes = sizeRow.new CSRadio("Four Bytes" , false , () -> channels = 4);
+		
+		CSRadio.groupAll(oneByte , twoBytes , threeBytes , fourBytes);
 		
 		CSDynamicRow nameInputRow = ui.new CSDynamicRow();
 		nameInputRow.new CSText("Layer Name");

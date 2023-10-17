@@ -1,34 +1,34 @@
+/**
+ * 
+ */
 package cs.csss.editor.brush;
 
-import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
 import cs.csss.editor.event.CSSSEvent;
-import cs.csss.editor.event.MoveArtboardRegionEvent;
+import cs.csss.editor.event.CopyArtboardRegionEvent;
 import cs.csss.engine.Control;
 import cs.csss.project.Artboard;
 import cs.csss.utils.CollisionUtils;
 
 /**
- * Brush used to move regions of a layer around.
+ * 
  */
-@RenderThreadOnly public class Move_RegionBrush extends CSSSSelectingBrush {
+public class Copy_RegionBrush extends CSSSSelectingBrush {
 
-	private boolean draggingLastFrame = false;
-	private boolean canUse = false;
-		
-	/**
-	 * Creates a new region selecting brush.
-	 */
-	public Move_RegionBrush() {
+	private boolean 
+		draggingLastFrame = false ,
+		canUse = false;
+	
+	public Copy_RegionBrush() {
 
-		super("Selects regions of pixels on an artboard and move them around.");
-		
+		super("Makes a copy of the pixels of the selected region on the current artboard.");
+
 	}
 
 	@Override public CSSSEvent use(Artboard artboard, Editor editor, int xIndex, int yIndex) {
 
 		canUse = false;
-		MoveArtboardRegionEvent event = new MoveArtboardRegionEvent(artboard , render);
+		CopyArtboardRegionEvent event = new CopyArtboardRegionEvent(artboard , render);
 		resetRender();
 		return event;
 		
@@ -39,45 +39,40 @@ import cs.csss.utils.CollisionUtils;
 		return canUse;
 		
 	}
-	
-	@Override public void update(Artboard current , Editor editor) {
 
+	@Override public void update(Artboard current , Editor editor) {
+		
 		if(!editor.cursorInBoundsForBrush()) return;
 		
 		float[] cursorCoords = editor.cursorCoords();
 		int[] cursorAsInt = {(int)cursorCoords[0] , (int)cursorCoords[1]};
-
 		defaultUpdateBounder(cursorAsInt[0] , cursorAsInt[1]);
-		
 		if(current == null) return;
 		
-		selectionBounder.snapBounderToCoordinates((int)current.leftX(), (int)current.rightX(), (int)current.bottomY(), (int)current.topY());
+		selectionBounder.snapBounderToCoordinates((int)current.leftX(), (int)current.rightX() , (int)current.bottomY() , (int)current.topY());
 		
 		boolean currentlyDragging = Control.ARTBOARD_INTERACT.pressed();
-		
+
 		//will be true when we begin to press down the dragging key
 		if(!draggingLastFrame && currentlyDragging) editor.rendererPost(() -> newRender(current , editor , cursorAsInt));
 		//true while we are pressing the mouse to drag down
 		else if(draggingLastFrame && currentlyDragging) editor.rendererPost(() -> render.positions.moveTo(cursorAsInt[0] , cursorAsInt[1]));
-		//will be true when we release the mouse button and 'place down' our region
-		else if(draggingLastFrame && !currentlyDragging) { 
+		else if(draggingLastFrame && !currentlyDragging) {
 			
 			if(CollisionUtils.colliding(render.positions, current.positions)) {
 				
 				canUse = true;
 				selectionBounder.positions(
-					(int)render.positions.leftX() , 
-					(int)render.positions.rightX() , 
-					(int)render.positions.bottomY() , 
+					(int)render.positions.leftX(), 
+					(int)render.positions.rightX(), 
+					(int)render.positions.bottomY(), 
 					(int)render.positions.topY()
-				);
-			
-			}
-			//if the render is completely off the artboard, don't do anything.
-			else editor.rendererPost(CSSSSelectingBrush::resetRender); 
+				);				
+				
+			} else editor.rendererPost(CSSSSelectingBrush::resetRender);
 			
 		}
-			
+		
 		draggingLastFrame = currentlyDragging;
 
 	}

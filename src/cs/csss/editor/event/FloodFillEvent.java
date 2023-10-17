@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Stack;
 
 import cs.csss.annotation.RenderThreadOnly;
+import cs.csss.engine.ColorPixel;
 import cs.csss.engine.Engine;
 import cs.csss.project.Artboard;
 import cs.csss.project.ArtboardPalette.PalettePixel;
@@ -71,13 +72,11 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 	
 	private int
 		clickedX , 
-		clickedY
-	;
+		clickedY;
 	
-	private final PalettePixel 
+	private final ColorPixel 
 		activeColor ,
-		clickedPixel
-	;
+		clickedPixel;
 	
 	private List<ArtboardMod> mods = Collections.synchronizedList(new ArrayList<>());	
 	
@@ -89,7 +88,7 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 	 * @param clickedX — x coordinate of the clicked pixel
 	 * @param clickedY — y coordinate of the clicked pixel
 	 */
-	public FloodFillEvent(Artboard artboard , PalettePixel activeColor , int clickedX , int clickedY ) {
+	public FloodFillEvent(Artboard artboard , ColorPixel activeColor , int clickedX , int clickedY ) {
 
 		super(true , false);
 		

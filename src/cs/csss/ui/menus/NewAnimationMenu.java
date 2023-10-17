@@ -2,6 +2,8 @@ package cs.csss.ui.menus;
 
 import static cs.core.ui.CSUIConstants.UI_BORDERED;
 import static cs.core.ui.CSUIConstants.UI_TITLED;
+import static cs.core.ui.CSUIConstants.TEXT_CENTERED;
+import static cs.core.ui.CSUIConstants.TEXT_MIDDLE;
 
 import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
 import static org.lwjgl.nuklear.Nuklear.nk_text_wrap_colored;
@@ -37,7 +39,7 @@ public class NewAnimationMenu {
 	 */
 	public NewAnimationMenu(CSSSProject currentProject , CSNuklear nuklear) {
 
-		ui = nuklear.new CSUserInterface("New Animation" , 0.5f - (.33f / 2) , .5f - .125f , .33f , .25f);
+		ui = nuklear.new CSUserInterface("New Animation" , 0.5f - (.33f / 2) , .5f - (.12f / 2) , .33f , .12f);
 		ui.options |= UI_TITLED|UI_BORDERED;
 		
 		finish = () -> { 
@@ -49,7 +51,7 @@ public class NewAnimationMenu {
 		};
 	
 		CSDynamicRow row = ui.new CSDynamicRow();
-		row.new CSText("Animation Name:");
+		row.new CSText("Animation Name:" , TEXT_CENTERED|TEXT_MIDDLE);
 		textInput = row.new CSTextEditor(100);
 		
 		ui.attachedLayout((context , stack) -> {
