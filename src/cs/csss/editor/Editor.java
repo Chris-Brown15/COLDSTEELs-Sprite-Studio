@@ -80,19 +80,19 @@ public class Editor implements ShutDown {
 		DEFAULT_HASH_MAP_SIZE = 13;
 		
 	//create the brushes used by all editors
-	static final PencilBrush thePencilBrush = new PencilBrush();
-	static final EraserBrush theEraserBrush = new EraserBrush();
-	static final Eye_DropperBrush theEyeDropper = new Eye_DropperBrush();
-	static final Flood_Fill_WIPBrush theFloodFill = new Flood_Fill_WIPBrush();
-	static final Replace_AllBrush theReplaceAllBrush = new Replace_AllBrush();
-	static final Move_RegionBrush theRegionSelect = new Move_RegionBrush();
-	static final Delete_RegionBrush theDeleteRegion = new Delete_RegionBrush();
-	static final RotateBrush theRotateBrush = new RotateBrush();
-	static final Scale_RegionBrush theScaleBrush = new Scale_RegionBrush();
-	static final Copy_RegionBrush theCopyBrush = new Copy_RegionBrush();
-	static volatile ScriptBrush theScriptBrush = null;
-	static volatile ModifyingScriptBrush theModifyingScriptBrush = null;
-	static volatile SelectingScriptBrush theSelectingScriptBrush = null;
+	public static final PencilBrush thePencilBrush = new PencilBrush();
+	public static final EraserBrush theEraserBrush = new EraserBrush();
+	public static final Eye_DropperBrush theEyeDropper = new Eye_DropperBrush();
+	public static final Flood_Fill_WIPBrush theFloodFill = new Flood_Fill_WIPBrush();
+	public static final Replace_AllBrush theReplaceAllBrush = new Replace_AllBrush();
+	public static final Move_RegionBrush theRegionSelect = new Move_RegionBrush();
+	public static final Delete_RegionBrush theDeleteRegion = new Delete_RegionBrush();
+	public static final RotateBrush theRotateBrush = new RotateBrush();
+	public static final Scale_RegionBrush theScaleBrush = new Scale_RegionBrush();
+	public static final Copy_RegionBrush theCopyBrush = new Copy_RegionBrush();
+	public static volatile ScriptBrush theScriptBrush = null;
+	public static volatile ModifyingScriptBrush theModifyingScriptBrush = null;
+	public static volatile SelectingScriptBrush theSelectingScriptBrush = null;
 	
 	/**
 	 * Returns the current script brush.

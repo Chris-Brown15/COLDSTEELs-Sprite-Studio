@@ -9,7 +9,7 @@ import cs.csss.ui.utils.UIUtils;
 /**
  * UI menu for notifying the user of something. 
  */
-public class NotificationBox {
+public class NotificationBox extends Dialogue {
 
 	/**
 	 * Constant width and height of notification boxes.
@@ -43,6 +43,7 @@ public class NotificationBox {
 			
 			ui.shutDown();
 			nuklear.removeUserInterface(ui);
+			super.onFinish();
 			
 		});		
 		

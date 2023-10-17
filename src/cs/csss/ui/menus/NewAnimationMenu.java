@@ -20,7 +20,7 @@ import cs.csss.project.CSSSProject;
 /**
  * UI menu for creating a new animation.
  */
-public class NewAnimationMenu {
+public class NewAnimationMenu extends Dialogue {
 
 	private volatile boolean isFinished = false;
 	private boolean nameInUse = false;
@@ -47,6 +47,7 @@ public class NewAnimationMenu {
 			nuklear.removeUserInterface(ui);
 			ui.shutDown();
 			isFinished = true;
+			super.onFinish();
 			
 		};
 	

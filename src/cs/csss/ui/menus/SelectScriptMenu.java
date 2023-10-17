@@ -19,7 +19,7 @@ import cs.csss.misc.files.CSFolder;
 /**
  * UI menu used to select a script. This is used for all instances of selecting a script.
  */
-public class SelectScriptMenu {
+public class SelectScriptMenu extends Dialogue {
 
 	private CSFile selectedFile;
 	private CSUserInterface ui;
@@ -74,7 +74,8 @@ public class SelectScriptMenu {
 		Lambda onFinish = () -> {
 			
 			ui.shutDown();
-			nuklear.removeUserInterface(ui);			
+			nuklear.removeUserInterface(ui);	
+			super.onFinish();
 			
 		};
 		

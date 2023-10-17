@@ -1,5 +1,7 @@
 package cs.csss.engine;
 
+import static cs.csss.misc.files.FileOperations.*;
+
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -9,8 +11,6 @@ import java.util.Iterator;
 
 import cs.csss.misc.files.CSFile;
 import cs.csss.misc.files.CSFolder;
-import cs.csss.misc.files.FileComposition;
-import cs.csss.misc.files.FileEntry;
 import cs.csss.project.IndexTexture;
 
 /**
@@ -19,17 +19,10 @@ import cs.csss.project.IndexTexture;
  */
 class UserSettings {
 
-	private static final String fileName = "user settings";
-	
+	private static final String fileName = "user settings";	
 	private static final CSFolder directory = CSFolder.getRoot("program");
-	
-	private FileComposition format = new FileComposition();
-	
-	UserSettings(CSFolder parentDirectory) {
-		
-		initialize();
-				
-	}
+
+	UserSettings() {}
 
 	/**
 	 * Writes the user setting file by binding the current state of all user setting fields and writes them to a file.
@@ -37,24 +30,21 @@ class UserSettings {
 	 * @param engine — the engine
 	 */
 	void write(Engine engine) {
-		
-		format.bindInt("RTTFPS" , engine.realtimeTargetFPS());
-		format.bindInt("BGWidth" , IndexTexture.backgroundWidth).bindInt("BGHeight" , IndexTexture.backgroundHeight);
-		
-		Iterator<Control> controls = Control.iterator();
-		
-		while(controls.hasNext()) {
-			
-			Control x = controls.next();
-			format.bindBoolean(x.name + " isKB" , x.isKeyboard()).bindShort(x.name + " Code" , (short) x.key());
-						
-		}
-				
+
 		CSFile.makeFile(directory, fileName);
 		
 		try(FileOutputStream writer = new FileOutputStream(directory.getVirtualPath() + fileName)) {
 			
-			format.write(writer);
+			putInt(engine.realtimeTargetFPS() , writer);
+			putInt(IndexTexture.backgroundWidth , writer);
+			putInt(IndexTexture.backgroundHeight , writer);
+			for(Iterator<Control> controls = Control.iterator() ; controls.hasNext() ; ) {
+				
+				Control x = controls.next();
+				putBoolean(x.isKeyboard() , writer);
+				putShort((short)x.key() , writer);
+				
+			}
 			
 		} catch (IOException e) {
 			
@@ -74,51 +64,24 @@ class UserSettings {
 		if(!Files.exists(Paths.get(directory.getVirtualPath() + fileName))) return;
 		
 		try(FileInputStream reader = new FileInputStream(directory.getVirtualPath() + fileName)) {
-			
-			format.read(reader);
-			
+
+			engine.setRealtimeTargetFPS(getInt(reader));
+			IndexTexture.backgroundWidth = getInt(reader);
+			IndexTexture.backgroundHeight = getInt(reader);
+			for(Iterator<Control> controls = Control.iterator() ; controls.hasNext() ; ) {
+				
+				Control x = controls.next();
+				x.isKeyboard(getBoolean(reader));
+				x.key((short)getShort(reader));
+				
+			}
+
 		} catch (IOException e) {
 			
 			throw new IllegalStateException(e);
 			
 		}
-		
-		Iterator<FileEntry> fileContents = format.iterator();
-		
-		engine.setRealtimeTargetFPS((int)fileContents.next().object());
-		IndexTexture.backgroundWidth = (int)fileContents.next().object();
-		IndexTexture.backgroundHeight = (int)fileContents.next().object();
-		
-		Iterator<Control> controls = Control.iterator();
-		
-		while(controls.hasNext()) { 
-		
-			Control x = controls.next();
-		
-			x.isKeyboard((boolean)fileContents.next().object());
-			x.key((short)fileContents.next().object());
-						
-		}		
-		
+				
 	}
-	
-	/**
-	 * Adds all entries to this class's file composition. This is where the layout of the file is specified.
-	 */
-	private void initialize() {
-
-		format.addInt("RTTFPS").addInt("BGWidth").addInt("BGHeight");
 		
-		Iterator<Control> controls = Control.iterator();
-		
-		while(controls.hasNext()) {
-			
-			Control x = controls.next();	
-			format.addBoolean(x.name + " isKB" , x.isKeyboard()).addShort(x.name + " Code" , (short) x.key());
-			
-		}
-		
-	}
-	
 }
-

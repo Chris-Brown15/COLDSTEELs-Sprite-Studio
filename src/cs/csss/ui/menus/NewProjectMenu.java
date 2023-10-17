@@ -23,7 +23,7 @@ import cs.csss.misc.files.CSFolder;
 /**
  * UI menu for creating a new project.
  */
-public class NewProjectMenu {
+public class NewProjectMenu extends Dialogue {
 
 	private static final LinkedList<String> existingProjects = new LinkedList<>();
 	
@@ -95,6 +95,7 @@ public class NewProjectMenu {
 	 		
 	 		nuklear.removeUserInterface(ui);
 	 		ui.shutDown();
+	 		super.onFinish();
 	 		
 	 	};
 		

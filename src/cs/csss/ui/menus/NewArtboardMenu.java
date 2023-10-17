@@ -13,20 +13,16 @@ import cs.csss.project.CSSSProject;
 /**
  * UI menu for creating a new artboard.
  */
-public class NewArtboardMenu {
+public class NewArtboardMenu extends Dialogue {
 
 	public CSUserInterface ui;
 	private final Lambda onFinish;
 	
 	private boolean isFinished = false;
 
-	private int 
-		width = -1 ,
-		height = -1;
+	private int width = -1 , height = -1;
 	
-	private final CSTextEditor    
-		widthEditor ,
-		heightEditor;
+	private final CSTextEditor widthEditor , heightEditor;
 		
 	/**
 	 * Creates a new artboard menu.
@@ -44,6 +40,7 @@ public class NewArtboardMenu {
 			nuklear.removeUserInterface(ui);
 			ui.shutDown();
 			isFinished = true;
+			super.onFinish();
 			
 		};		
 		

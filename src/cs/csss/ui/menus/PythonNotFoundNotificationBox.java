@@ -18,7 +18,7 @@ import cs.core.ui.CSNuklear.CSUserInterface;
 /**
  * UI menu used to notify users that Python was not installed on their computer, and offers them a link to download Python.
  */
-public class PythonNotFoundNotificationBox {
+public class PythonNotFoundNotificationBox extends Dialogue {
 
 	private static final float 
 		widthRatio = 0.3f ,
@@ -69,6 +69,7 @@ public class PythonNotFoundNotificationBox {
 			
 			nuklear.removeUserInterface(ui);
 			ui.shutDown();
+			super.onFinish();
 			
 		});
 		

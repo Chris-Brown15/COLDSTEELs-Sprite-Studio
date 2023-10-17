@@ -17,8 +17,11 @@ import cs.csss.engine.Engine;
 /**
  * UI menu for modifying the controls of Sprite Studio.
  */
-public class ModifyControlsMenu {
+public class ModifyControlsMenu extends Dialogue {
 
+	private static final float w = 0.44f , h = .35f;
+	
+	
 	private Lambda onFinish;
 	
 	/**
@@ -29,7 +32,7 @@ public class ModifyControlsMenu {
 	 */
 	public ModifyControlsMenu(CSNuklear nuklear , Engine engine) {
 
-		CSUserInterface ui = nuklear.new CSUserInterface("Controls" , 0.5f - (0.33f / 2) , 0.5f - (0.35f / 2) , 0.33f , 0.35f);
+		CSUserInterface ui = nuklear.new CSUserInterface("Controls" , 0.5f - (w / 2) , 0.5f - (h / 2) , w , h);
 		
 		ui.options = UI_TITLED|UI_BORDERED;
 		
@@ -40,14 +43,14 @@ public class ModifyControlsMenu {
 			Control next = iterator.next();
 			
 			CSRow row = ui.new CSRow(30);
-			row.pushWidth(.4f).pushWidth(0.20f).pushWidth(.2f).pushWidth(.15f);
+			row.pushWidth(.35f).pushWidth(0.25f).pushWidth(.2f).pushWidth(.15f);
 			
 			CSText controlName = row.new CSText(next.name);
 			
 			controlName.initializeToolTip(MOUSE_PRESSED|HOVERING , MOUSE_RIGHT , 0, textLength(next.toolTip));
 			controlName.toolTip.new CSDynamicRow(20).new CSText(next.toolTip);
 			
-			row.new CSText(() -> "(" + next.keyToString() + ")");
+			row.new CSText(() -> next.keyToString());
 
 			CSTextEditor newControlInput = row.new CSTextEditor(15);
 			
@@ -64,6 +67,7 @@ public class ModifyControlsMenu {
 			
 			nuklear.removeUserInterface(ui);
 			ui.shutDown();
+			super.onFinish();
 			
 		};
 		

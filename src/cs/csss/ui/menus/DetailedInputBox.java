@@ -15,15 +15,8 @@ import cs.csss.ui.utils.UIUtils;
 /**
  * Generic class for input boxes with a more verbose description within the UI element.
  */
-public class DetailedInputBox {
+public class DetailedInputBox extends Dialogue {
 
-	private static final void shutDown(CSNuklear nuklear , CSUserInterface ui) {
-		
-		nuklear.removeUserInterface(ui);
-		ui.shutDown();
-				
-	}
-	
 	private CSUserInterface ui;
 	
 	/**
@@ -79,4 +72,12 @@ public class DetailedInputBox {
 		
 	}
 
+	private void shutDown(CSNuklear nuklear , CSUserInterface ui) {
+		
+		nuklear.removeUserInterface(ui);
+		ui.shutDown();
+		super.onFinish();
+				
+	}
+	
 }

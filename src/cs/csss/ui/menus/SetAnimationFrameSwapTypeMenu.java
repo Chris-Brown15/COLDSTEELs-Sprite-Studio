@@ -12,7 +12,7 @@ import cs.core.ui.CSNuklear.CSUserInterface;
 /**
  * UI menu for setting the swap type of an animation frame.
  */
-public class SetAnimationFrameSwapTypeMenu {
+public class SetAnimationFrameSwapTypeMenu extends Dialogue {
 
 	private AnimationSwapType swapType;
 	private final CSUserInterface ui;
@@ -33,6 +33,7 @@ public class SetAnimationFrameSwapTypeMenu {
 			
 			nuklear.removeUserInterface(ui);
 			ui.shutDown();
+			super.onFinish();
 			
 		};
 		

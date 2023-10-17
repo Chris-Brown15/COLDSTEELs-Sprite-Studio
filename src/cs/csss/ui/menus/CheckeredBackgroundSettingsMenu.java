@@ -13,9 +13,7 @@ import cs.csss.project.CSSSProject;
  */
 public class CheckeredBackgroundSettingsMenu extends OptionMenu {
 
-	private int 
-		backgroundWidth = IndexTexture.backgroundWidth ,
-		backgroundHeight = IndexTexture.backgroundHeight;
+	private int backgroundWidth = IndexTexture.backgroundWidth , backgroundHeight = IndexTexture.backgroundHeight;
 	
 	/**
 	 * Creates a new checkered background settings menu.
@@ -58,6 +56,7 @@ public class CheckeredBackgroundSettingsMenu extends OptionMenu {
 			
 			nuklear.removeUserInterface(ui);
 			ui.shutDown();
+			super.onFinish();
 			
 		});
 		

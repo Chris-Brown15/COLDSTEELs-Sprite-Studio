@@ -15,7 +15,7 @@ import cs.core.ui.CSNuklear.CSUserInterface;
 /**
  * Base class for option menus.
  */
-public abstract class OptionMenu {
+public abstract class OptionMenu extends Dialogue {
 
 	protected final CSUserInterface ui;
 	

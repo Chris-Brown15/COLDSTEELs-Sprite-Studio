@@ -18,7 +18,7 @@ import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
 /**
  * UI menu for creating vector text boxes.
  */
-public class VectorTextMenu {
+public class VectorTextMenu extends Dialogue {
 
 	/**
 	 * Default option for vector text editor UI elements.
@@ -51,6 +51,7 @@ public class VectorTextMenu {
 			finished = true;
 			nuklear.removeUserInterface(ui);
 			ui.shutDown();
+			super.onFinish();
 			
 		};
 		

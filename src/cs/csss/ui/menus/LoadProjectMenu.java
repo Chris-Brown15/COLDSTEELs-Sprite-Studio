@@ -14,7 +14,7 @@ import cs.core.utils.Lambda;
 /**
  * UI menu for loading a project from disk.
  */
-public class LoadProjectMenu {
+public class LoadProjectMenu extends Dialogue {
 
 	private String selected = null;
 	private String[] entries;
@@ -41,6 +41,7 @@ public class LoadProjectMenu {
 			nuklear.removeUserInterface(ui);
 	 		ui.shutDown();
 	 		readyToFinish = true;
+	 		super.onFinish();
 	 		
 	 	};
 		

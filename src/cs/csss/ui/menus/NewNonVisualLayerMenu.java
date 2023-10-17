@@ -14,7 +14,7 @@ import cs.csss.project.CSSSProject;
 /**
  * UI menu for creating a new nonvisual layer prototype. 
  */
-public class NewNonVisualLayerMenu {
+public class NewNonVisualLayerMenu extends Dialogue {
 	
 	private volatile boolean isFinished = false;
 	
@@ -41,6 +41,7 @@ public class NewNonVisualLayerMenu {
 			isFinished = true;
 			nuklear.removeUserInterface(ui);
 			ui.shutDown();
+			super.onFinish();
 			
 		};
 		

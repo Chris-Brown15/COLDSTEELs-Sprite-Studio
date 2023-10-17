@@ -12,7 +12,7 @@ import cs.core.utils.Lambda;
 /**
  * UI menu for confirming or cancelling something.
  */
-public class ConfirmationBox {
+public class ConfirmationBox extends Dialogue {
 
 	/**
 	 * Constants for the width and height of created confirmation boxes.
@@ -72,6 +72,7 @@ public class ConfirmationBox {
 
 		nuklear.removeUserInterface(ui);
 		ui.shutDown();
+		super.onFinish();
 		
 	}
 

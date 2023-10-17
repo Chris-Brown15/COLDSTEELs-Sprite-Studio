@@ -13,7 +13,7 @@ import cs.csss.project.CSSSProject;
 /**
  * UI menu for creating a new visual layer prototype.
  */
-public class NewVisualLayerMenu {
+public class NewVisualLayerMenu extends Dialogue {
 
 	private volatile boolean isFinished = false;
 	private final Lambda onFinish;
@@ -38,6 +38,7 @@ public class NewVisualLayerMenu {
 			nuklear.removeUserInterface(ui);
 			ui.shutDown();
 			isFinished = true;
+			super.onFinish();
 			
 		};
 		

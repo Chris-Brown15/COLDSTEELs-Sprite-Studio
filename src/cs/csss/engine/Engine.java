@@ -86,6 +86,7 @@ import cs.csss.ui.menus.SelectScriptMenu;
 import cs.csss.ui.menus.SetAnimationFrameSwapTypeMenu;
 import cs.csss.ui.menus.CheckeredBackgroundSettingsMenu;
 import cs.csss.ui.menus.DetailedInputBox;
+import cs.csss.ui.menus.Dialogue;
 import cs.csss.ui.utils.UIUtils;
 import cs.csss.utils.FloatReference;
 
@@ -130,9 +131,7 @@ public final class Engine implements ShutDown {
 		exportsRoot = CSFolder.establishRoot("exports") ,
 		debugRoot = CSFolder.establishRoot("debug");
 	
-	private static boolean 
-		isDebug = false ,
-		isPythonInstalled = false;
+	private static boolean isDebug = false , isPythonInstalled = false;
 
 	/**
 	 * Called from the main method to do any initialization that must occur before any other code from the program is invoked.
@@ -156,7 +155,7 @@ public final class Engine implements ShutDown {
 			
 		}
 		
-		//parse arguemnts
+		//parse arguments
 		List<String> args = List.of(programArgs);		
 		if(args.contains("-d")) preinitializeDebug();
 	
@@ -167,10 +166,8 @@ public final class Engine implements ShutDown {
 	 */
 	private static void preinitializeDebug() { 
 		
-		isDebug = true;
-		
-		sysDebug("[COLDSTEEL SPRITE STUDIO DEBUG ENABLED]");
-		
+		isDebug = true;		
+		sysDebug("[COLDSTEEL SPRITE STUDIO DEBUG ENABLED]");		
 		Configuration.DEBUG_MEMORY_ALLOCATOR.set(true);
 		
 	}
@@ -233,7 +230,7 @@ public final class Engine implements ShutDown {
 
  	private Timer frameTimer = new Timer();
  	
-	private final UserSettings2 settings = new UserSettings2();
+	private final UserSettings settings = new UserSettings();
 	
 	private final NanoVG nanoVG;
 	
@@ -434,7 +431,19 @@ public final class Engine implements ShutDown {
 		
 		Control.updateAllControls();
 		
-		if(!isCursorHoveringUI()) {
+		if(currentProject != null) {
+			
+			//not the best way to do this 
+			if(ControlChord.newAnimation.struck()) startNewAnimation();
+			else if(ControlChord.newArtboard.struck()) startNewArtboard();
+			if(ControlChord.newNonVisualLayer.struck()) startNewNonVisualLayer();
+			if(ControlChord.newVisualLayer.struck()) startNewVisualLayer();
+			
+		}
+		
+		int numberOpenDialogues = Dialogue.numberOpenDialogues();
+		
+		if(!isCursorHoveringUI() && numberOpenDialogues == 0) {
 			
 			if(Control.CAMERA_UP.pressed()) camera.translate(0 , cameraMoveSpeed);			
 			if(Control.CAMERA_DOWN.pressed()) camera.translate(0 , -cameraMoveSpeed);			
@@ -443,7 +452,12 @@ public final class Engine implements ShutDown {
 
 		} 
 		//try to move the animation panel view of the current frame
-		else if(currentProject != null && editor.isAnimationPanelShowing() && currentProject.currentAnimation() != null) {
+		else if(
+			currentProject != null && 
+			editor.isAnimationPanelShowing() && 
+			currentProject.currentAnimation() != null && 
+			numberOpenDialogues == 0
+		) {
 			
 			if(Control.CAMERA_UP.struck()) editor.animationPanel().translate(0 , cameraMoveSpeed); 		
 			if(Control.CAMERA_DOWN.struck()) editor.animationPanel().translate(0 , -cameraMoveSpeed);
@@ -453,6 +467,8 @@ public final class Engine implements ShutDown {
 		}
 		
 		if(Control.TOGGLE_FULLSCREEN_HOTKEY.struck()) toggleFullScreen();
+		if(numberOpenDialogues == 0) Hotkey.updateHotkeys(editor);
+		if(ControlChord.newProject.struck()) startNewProject(); 
 		
 	}
 

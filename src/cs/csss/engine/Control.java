@@ -12,9 +12,9 @@ import java.util.function.BiFunction;
  * @author Chris Brown
  *
  */
-public final class Control {
+public class Control {
 	
-	private static final ArrayList<Control> controls = new ArrayList<>();
+	protected static final ArrayList<Control> controls = new ArrayList<>();
 	
 	static BiFunction<Integer , Boolean , Boolean> checkPressedCallback;
 	
@@ -63,10 +63,21 @@ public final class Control {
 			GLFW_MOUSE_BUTTON_RIGHT , 
 			false
 		) ,
-		MOVE_OBJECT_UP = new Control("Move Object Up" , "Moves an object up." , GLFW_KEY_UP , true) ,
-		MOVE_OBJECT_DOWN = new Control("Move Object Down" , "Moves an object down." , GLFW_KEY_DOWN , true) ,
-		MOVE_OBJECT_LEFT = new Control("Move Object Left" , "Moves an object left." , GLFW_KEY_LEFT , true) ,
-		MOVE_OBJECT_RIGHT = new Control("Move Object Right" , "Moves an object right." , GLFW_KEY_RIGHT , true);
+		MOVE_OBJECT_UP = new Control("Move Object Up" , "Moves an object up." , GLFW_KEY_UP) ,
+		MOVE_OBJECT_DOWN = new Control("Move Object Down" , "Moves an object down." , GLFW_KEY_DOWN) ,
+		MOVE_OBJECT_LEFT = new Control("Move Object Left" , "Moves an object left." , GLFW_KEY_LEFT) ,
+		MOVE_OBJECT_RIGHT = new Control("Move Object Right" , "Moves an object right." , GLFW_KEY_RIGHT);
+
+	/**
+	 * Returns an iterator over all controls.
+	 * 
+	 * @return Iterator over all controls.
+	 */
+	public static Iterator<Control> iterator() {
+
+		return controls.iterator();
+		
+	}
 	
 	/**
 	 * Sets the callback to invoke to determine whether a key is pressed or not.
@@ -97,23 +108,19 @@ public final class Control {
 		
 	}
 	
-	public final String 
-		toolTip ,
-		name
-	;
+	public final String toolTip , name;
 	
-	private int key;
+	protected int key;
 	
 	/**
 	 * Represents whether this control is pressed this main loop iteration. Will only be true once per physical pressing of a key.
 	 */
-	private boolean struck = false;
-	private boolean pressed = false;
-	private boolean isKeyboard = true;
+	protected boolean struck = false , pressed = false, isKeyboard = true;
 	
 	/**
 	 * Creates a new control with a given tooltip and a glfw key code which is assumed to be a keyboard keycode.
 	 * 
+	 * @param name — name of this control
 	 * @param toolTipString — {@code String} representing a tooltip for this control
 	 * @param glfwKeyCode — a GLFW keycode representing the key bound to this control
 	 */
@@ -130,6 +137,7 @@ public final class Control {
 	 * Creates a new control with a given tooltip and no specific key assignment. This control will never be pressed or struck until a 
 	 * key is assigned to it.
 	 * 
+	 * @param name — name of this control
 	 * @param toolTipString — {@code String} representing a tooltip for this control
 	 */ 
 	public Control(final String name ,final String toolTipString) {
@@ -143,6 +151,7 @@ public final class Control {
 	/**
 	 * Creates a new control with a given tooltip, a glfw keycode, and which peripheral the key code belongs to.
 	 * 
+	 * @param name — name of this control
 	 * @param toolTipString — {@code String} representing a tooltip for this control
 	 * @param glfwKeyCode — a GLFW keycode representing the key bound to this control
 	 * @param isKeyboard — {@code true} if {@code glfwKeyCode} is a keyboard key code, {@code false} if it is a mouse key code.
@@ -239,6 +248,12 @@ public final class Control {
 		
 	}
 	
+	/**
+	 * Creates an integer from the given string, which should be a textual representation of the key being queried.
+	 * 
+	 * @param source — a string to parse
+	 * @return GLFW keycode for a key coorresponding to {@code source}.
+	 */
 	public int keyFromString(String source) {
 		
 		source = source.toUpperCase();
@@ -367,6 +382,11 @@ public final class Control {
 		
 	}
 
+	/**
+	 * Converts the key of this control into a string.
+	 * 
+	 * @return String representation of the glfw key mapped to this control.
+	 */
 	public String keyToString() {
 								
 		return switch(key) {
@@ -490,12 +510,6 @@ public final class Control {
 			case GLFW_MOUSE_BUTTON_8 -> "Mouse Macro 5";
 			default -> "Unknown Key";
 		};
-		
-	}
-	
-	public static Iterator<Control> iterator() {
-
-		return controls.iterator();
 		
 	}
 	
