@@ -1,5 +1,6 @@
 package cs.csss.project;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.Consumer;
@@ -37,6 +38,8 @@ public class AtomicLayerDataStore implements LayerDataStore {
 	}
 
 	@Override public void put(LayerPixel putThis) {
+		
+		Objects.requireNonNull(putThis);
 		
 		AtomicReferenceArray<LayerPixel> col = image.get(putThis.textureY);
 		int x = putThis.textureX;

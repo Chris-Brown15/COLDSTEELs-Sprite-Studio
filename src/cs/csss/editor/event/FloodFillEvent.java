@@ -15,6 +15,9 @@ import cs.csss.engine.ColorPixel;
 import cs.csss.engine.Engine;
 import cs.csss.project.Artboard;
 import cs.csss.project.ArtboardPalette.PalettePixel;
+import cs.csss.project.LayerPixel;
+import cs.csss.project.utils.Artboards;
+import cs.csss.project.utils.RegionIterator;
 
 /**
  * Flood fill fills a region of the artboard with the selected color. 
@@ -49,34 +52,26 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
  *  /west iteration completes, new north or south iterations are begun at the middle of each open region.  
  * </p>
  * <p>
- * 	There is one case this implementation cannot cope with which is the case an enclosed shape within the larger region shares one of its 
- * 	rows with the clicked pixel. If the interior region is to the east of the clicked pixel, anything to the east of the interior region is
- * 	missed, or if the interior region is to the west of the clicked pixel, anything west of the interior region is missed.
+ * 	Any filled in regions interior to the border will be missed if they have a pixel on the same row as the clicked pixel, therefore, after checking
+ * 	everything else has been done, we iterate over the rows we've created via {@code ArtboardMod} and check the pixels SOUTH of the row. If any is
+ * 	not filled in but should be, a new iteration is started.
  * </p>
- * 
- * 
  * 
  * @author Chris Brown
  *
  */
 @RenderThreadOnly public class FloodFillEvent extends CSSSEvent {	
 
-	private static final int
-		NORTH = 0b1,
-		SOUTH = 0b10 ,
-		EAST = 0b100 ,
-		WEST = 0b1000
-	;
+	private static final int NORTH = 0b1, SOUTH = 0b10 , EAST = 0b100 , WEST = 0b1000;
 	
 	private Artboard artboard;
 	
-	private int
-		clickedX , 
-		clickedY;
+	private int clickedX , clickedY;
 	
-	private final ColorPixel 
-		activeColor ,
-		clickedPixel;
+	private final ColorPixel activeColor , clickedPixel;
+	
+	private LayerPixel[][] priorRegion , newRegion;
+	private int bottomY = Integer.MAX_VALUE , leftmostX = Integer.MAX_VALUE , width , height;
 	
 	private List<ArtboardMod> mods = Collections.synchronizedList(new ArrayList<>());	
 	
@@ -102,7 +97,7 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 	
 	}
 
-	private void addMod(int x , int y , int width , int height) {
+	private ArtboardMod addMod(int x , int y , int width , int height) {
 		
 		ArtboardMod mod = new ArtboardMod(x , y , width , height);
 		synchronized(mods) {
@@ -110,6 +105,8 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 			mods.add(mod);
 			
 		}
+		
+		return mod;
 		
 	}
 	
@@ -155,10 +152,7 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 		if(xIndex >= artboard.width() || yIndex >= artboard.height()) return true;
 		
 		PalettePixel index = artboard.getHighestRankingColorForLayerModification(xIndex, yIndex);
-		return 
-			index != null && 
-			(index.compareTo(clickedPixel) != 0 &&
-			index.compareTo(activeColor) != 0);
+		return index != null && index.compareTo(clickedPixel) != 0;
 				
 	}
 
@@ -245,29 +239,19 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 		if(startingX >= artboard.width() || startingX < 0) return startingX;
 		
 		//store parameters as booleans
-		boolean 
-			eastward = horizontalDirection == EAST ,
-			northward = backFrom == NORTH
-		;
+		boolean eastward = horizontalDirection == EAST , northward = backFrom == NORTH;
 		
 		//this loop looks for a valid border on the current row
-		while(!isValidBorder(startingX , startingY)) {
+		while(!isValidBorder(startingX , startingY) && !markedAsModded(startingX , startingY)) {
 			
 			//this section looks at pixels above or below the current row based on what we direction we are walking back from and begins a
 			//new set of iterations on those regions
 			//check index of the y index of the row above or below this one
 			int checkIndex = northward ? startingY + 1 : startingY - 1;
-			if(
-				checkIndex >= 0 && 
-				checkIndex < artboard.height() && 
-				!markedAsModded(startingX, checkIndex) && 
-				!isValidBorder(startingX, checkIndex)
-			) {
+			if(!isValidBorder(startingX, checkIndex) && !markedAsModded(startingX, checkIndex)) {
 				
 				//this finds the index of the end of the row which we know is invalid because we passed the if condition above
-				int otherRowEndpoint = eastward ? 
-					findEasternBorder(startingX, checkIndex) - 1 : 
-					findWesternBorder(startingX, checkIndex) + 1;
+				int otherRowEndpoint = eastward ? findEasternBorder(startingX, checkIndex) - 1 : findWesternBorder(startingX, checkIndex) + 1;
 				//computes the middle of the invalid row, which is where we start our iteration
 				int min = min(startingX , otherRowEndpoint);
 				int max = max(startingX , otherRowEndpoint);
@@ -291,6 +275,35 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 		
 	}
 	
+	/**
+	 * Iterates over the row described by the given mod, then finds if any pixel in the check direction (which should be covered by the previous 
+	 * mod) is not a valid border or marked pixel. If such a pixel is found, a new iteration is begun. 
+	 * 
+	 * @param mod — the mod to check
+	 * @param checkDirection — direction to check for missing mods
+	 */
+	private void verifyPreviousRow(ArtboardMod mod , int checkDirection) {
+		
+		int checkY = checkDirection == NORTH ? mod.y + 1 : mod.y - 1;
+		int max = mod.x + mod.width;
+		for(int i = mod.x ; i < max ; i++) {
+		
+			if(isValidBorder(i , checkY) || markedAsModded(i , checkY)) continue;
+			
+//			//start iteration and return
+			int east = findEasternBorder(i, checkY);
+			int west = findWesternBorder(i, checkY);
+
+			int mid = west + (east - west) / 2;
+			initialRow(mid , checkY);
+			if(checkDirection == NORTH) startNorthernIteration(mid, checkY); 
+			else startSouthernIteration(mid, checkY);		
+			return;
+				
+		}		
+		
+	}
+	
 	/*
 	 * Walk Backward methods
 	 */
@@ -299,10 +312,9 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 		
 		while(north != startingY) {
 
-			int east = findHorizontalBorderWalkingBack(startingX + 1 , north , EAST , NORTH);	
+			int east = findHorizontalBorderWalkingBack(startingX + 1 , north , EAST , NORTH);
 			int west = findHorizontalBorderWalkingBack(startingX - 1 , north , WEST , NORTH);
 			addMod(west , north , (east - west) + 1 , 1);
-			
 			north--;
 			
 		}
@@ -316,7 +328,6 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 			int east = findHorizontalBorderWalkingBack(startingX + 1 , south , EAST , SOUTH);	
 			int west = findHorizontalBorderWalkingBack(startingX - 1 , south , WEST , SOUTH);			
 			addMod(west , south , (east - west) + 1 , 1);
-			
 			south++;
 			
 		}
@@ -363,6 +374,8 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 			
 		}
 		
+		newRegion = artboard.getRegionOfLayerPixels(leftmostX, bottomY, width, height);
+		
 		mods.clear();
 		
 	}
@@ -371,23 +384,64 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 
 		Engine.THE_THREADS.fork(
 			3, 
-			() -> initialRow(clickedX , clickedY) , 
-			() -> startNorthernIteration(clickedX , clickedY) , 
+			() -> initialRow(clickedX , clickedY), 
+			() -> startNorthernIteration(clickedX , clickedY), 
 			() -> startSouthernIteration(clickedX , clickedY)
 		).await();
 		
+		//find missed parts by iterating over mods 
+		mods.sort((mod1 , mod2) -> mod2.y - mod1.y);
+		for(int i = 0 ; i < mods.size() ; i++) verifyPreviousRow(mods.get(i), SOUTH);
+		if(priorRegion == null) {
+			
+			int greatestX = Integer.MIN_VALUE , highestY = Integer.MIN_VALUE;
+			ArtboardMod x;
+			for(int i = 0 ; i < mods.size() ; i++) {
+				
+			 	x = mods.get(i);
+			 	leftmostX = min(leftmostX , x.x);
+				bottomY = min(bottomY , x.y);				
+				greatestX = max(greatestX , x.x + x.width);
+				highestY = max(highestY , x.y + x.height);
+				
+			}
+			
+			width = greatestX - leftmostX;
+			height = highestY - bottomY;
+			
+			priorRegion = artboard.activeLayer().get(leftmostX, bottomY, width , height);
+						
+		}
+		
+		if(newRegion == null) handleMods();
+		else artboard.putColorsInImage(leftmostX , bottomY , width , height , newRegion);
+		
 //		stackApproach();
-		
-		handleMods();
-		
+				
 	}
 
 	@Override public void undo() {
 		
+		RegionIterator iter = Artboards.region(leftmostX, bottomY, width , height);
+				
+		int[] next;
+		while(iter.hasNext()) {
+			
+			next = iter.next();
+			int regionXIndex = next[0] - leftmostX;
+			int regionYIndex = next[1] - bottomY;
+			if(priorRegion[regionYIndex][regionXIndex] == null) artboard.removePixel(next[0], next[1]);
+			
+		}
+		
+		artboard.putColorsInImage(leftmostX , bottomY , width , height, priorRegion);
+				
 	}
 		
 	private record ArtboardMod(int x , int y , int width , int height) implements Comparable<ArtboardMod> {
 
+		private static final String toStringFormat = "Mod: X: %d, Y: %d, W: %d, H: %d";
+		
 		@Override public int compareTo(ArtboardMod o) {
 
 			if(this.y == o.y && this.x == o.x) return 0;
@@ -402,6 +456,12 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 		
 		}
 
+		@Override public String toString() {
+			
+			return String.format(toStringFormat, x, y , width , height);
+			
+		}
+		
 	}
 
 	@SuppressWarnings("unused") private void stackApproach() {
@@ -415,7 +475,7 @@ import cs.csss.project.ArtboardPalette.PalettePixel;
 			PixelPosition current = nextPositions.pop();
 			if(!isValidBorder(current.x, current.y) && !markedAsModded(current.x, current.y)) {
 				
-				mods.add(new ArtboardMod(current.x , current.y , 1 , 1));
+				addMod(current.x , current.y , 1 , 1);
 								
 				if(current.y + 1 < artboard.height() && !markedAsModded(current.x , current.y + 1)) {
 					

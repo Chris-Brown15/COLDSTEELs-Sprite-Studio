@@ -26,7 +26,7 @@ public class Eye_DropperBrush extends CSSSBrush {
 		if(layerPixel == null) color = editor.selectedColors();
 		else color = artboard.getColorFromIndicesOfPalette(layerPixel.lookupX, layerPixel.lookupY);
 		
-		return new SetActiveColorEvent(editor , artboard , color);
+		return new SetActiveColorEvent(editor , color);
 		
 	}
 

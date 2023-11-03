@@ -151,6 +151,32 @@ public class LHSPanel {
 				
 			});
 			
+			/*
+			 * Cursor Artboard Poositions
+			 */
+			
+			ui.attachedLayout((context , stack) -> {
+				
+				CSSSProject project = editor.project(); 
+				Artboard current = project != null ? project.currentArtboard() : null;
+				if(current == null) return;
+				nk_layout_row_dynamic(context , 20 , 2);
+				
+				int[] indices = current.worldToPixelIndices(editor.cursorCoords());
+				if(indices[0] < 0 || indices[0] >= current.width()) indices[0] = -1;
+				if(indices[1] < 0 || indices[1] >= current.height()) indices[1] = -1;
+				String xString = indices[0] == -1 ? "X: OoB" : "X: " + indices[0];
+				String yString = indices[1] == -1 ? "Y: OoB" : "Y: " + indices[1];
+				nk_text(context , xString , TEXT_LEFT|TEXT_CENTERED);
+				nk_text(context , yString , TEXT_LEFT|TEXT_CENTERED);
+				
+				
+			});
+			
+			/*
+			 * Brushes 
+			 */
+			
 			Iterator<CSSSBrush> brushes = CSSSBrush.allBrushes();
 			CSSSBrush iter;
 			
@@ -207,6 +233,7 @@ public class LHSPanel {
 				//set the last frame color value and update the editor if the last frame color doesnt match the current 
 				equals = Arrays.equals(previousFrameColorBuffer, currentColorBuffer);
 				if(!equals) editor.setSelectedColor(currentColorBuffer[0], currentColorBuffer[1], currentColorBuffer[2], currentColorBuffer[3]);
+
 				for(int i = 0 ; i < previousFrameColorBuffer.length ; i++) previousFrameColorBuffer[i] = currentColorBuffer[i];
 				
 			});
@@ -317,12 +344,23 @@ public class LHSPanel {
 	 */
 	public void setColor(ColorPixel pixel) {
 		
+		setColor(pixel.r() , pixel.g() , pixel.b() , pixel.a());
+		
+	}
+
+	/**
+	 * Sets the color of the color picker.
+	 * 
+	 * @param pixel — a new color  
+	 */
+	public void setColor(byte r , byte g, byte b, byte a) {
+		
 		if(channels() <= 2) {
 
-			twoDColor.gray = (short) Byte.toUnsignedInt(pixel.r());
-			if(channels() == 2) twoDColor.alpha = (short) Byte.toUnsignedInt(pixel.g());
+			twoDColor.gray = (short) Byte.toUnsignedInt(r);
+			if(channels() == 2) twoDColor.alpha = (short) Byte.toUnsignedInt(g);
 			
-		} else rgbPicker().color(pixel.r(), pixel.g(), pixel.b(), pixel.a());
+		} else rgbPicker().color(r , g, b, a);
 		
 	}
 	

@@ -166,10 +166,6 @@ public class Artboard {
 
 	private IndexTexture indexTexture;
 	
-	/**
-	 * Container of visual layers. Layers are stored in this list such that the layer with the lowest index is said to be the highest rank,
-	 * meaning it is the topmost layer. The greater some layer's index, the lower its rank.
-	 */
 	private ArrayList<VisualLayer> visualLayers = new ArrayList<>();
 	
 	private ArrayList<NonVisualLayer> nonVisualLayers = new ArrayList<>();
@@ -1641,7 +1637,7 @@ public class Artboard {
 	}
 
 	/**
-	 * Returns the midpoint Y coordinate (in world space) of this artboard.
+	 * Returns the midpoint X coordinate (in world space) of this artboard.
 	 * 
 	 * @return — midpoint X coordinate of this artboard.
 	 */

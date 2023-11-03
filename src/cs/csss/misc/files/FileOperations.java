@@ -3,13 +3,22 @@
  */
 package cs.csss.misc.files;
 
+import static java.util.Objects.isNull; 
+
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.stream.IntStream;
+
+import cs.core.utils.CSFileUtils;
 
 /**
  * Helper class used to write and read files from disk using {@code OutputStream} and {@code InputStream}.
@@ -192,6 +201,13 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putString(String stringValue , W writer) throws IOException {
+		
+		if(isNull(stringValue)) {
+			
+			putString("null" , writer);
+			return;
+			
+		}
 		
 		ByteBuffer current = format.get();
 		writeSize(current , writer , stringValue.length());		
@@ -835,4 +851,55 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 		
 	}
 	
+	/**
+	 * Copies the contents of the file at {@code sourcePath} to a file at {@code destinationPath}. If no file exists at {@code destinationPath}, one
+	 * will be created.
+	 * 
+	 * @param sourcePath — source path for copying
+	 * @param destinationPath — destination path to copy to
+	 * @throws IOException if an error occurs during IO operations, or if {@code sourcePath} does not point to a file.
+	 */
+	public static void copy(String sourcePath , String destinationPath) throws IOException {
+	
+		Path sourceAsPath = Paths.get(sourcePath);
+		if(!Files.exists(sourceAsPath)) throw new IOException(sourcePath + " does not exist.");
+		File destinationFile = new File(destinationPath);
+		destinationFile.createNewFile();
+		try(FileOutputStream destinationWriter = new FileOutputStream(destinationFile)) {
+			
+			Files.copy(sourceAsPath, destinationWriter);
+			
+		}
+				
+	}
+	
+	/**
+	 * Copies the contents of {@code sourceFile} to a file in {@code destinationFolder}. If no file exists at {@code destinationFolder}, one
+	 * will be created.
+	 * 
+	 * @param sourceFile — source file for copying
+	 * @param destinationFolder — destination file path
+	 * @throws IOException if an IO error occurs during copy operations, or if {@code sourceFile} does not point to a file.
+	 */
+	public static void copy(File sourceFile , CSFolder destinationFolder) throws IOException {
+		
+		String sourceAbsPath = sourceFile.getAbsolutePath();
+		copy(sourceAbsPath , destinationFolder.getRealPath() + CSFolder.separator + CSFileUtils.toExtendedName(sourceAbsPath));
+		
+	}
+	
+	/**
+	 * Copies the contents of the file at {@code sourcePath} to a file in {@code destinationFolder}. If no file exists at {@code destinationFolder},
+	 * one will be created.
+	 * 
+	 * @param sourcePath — source path for copying
+	 * @param destinationFolder — destination file path
+	 * @throws IOException if an error occurs during IO operations, or if {@code sourcePath} does not point to a file.
+	 */
+	public static void copy(String sourcePath , CSFolder destination) throws IOException {
+		
+		copy(sourcePath , destination.getRealPath() + CSFolder.separator + CSFileUtils.toExtendedName(sourcePath));
+				
+	}
+
 }

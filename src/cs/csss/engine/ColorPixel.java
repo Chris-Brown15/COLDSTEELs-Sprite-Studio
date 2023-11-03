@@ -11,6 +11,19 @@ package cs.csss.engine;
 public interface ColorPixel extends Comparable<ColorPixel> {
 
 	/**
+	 * Returns a distinct color from the values of {@code source}. If {@code source} is a mutable pixel, changes to its values will <em>not</em> 
+	 * affect the resulting pixel.
+	 * 
+	 * @param source — a source pixel
+	 * @return A channel-wise deep copy of {@code source}.
+	 */
+	public static ColorPixel copyOf(ColorPixel source) {
+		
+		return new Color(source.r() , source.g() , source.b() , source.a());
+		
+	}
+	
+	/**
 	 * Returns the red component of a pixel.
 	 * 
 	 * @return Red component of a pixel.

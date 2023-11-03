@@ -300,7 +300,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 				
 				//modify artboard buttons
 				
-				nk_layout_row_begin(context , NK_STATIC , 30 , 3);
+				nk_layout_row_begin(context , NK_STATIC , 30 , 4);
 				
 				pad(context , TIER_THREE_PADDING);
 				int rowWidth = (ui.interfaceWidth() - TIER_THREE_PADDING - 54) / 2;
@@ -363,10 +363,6 @@ import cs.csss.ui.menus.VectorTextMenu;
 						});
 						
 						activeLayerCheckBox(context , "Lock" , layer.locked() , () -> layer.toggleLock());
-						
-						//debug dump to file button
-						
-						if(!Engine.isDebug()) return;
 												
 					}
 

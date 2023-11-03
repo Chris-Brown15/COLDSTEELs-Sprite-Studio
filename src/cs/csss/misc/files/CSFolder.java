@@ -6,7 +6,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentHashMap.KeySetView;
 import java.util.function.Consumer;
@@ -14,8 +16,8 @@ import java.util.function.Consumer;
 import cs.core.utils.data.CSCHashMap;
 
 /**
- * Representation of a directory within a virutal file system. This is used in software to easily locate directories or files within virtual
- * root directories as well as create both subdirectories and files.
+ * Representation of a directory within a virutal file system. This is used in software to easily locate directories or files within virtual root
+ * directories as well as create both subdirectories and files.
  * 
  * <p>
  * Directories as modeled by this class follow two rules of their existence.
@@ -253,7 +255,7 @@ public final class CSFolder {
 		specify(parent , "Cannot make a root directory a subdirectory.");
 		specify(newParent , "New parent directory must not be null.");
 		
-		CSFolder newInstance = copy(newParent);
+		CSFolder newInstance = copy(name , newParent);
 		
 		delete();
 		
@@ -354,14 +356,15 @@ public final class CSFolder {
 	 * 
 	 * @param copyInto — a directory to make a copy of this directory into as a subdirectory
 	 * @return The copied directory, whose parent is {@code copyInto}.
+	 * @throws IOException if an IO error occurs when copying a file.
 	 */
-	public CSFolder copy(CSFolder copyInto) {
+	public CSFolder copy(String name , CSFolder copyInto) throws IOException {
 		
 		CSFolder copy = new CSFolder(name , copyInto);
 		
-		for(CSFile file : files.values()) copy.createFile(file.name, file.composition);
+		for(CSFile file : files.values()) FileOperations.copy(file.getRealPath(), copy);
 		
-		for(CSFolder subdirectory : subdirectories.values()) subdirectory.copy(copy);
+		for(CSFolder subdirectory : subdirectories.values()) subdirectory.copy(subdirectory.name , copy);
 		
 		return copy;
 		
@@ -378,21 +381,10 @@ public final class CSFolder {
 	 */
 	public void delete() throws IOException {
 		
-		String realPath = getRealPath();
-		
-		//deletes all nondirectories
-		for(CSFile file : files.values()) {
-			
-			File asFile = new File(realPath + separator + file.name);
-			asFile.delete();
-			
-		}
-		
-		files.clear();
+		deleteAllFiles();
 		
 		//delete directories by recursively going down the subdirectory tree and deleting directories that have no subdirectories, then
-		//delete the current one
-		
+		//delete the current one		
 		for(CSFolder directory : subdirectories.values()) directory.delete();
 		
 		//not needed but used anyway
@@ -402,6 +394,46 @@ public final class CSFolder {
 		Files.delete(Paths.get(getRealPath()));		
 		remove();
 				
+	}
+	
+	/**
+	 * Deletes all contents of this folder, but does not delete it in particular.
+	 */
+	public void clear() {
+		
+		subdirectories.forEach((name , folder) -> {
+			
+			try {
+				
+				folder.delete();
+				
+			} catch (IOException e) {
+				
+				e.printStackTrace();
+				
+			}
+			
+		});
+		
+		deleteAllFiles();
+
+	}
+
+	/**
+	 * Deletes all contents of this folder alone that are files. This method does not delete folders.
+	 */
+	public void deleteAllFiles() {
+
+		String realPath = getRealPath();
+		for(CSFile file : files.values()) {
+			
+			File asFile = new File(realPath + separator + file.name);
+			asFile.delete();
+			
+		}
+		
+		files.clear();
+		
 	}
 	
 	/**
@@ -432,11 +464,45 @@ public final class CSFolder {
 		
 	}
 	 
+	/**
+	 * Gets a file with the name of {@code name} in this folder.
+	 * 
+	 * @param name — name of a file
+	 * @return {@code CSFile} named {@code name}.
+	 */
 	public CSFile getFile(String name) {
 		
 		CSFile file = files.get(name);
 		specify(file , name + " is not in this directory.");
 		return file;
+		
+	}
+	
+	/**
+	 * Renames this folder to {@code newName}. This operation will fail if {@code this} is a root folder, so roots cannot be renamed.
+	 * 
+	 * @param newName — new name for this folder.
+	 * @throws IOException 
+	 * @throws NullPointerException if {@code newName} is {@code null}.
+	 */
+	public void rename(String newName) {
+		
+		Objects.requireNonNull(newName);
+		
+		if(isRoot()) throw new UnsupportedOperationException("This is a root folder, so it cannot be renamed."); 
+		
+		asFile().renameTo(new File(parent.getRealPath() + CSFolder.separator + newName));
+		
+	}
+	
+	/**
+	 * Returns whether this {@code CSFolder} is a root. 
+	 * 
+	 * @return {@code true} if this is a root folder, {@code false} otherwise.
+	 */
+	public boolean isRoot() {
+		
+		return roots.hasKey(name);
 		
 	}
 	
@@ -536,9 +602,15 @@ public final class CSFolder {
 	 * 
 	 * @return Iterator over the files within this directory.
 	 */
-	public Iterator<CSFile> files() {
+	public Iterator<CSFile> filesIterator() {
 		
 		return files.values().iterator();
+		
+	}
+	
+	public Collection<CSFile> files() {
+		
+		return files.values();
 		
 	}
 	

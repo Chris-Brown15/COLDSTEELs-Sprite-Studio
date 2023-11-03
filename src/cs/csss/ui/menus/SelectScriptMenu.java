@@ -3,8 +3,10 @@ package cs.csss.ui.menus;
 import static cs.core.ui.CSUIConstants.*;
 
 import java.awt.Desktop;
+import java.io.File;
 import java.io.IOException;
-import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.List;
 
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
@@ -13,15 +15,16 @@ import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
 import cs.core.ui.CSNuklear.CSUI.CSRow;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
-import cs.csss.misc.files.CSFile;
+import cs.csss.editor.ScriptType;
 import cs.csss.misc.files.CSFolder;
+import cs.csss.steamworks.WorkshopDownloadHelper;
 
 /**
  * UI menu used to select a script. This is used for all instances of selecting a script.
  */
 public class SelectScriptMenu extends Dialogue {
 
-	private CSFile selectedFile;
+	private File selectedFile;
 	private CSUserInterface ui;
 	
 	/**
@@ -39,31 +42,22 @@ public class SelectScriptMenu extends Dialogue {
 		
 		scriptsDir.seekExistingFiles();
 		
-		LinkedList<CSRadio> radios = new LinkedList<>();
+		ArrayList<CSRadio> radios = new ArrayList<>();
 		
-		scriptsDir.files().forEachRemaining(file -> {
+		scriptsDir.filesIterator().forEachRemaining(file -> newRadio(file.asFile(), radios));
+		
+		ScriptType typeFromDirectoryName = ScriptType.getTypeFromDirectoryName(scriptDirectory);
+		String asTag = typeFromDirectoryName.asTagName();
+		
+		//check with the workshop scripts here
+		WorkshopDownloadHelper.forEachDownload(item -> {
 			
-			CSRow row = ui.new CSRow(30);
-			row.pushWidth(0.66f);
-			row.pushWidth(0.25f);
-			CSRadio radio = row.new CSRadio(file.name() , false , () -> selectedFile = file);
-			CSButton openButton = row.new CSButton("Open" , () -> {
+			if(item.hasTag(asTag)) {
 				
-				try {
-					
-					Desktop.getDesktop().open(file.asFile());
-					
-				} catch (IOException e) {
-					
-					e.printStackTrace();
-					
-				}
+				File script = new File(item.folder()).listFiles((director , name) -> name.endsWith(".py"))[0];
+				newRadio(script , radios);
 				
-			});
-			
-			openButton.doLayout = Desktop::isDesktopSupported;
-			
-			radios.add(radio);
+			}			
 			
 		});
 		
@@ -107,9 +101,35 @@ public class SelectScriptMenu extends Dialogue {
 	 * 
 	 * @return File containing the selected script.
 	 */
-	public CSFile selectedScript() {
+	public File selectedScript() {
 		
 		return selectedFile;
+		
+	}
+	
+	private void newRadio(File file , List<CSRadio> radios) {
+		
+		CSRow row = ui.new CSRow(30);
+		row.pushWidth(0.66f);
+		row.pushWidth(0.25f);
+		CSRadio radio = row.new CSRadio(file.getName() , false , () -> selectedFile = file);
+		CSButton openButton = row.new CSButton("Open" , () -> {
+			
+			try {
+				
+				Desktop.getDesktop().open(file);
+				
+			} catch (IOException e) {
+				
+				e.printStackTrace();
+				
+			}
+			
+		});
+		
+		openButton.doLayout = Desktop::isDesktopSupported;
+		
+		radios.add(radio);
 		
 	}
 	

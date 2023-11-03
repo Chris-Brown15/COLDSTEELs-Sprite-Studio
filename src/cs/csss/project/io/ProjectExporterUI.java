@@ -6,6 +6,7 @@ import static cs.core.ui.CSUIConstants.*;
 
 import java.io.File;
 import java.util.ArrayList;
+
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSCheckBox;
@@ -17,16 +18,17 @@ import cs.coreext.python.CSJEP;
 import cs.csss.engine.Engine;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.project.CSSSProject;
+import cs.csss.ui.menus.DroppedFileAcceptingDialogue;
 
 /**
  * UI element for selecting options and begining the export of the project.
  */
-public class ProjectExporterUI {
+public class ProjectExporterUI extends DroppedFileAcceptingDialogue {
 	
 	/**
 	 * String representing the absolute file path to export to when exporting.
 	 */
-	private static String exportLocation = CSFolder.getRoot("exports").getRealPath(); 
+	private String exportLocation = CSFolder.getRoot("exports").getRealPath(); 
 
 	private static final int
 		UIWidth = 517 ,
@@ -39,11 +41,6 @@ public class ProjectExporterUI {
 	 */
 	public static void registerExportLocation(String absoluteFilePath) {
 
-		synchronized(exportLocation) {
-			
-			exportLocation = absoluteFilePath;
-			
-		}
 		
 	}
 	
@@ -91,6 +88,7 @@ public class ProjectExporterUI {
 			
 			nuklear.removeUserInterface(ui);
 			ui.shutDown();
+			super.onFinish();
 			
 		};
 		
@@ -162,7 +160,7 @@ public class ProjectExporterUI {
 		
 		scriptRow.new CSButton("Select" , () -> engine.startSelectScriptMenu("exporters" , file -> {
 			
-			scriptPath = file.getRealPath();
+			scriptPath = file.getAbsolutePath();
 
 			exporters.add(new ExportCallbackAndName((filepath , data , width , height , channels) -> {
 				
@@ -218,6 +216,17 @@ public class ProjectExporterUI {
 		
 		return initiallyPossible;
 		
+	}
+
+	@Override public void acceptDroppedFilePath(String... filepaths) {
+
+		super.defaultAcceptDroppedFilePath(filepaths);
+		
+		synchronized(exportLocation) {
+			
+			exportLocation = filepaths[0];
+			
+		}
 	}
 
 } 

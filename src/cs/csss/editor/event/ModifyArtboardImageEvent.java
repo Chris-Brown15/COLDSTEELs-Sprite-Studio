@@ -67,22 +67,10 @@ import cs.csss.project.IndexPixel;
 		this.width = width;
 		this.height = height;
 
-		this.color = color;
+		this.color = ColorPixel.copyOf(color);
 		regionPreviousIndices = artboard.getRegionOfIndexPixels(xIndex, yIndex, width, height);
 		
-		regionPreviousLayerMods = new LayerPixel[height][width];
-		
-		Layer active = artboard.activeLayer();
-		
-		for(int regionRow = yIndex , arrayRow = 0; regionRow < yIndex + height ; regionRow++ , arrayRow++) {
-			
-			for(int regionCol = xIndex , arrayCol = 0 ; regionCol < xIndex + width ; regionCol++ , arrayCol++) {
-				
-				regionPreviousLayerMods[arrayRow][arrayCol] = active.get(regionCol, regionRow);
-				
-			}			
-			
-		}
+		regionPreviousLayerMods = artboard.getRegionOfLayerPixels(xIndex, yIndex, width, height);
 		
 	}
 

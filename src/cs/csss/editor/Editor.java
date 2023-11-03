@@ -1,5 +1,6 @@
 package cs.csss.editor;
 
+import java.io.File;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -28,7 +29,7 @@ import cs.csss.editor.brush.Copy_RegionBrush;
 import cs.csss.editor.brush.Delete_RegionBrush;
 import cs.csss.editor.brush.EraserBrush;
 import cs.csss.editor.brush.Eye_DropperBrush;
-import cs.csss.editor.brush.Flood_Fill_WIPBrush;
+import cs.csss.editor.brush.Flood_FillBrush;
 import cs.csss.editor.brush.ModifyingScriptBrush;
 import cs.csss.editor.brush.PencilBrush;
 import cs.csss.editor.brush.Move_RegionBrush;
@@ -56,7 +57,6 @@ import cs.csss.engine.ColorPixel;
 import cs.csss.engine.Control;
 import cs.csss.engine.Engine;
 import cs.csss.engine.Logging;
-import cs.csss.misc.files.CSFile;
 import cs.csss.misc.utils.MiscUtils;
 import cs.csss.project.Animation;
 import cs.csss.project.Artboard;
@@ -83,16 +83,16 @@ public class Editor implements ShutDown {
 	public static final PencilBrush thePencilBrush = new PencilBrush();
 	public static final EraserBrush theEraserBrush = new EraserBrush();
 	public static final Eye_DropperBrush theEyeDropper = new Eye_DropperBrush();
-	public static final Flood_Fill_WIPBrush theFloodFill = new Flood_Fill_WIPBrush();
+	public static final Flood_FillBrush theFloodFill = new Flood_FillBrush();
 	public static final Replace_AllBrush theReplaceAllBrush = new Replace_AllBrush();
 	public static final Move_RegionBrush theRegionSelect = new Move_RegionBrush();
 	public static final Delete_RegionBrush theDeleteRegion = new Delete_RegionBrush();
 	public static final RotateBrush theRotateBrush = new RotateBrush();
 	public static final Scale_RegionBrush theScaleBrush = new Scale_RegionBrush();
 	public static final Copy_RegionBrush theCopyBrush = new Copy_RegionBrush();
-	public static volatile ScriptBrush theScriptBrush = null;
-	public static volatile ModifyingScriptBrush theModifyingScriptBrush = null;
-	public static volatile SelectingScriptBrush theSelectingScriptBrush = null;
+	private static volatile ScriptBrush theScriptBrush = null;
+	private static volatile ModifyingScriptBrush theModifyingScriptBrush = null;
+	private static volatile SelectingScriptBrush theSelectingScriptBrush = null;
 	
 	/**
 	 * Returns the current script brush.
@@ -463,6 +463,20 @@ public class Editor implements ShutDown {
 		leftSidePanel.setColor(pixel);
 	
 	}
+
+	/**
+	 * Sets the active colors of the color picker in the left hand side panel to {@code pixel}.
+	 * 
+	 * @param r — red channel of the new color
+	 * @param g — green channel of the new color
+	 * @param b — blue channel of the new color
+	 * @param a — alpha channel of the new color
+	 */
+	public void setLHSSelectedColor(byte r , byte g , byte b , byte a) {
+		
+		leftSidePanel.setColor(r , g , b,  a);
+	
+	}
 	
 	/**
 	 * Sets the color the editor considers to be the current color value.
@@ -657,6 +671,24 @@ public class Editor implements ShutDown {
 	}	
 	
 	/**
+	 * Creates an UI element for uploading an item to the Steam Workshop.
+	 */
+	public void startSteamWorkshopItemUpload() {
+		
+		engine.startSteamWorkshopItemUpload();
+		
+	}
+	
+	/**
+	 * Creates an UI element for updating an item on the Steam Workshop.
+	 */
+	public void startSteamWorkshopItemUpdate() {
+		
+		engine.startSteamWorkshopItemUpdateMenu();
+		
+	}
+	
+	/**
 	 * Creates an UI element for setting the swap type of a frame at the given index.
 	 * 
 	 * @param index — index of a frame of an animation whose swap time is being adjusted
@@ -780,6 +812,17 @@ public class Editor implements ShutDown {
 	public boolean isCurrentAnimation(Animation animation) {
 		
 		return engine.currentProject().currentAnimation() == animation;
+		
+	}
+	
+	/**
+	 * Returns whether the Steam API was initialized.
+	 * 
+	 * @return Whether the Steam API was initialized.
+	 */
+	public boolean isSteamInitialized() {
+		
+		return engine.isSteamInitialized();
 		
 	}
 	
@@ -1026,7 +1069,7 @@ public class Editor implements ShutDown {
 		
 		engine.startSelectScriptMenu("palettes", file -> {
 			
-			String title = file.name();
+			String title = file.getName();
 			//already has the given entry, return, only happens in nondebug mode
 			if (loadedPaletteScripts.hasKey(title)) return;
 			
@@ -1040,7 +1083,7 @@ public class Editor implements ShutDown {
 			}
 			
 			CSJEP jep = CSJEP.interpreter();
-			String functionName = asScriptName(file.name());
+			String functionName = asScriptName(title);
 			
 			//try to remove a palette of the name of the palette we are adding from the data structures.
 			//this only happens in debug mode.
@@ -1208,12 +1251,12 @@ public class Editor implements ShutDown {
 			
 	}
 	
-	private void pushScriptCode(EventScriptMeta eventScriptMeta , CSFile file , Consumer<List<String>> code) {
+	private void pushScriptCode(EventScriptMeta eventScriptMeta , File file , Consumer<List<String>> code) {
 
 		//get user arguments, then procede.
 		if(eventScriptMeta.takesArguments()) {
 			
-			engine.startScriptArgumentInput(file.name(), Optional.ofNullable(eventScriptMeta.argumentDialogueText()), result -> {
+			engine.startScriptArgumentInput(file.getName(), Optional.ofNullable(eventScriptMeta.argumentDialogueText()), result -> {
 				
 				List<String> args = List.of(result.split(" "));
 				
@@ -1280,11 +1323,13 @@ public class Editor implements ShutDown {
 	 * @param targetMap — a hash map to store the cached metadata in
 	 * @return Script metadata, or null in the case the script cannot be run.
 	 */
-	private EventScriptMeta initializeOrGetEventScript(CSFile scriptFile , CSCHashMap<EventScriptMeta , String> targetMap) {
+	private EventScriptMeta initializeOrGetEventScript(File scriptFile , CSCHashMap<EventScriptMeta , String> targetMap) {
 
+		String name = scriptFile.getName() , realPath = scriptFile.getAbsolutePath();
+		
 		synchronized(targetMap) {
 			
-			CSHashMapEntry<EventScriptMeta , String> scriptContainer = targetMap.getEntry(scriptFile.name());
+			CSHashMapEntry<EventScriptMeta , String> scriptContainer = targetMap.getEntry(name);
 						
 			if(scriptContainer != null) return scriptContainer.value();
 
@@ -1295,7 +1340,7 @@ public class Editor implements ShutDown {
 			//this try block will run the script and attempt to gather its metadata.
 			try {
 				
-				localJep.run(scriptFile.getRealPath());
+				localJep.run(realPath);
 				scriptData = new boolean[] {
 					(boolean) localJep.get("isRenderEvent") , 
 					getOrDefault(localJep , "isTransientEvent" , false) ,
@@ -1312,13 +1357,7 @@ public class Editor implements ShutDown {
 				
 			}
 
-			EventScriptMeta scriptMetadata = new EventScriptMeta(
-				scriptData[0] , 
-				scriptData[1] , 
-				scriptData[2] , 
-				dialogueText , 
-				scriptFile.name()
-			);
+			EventScriptMeta scriptMetadata = new EventScriptMeta(scriptData[0] , scriptData[1] , scriptData[2] , dialogueText , name);
 			
 			/*
 			 * If in debug, rerun the script every time to verify whether its a renderer event or not.
@@ -1329,7 +1368,7 @@ public class Editor implements ShutDown {
 			 * By not putting the renderEvent boolean in the hash map, we ensure we reinitialize the script every time it's invoked.
 			 * 
 			 */				
-			if(!Engine.isDebug()) targetMap.put(scriptMetadata , scriptFile.name());
+			if(!Engine.isDebug()) targetMap.put(scriptMetadata , name);
 			
 			/*
 			 * If this is a render event, run the script in the render thread.                                                          
@@ -1341,7 +1380,7 @@ public class Editor implements ShutDown {
 			if(scriptData[0]) rendererPost(() -> {
 				
 				CSJEP jep = CSJEP.interpreter();
-				jep.run(scriptFile.getRealPath());
+				jep.run(realPath);
 				
 			}).await();
 			
@@ -1351,20 +1390,21 @@ public class Editor implements ShutDown {
 		
 	}
 
-	private BrushScriptMeta initializeOrGetBrushScript(CSFile file , CSCHashMap<BrushScriptMeta , String> targetMap) {
+	private BrushScriptMeta initializeOrGetBrushScript(File file , CSCHashMap<BrushScriptMeta , String> targetMap) {
 		
 		synchronized(targetMap) {
 
-			String title = file.name();
+			String title = file.getName();
 			CSHashMapEntry<BrushScriptMeta , String> meta = targetMap.getEntry(title);
 			if(meta != null) return meta.value();
 
 			//for some reason, if running the python code for the first time causes an error in the render thread, the application dies.
 			//so we have to run it twice, once in the main thread to make sure it won't throw an exception in the render thread, then in 
 			//the render thread.
+			String path = file.getAbsolutePath();
 			try {
 				
-				CSJEP.interpreter().run(file.getRealPath());
+				CSJEP.interpreter().run(path);
 				
 			} catch(Exception e) {
 				
@@ -1376,7 +1416,7 @@ public class Editor implements ShutDown {
 			BrushScriptMeta scriptMeta = rendererMake(() -> {
 
 				CSJEP jep = CSJEP.interpreter();
-				jep.run(file.getRealPath());
+				jep.run(path);
 							
 				return new BrushScriptMeta(
 					getOrDefault(jep , "tooltip" , "") , 
@@ -1396,18 +1436,18 @@ public class Editor implements ShutDown {
 		
 	}
 
-	private PaletteScriptMeta initializeOrGetPaletteScriptMeta(CSFile file) {
+	private PaletteScriptMeta initializeOrGetPaletteScriptMeta(File file) {
 		
 		synchronized(loadedPaletteScripts) {
 			
-			String title = file.name();
+			String title = file.getName();
 			CSHashMapEntry<PaletteScriptMeta , String> metaEntry = loadedPaletteScripts.getEntry(title);
 			if(metaEntry != null) return metaEntry.value();
 			
 			try {
 				
 				CSJEP jep = CSJEP.interpreter();
-				jep.run(file.getRealPath());
+				jep.run(file.getAbsolutePath());
 			
 				String paletteName = getOrDefault(jep , "name" , title + " Palette");
 				long initialValueScale = jep.get("initialValueScale");

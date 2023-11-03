@@ -1547,7 +1547,6 @@ public class CSSSProject implements ShutDown {
 		
 	}
 
-
 	/**
 	 * Computes size and position data needed for exporting.
 	 * 

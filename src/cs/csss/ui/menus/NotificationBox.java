@@ -4,6 +4,7 @@ import static cs.core.ui.CSUIConstants.*;
 
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUserInterface;
+import cs.core.utils.Lambda;
 import cs.csss.ui.utils.UIUtils;
 
 /**
@@ -24,8 +25,9 @@ public class NotificationBox extends Dialogue {
 	 * @param title — title of this notification box
 	 * @param message — message of this notification box
 	 * @param nuklear — the Nuklear factory
+	 * @param onOK — invoked when the user presses the OK button.
 	 */
-	public NotificationBox(final String title , final String message , CSNuklear nuklear) {
+	public NotificationBox(final String title , final String message , CSNuklear nuklear , Lambda onOK) {
 
 		CSUserInterface ui = nuklear.new CSUserInterface(title , .4f , .4f , width , height);
 		
@@ -35,17 +37,31 @@ public class NotificationBox extends Dialogue {
 				
 		int realHeight = height;
 		
-		int height = (int) Math.ceil((length / realHeight)) * 17;
-		
+		int height = (int) Math.ceil((length / realHeight)) * 22;
+				
 		ui.new CSDynamicRow(height).new CSText(message);
 		
 		ui.new CSDynamicRow().new CSButton("Okay" , () -> {
 			
+			if(onOK != null) onOK.invoke();
 			ui.shutDown();
 			nuklear.removeUserInterface(ui);
 			super.onFinish();
 			
 		});		
+		
+	}
+
+	/**
+	 * Creates a new notification box.
+	 * 
+	 * @param title — title of this notification box
+	 * @param message — message of this notification box
+	 * @param nuklear — the Nuklear factory
+	 */
+	public NotificationBox(String title , String message , CSNuklear nuklear) {
+		
+		this(title , message , nuklear , null);
 		
 	}
 

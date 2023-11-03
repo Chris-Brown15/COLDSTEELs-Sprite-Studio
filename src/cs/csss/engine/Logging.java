@@ -23,24 +23,15 @@ import cs.csss.misc.files.CSFolder;
  */
 public class Logging {
 
-	public static final int
-		OP_TO_STD = 0b1,
-		OP_TO_FILE = 0b10;
-
-	private static final String 
-		DEBUG_PRINT_PREFIX = "[DEBUG] " ,
-		LOG_FILE_TYPE = ".txt";
-	
-	private static final int linefeed = System.lineSeparator().getBytes()[0];
-	
-	public static final String OBJECT_STRING_SEPARATOR = ", ";
-	
+	public static final int OP_TO_STD = 0b1, OP_TO_FILE = 0b10;
 	public static int operations = OP_TO_STD;
+	private static final int linefeed = System.lineSeparator().getBytes()[0];
 
-	private static volatile FileOutputStream logWriter;
-	
-	private static LoggingThread loggingThread = new LoggingThread();
+	public static final String OBJECT_STRING_SEPARATOR = ", ";
+	private static final String DEBUG_PRINT_PREFIX = "[DEBUG] " , LOG_FILE_TYPE = ".txt";
 		
+	private static volatile FileOutputStream logWriter;	
+	private static LoggingThread loggingThread = new LoggingThread();
 	private static final LocalDateTime launchTime = LocalDateTime.now();
 	
 	static void initialize(int _operations) throws IOException {
@@ -60,7 +51,7 @@ public class Logging {
 			
 			File log = CSFile.makeFile(logs, nameString + LOG_FILE_TYPE);
 			logWriter = new FileOutputStream(log);	
-			log.deleteOnExit();			
+			log.deleteOnExit();
 			sysout("Initialized Log Writer");
 			
 		}
@@ -164,7 +155,7 @@ public class Logging {
 	static void deleteOldLogs() {
 		
 		CSFolder debug = CSFolder.getRoot("debug");
-		Iterator<CSFile> files = debug.files();
+		Iterator<CSFile> files = debug.filesIterator();
 		final int day = launchTime.getDayOfYear();
 		
 		FindOldFiles: while(files.hasNext()) {
@@ -194,6 +185,7 @@ public class Logging {
 		}
 		
 	}
+	
 	private static class LoggingThread extends Thread {
 		
 		private final AtomicBoolean persist = new AtomicBoolean(true);

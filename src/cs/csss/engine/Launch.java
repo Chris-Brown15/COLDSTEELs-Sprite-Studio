@@ -27,6 +27,8 @@ package cs.csss.engine;
  */
 public class Launch {
 
+	private Launch() {}
+	
 	public static void main(String[] args) {
 	
 		Engine.preinitialize(args);

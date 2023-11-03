@@ -33,7 +33,7 @@ public class NewProjectMenu extends Dialogue {
 			
 			CSFolder projectsFolder = CSFolder.getRoot("data").getOrCreateSubdirectory("projects");
 			projectsFolder.seekExistingFiles();
-		 	Iterator<CSFile> projects = projectsFolder.files();					
+		 	Iterator<CSFile> projects = projectsFolder.filesIterator();					
 		 	while(projects.hasNext()) existingProjects.add(projects.next().name());
 		 	
 		});
@@ -48,7 +48,7 @@ public class NewProjectMenu extends Dialogue {
 
 	private final Lambda removeUIOnFinish;
 
-	private int channelsPerPixel = -1;
+	private int channelsPerPixel = 4;
 
 	/**
 	 * Creates a new project menu.
@@ -65,10 +65,10 @@ public class NewProjectMenu extends Dialogue {
 		textInput = nameRow.new CSTextEditor(100);
 		
 		ui.new CSDynamicRow(20).new CSText("Select Number of Channels:" , TEXT_CENTERED|TEXT_LEFT);		
-		CSRadio oneChannel = ui.new CSDynamicRow(25).new CSRadio("Grayscale" , false , () -> channelsPerPixel = 1);
-		CSRadio twoChannels = ui.new CSDynamicRow(25).new CSRadio("Grayscale + Alpha" , false , () -> channelsPerPixel = 2);
-		CSRadio threeChannels = ui.new CSDynamicRow(25).new CSRadio("RGB" , false , () -> channelsPerPixel = 3);
-		CSRadio fourChannels = ui.new CSDynamicRow(25).new CSRadio("RGB + Alpha" , true , () -> channelsPerPixel = 4);
+		CSRadio oneChannel = ui.new CSDynamicRow(25).new CSRadio("Grayscale" , () -> channelsPerPixel == 1 , () -> channelsPerPixel = 1);
+		CSRadio twoChannels = ui.new CSDynamicRow(25).new CSRadio("Grayscale + Alpha" , () -> channelsPerPixel == 2 , () -> channelsPerPixel = 2);
+		CSRadio threeChannels = ui.new CSDynamicRow(25).new CSRadio("RGB" , () -> channelsPerPixel == 3 , () -> channelsPerPixel = 3);
+		CSRadio fourChannels = ui.new CSDynamicRow(25).new CSRadio("RGB + Alpha" , () -> channelsPerPixel == 4, () -> channelsPerPixel = 4);
 		
 		channelsPerPixel = 4;
 		

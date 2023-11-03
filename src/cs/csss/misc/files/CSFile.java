@@ -58,20 +58,18 @@ public class CSFile {
 	
 	public CSFile(final CSFolder location , final String name , FileComposition composition)  {
 
-		this(location , name);
-		specify(composition , "File compositions cannot be null");
-		this.composition = composition;
-		makeFile(location , name);
+		this(location , name);		
+		this.composition = composition;	
 		
 	}
 
 	public CSFile(final CSFolder location , final String name) {
 
-		this.composition = null;
-		name(name);
 		specify(location , "Parent directory cannot be null");
+		name(name);
 		this.location = location;
-				
+		makeFile(location, name);
+						
 	}
 	
 	public void name(String newName) {

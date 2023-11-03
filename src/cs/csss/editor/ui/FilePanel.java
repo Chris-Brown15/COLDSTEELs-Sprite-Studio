@@ -131,6 +131,18 @@ public class FilePanel {
 		
 		optionsMenu.new CSDynamicRow().new CSButton("Simulation Framerate" , editor::startSetSimulationFrameRate);
 		
+		/*
+		 * Steam workshop Menu
+		 */
+		
+		if(editor.isSteamInitialized()) {
+			
+			 CSMenu steamMenu = menuBar.new CSMenu("Steam" , 349 , 400);
+			 steamMenu.new CSDynamicRow().new CSButton("Post to Workshop" , editor::startSteamWorkshopItemUpload);
+			 steamMenu.new CSDynamicRow().new CSButton("Update Workshop Item" , editor::startSteamWorkshopItemUpdate);
+			
+		}
+		
 		if(Engine.isDebug()) {
 			
 			CSMenu debugMenu = menuBar.new CSMenu("Debug" , 349 , 400);
@@ -198,9 +210,9 @@ public class FilePanel {
 			debugMenu.new CSDynamicRow().new CSButton("Reload Shaders" , () -> {
 				
 				editor.rendererPost(() -> CSSSProject.thePaletteShader().reload(
-						readAllCharacters("assets/shaders/vertexShader.glsl") , 
-						readAllCharacters("assets/shaders/fragmentPaletteShader.glsl")
-						));
+					readAllCharacters("assets/shaders/vertexShader.glsl") , 
+					readAllCharacters("assets/shaders/fragmentPaletteShader.glsl")
+				));
 				
 			});
 			
