@@ -39,12 +39,8 @@ import cs.csss.project.utils.RegionIterator;
  * <p>
  * 	After the fanning, a block of space has been recorded, but:
  * 	<ul>
- * 		<li>
- * 			any open spaces touching the bottom or top of the fan that were left or right of the clicked point that are open and
- * 		</li>
- * 		<li>
- * 			any interior border shapes would block the east west iterations from reaching the true border
- * 		</li>
+ * 		<li> any open spaces touching the bottom or top of the fan that were left or right of the clicked point that are open and </li>
+ * 		<li> any interior border shapes would block the east west iterations from reaching the true border </li>
  * 	</ul>
  *  would lead to sections being missed. Therefore, during the east/west iterations of the walking back step, the pixel above or below the 
  *  iteration's current pixel (depending upon if the walk back is walking back from north or walking back from south) is checked. If it is 
@@ -99,7 +95,11 @@ import cs.csss.project.utils.RegionIterator;
 
 	private ArtboardMod addMod(int x , int y , int width , int height) {
 		
+		if(x < 0) x = 0;
+		if(y < 0) y = 0;
+		
 		ArtboardMod mod = new ArtboardMod(x , y , width , height);
+		
 		synchronized(mods) {
 			
 			mods.add(mod);
@@ -270,8 +270,8 @@ import cs.csss.project.utils.RegionIterator;
 			else startingX--;		
 			
 		}
-		
-		return eastward ? startingX - 1 : startingX + 1;
+
+		return eastward ? startingX - 1 : startingX + 1; 
 		
 	}
 	
@@ -290,7 +290,7 @@ import cs.csss.project.utils.RegionIterator;
 		
 			if(isValidBorder(i , checkY) || markedAsModded(i , checkY)) continue;
 			
-//			//start iteration and return
+			//start iteration and return
 			int east = findEasternBorder(i, checkY);
 			int west = findWesternBorder(i, checkY);
 
@@ -313,7 +313,7 @@ import cs.csss.project.utils.RegionIterator;
 		while(north != startingY) {
 
 			int east = findHorizontalBorderWalkingBack(startingX + 1 , north , EAST , NORTH);
-			int west = findHorizontalBorderWalkingBack(startingX - 1 , north , WEST , NORTH);
+			int west = findHorizontalBorderWalkingBack(startingX - 1 , north , WEST , NORTH);		
 			addMod(west , north , (east - west) + 1 , 1);
 			north--;
 			
@@ -326,7 +326,7 @@ import cs.csss.project.utils.RegionIterator;
 		while(south != startingY) {
 			
 			int east = findHorizontalBorderWalkingBack(startingX + 1 , south , EAST , SOUTH);	
-			int west = findHorizontalBorderWalkingBack(startingX - 1 , south , WEST , SOUTH);			
+			int west = findHorizontalBorderWalkingBack(startingX - 1 , south , WEST , SOUTH);
 			addMod(west , south , (east - west) + 1 , 1);
 			south++;
 			
@@ -399,8 +399,9 @@ import cs.csss.project.utils.RegionIterator;
 			for(int i = 0 ; i < mods.size() ; i++) {
 				
 			 	x = mods.get(i);
+			 
 			 	leftmostX = min(leftmostX , x.x);
-				bottomY = min(bottomY , x.y);				
+				bottomY = min(bottomY , x.y);
 				greatestX = max(greatestX , x.x + x.width);
 				highestY = max(highestY , x.y + x.height);
 				

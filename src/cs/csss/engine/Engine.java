@@ -160,7 +160,7 @@ public final class Engine implements ShutDown {
 	/**
 	 * Version of the current application distribution.
 	 */
-	public static final String VERSION_STRING = String.format("%s %d.%d%d" , "Beta" , 1 , 0 , 3);
+	public static final String VERSION_STRING = String.format("%s %d.%d%d" , "Beta" , 1 , 0 , 4);
 
 	/**
 	 * Containers for program files and assets.
