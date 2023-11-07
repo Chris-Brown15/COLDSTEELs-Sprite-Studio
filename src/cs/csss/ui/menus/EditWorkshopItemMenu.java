@@ -75,8 +75,10 @@ abstract class EditWorkshopItemMenu extends DroppedFileAcceptingDialogue {
 		ui = new FullAccessCSUI(nuklear , "Workshop Item Upload" , .5f - (width / 2) , .5f - (height / 2) , width , height);
 		ui.options = UI_TITLED|UI_BORDERED;
 
-		existingNames = CSFolder.getRoot("program").getOrCreateSubdirectory("workshop").getOrCreateSubdirectory("creations").asFile().list();
+		CSFolder workshop = CSFolder.getRoot("program").getOrCreateSubdirectory("workshop");
+		existingNames = workshop.getOrCreateSubdirectory("creations").asFile().list();
 		this.preventExistingNames = preventExistingNames;
+				
 		
 	}
 
@@ -160,7 +162,7 @@ abstract class EditWorkshopItemMenu extends DroppedFileAcceptingDialogue {
 		selectScriptGroup.ui.attachedLayout((context , stack) -> {
 
 			if(type == null) return;
-			CSFolder containingFolder = CSFolder.getRoot("program").getSubdirectory("scripts").getSubdirectory(type.associatedFolderName);
+			CSFolder containingFolder = CSFolder.getRoot("program").getSubdirectory("scripts").getOrCreateSubdirectory(type.associatedFolderName);
 			Collection<CSFile> files = containingFolder.files();
 			files.stream()
 				.filter(file -> !Engine.isReservedScriptName(file.name()))
@@ -175,7 +177,9 @@ abstract class EditWorkshopItemMenu extends DroppedFileAcceptingDialogue {
 						toByte(stack , scriptFilePath != null && scriptFilePath.equals(file.getRealPath())))
 					) { 
 						
-						scriptFilePath = file.getRealPath();
+						if(scriptFilePath == null) scriptFilePath = file.getRealPath();
+						//deselects
+						else scriptFilePath = null;
 						
 					}
 					

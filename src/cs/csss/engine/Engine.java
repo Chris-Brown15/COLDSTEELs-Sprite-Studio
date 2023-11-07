@@ -1,7 +1,7 @@
 package cs.csss.engine;
 
-import static cs.csss.engine.Logging.OP_TO_STD;
-import static cs.csss.engine.Logging.sysDebug;
+import static cs.csss.engine.Logging.*;
+
 import static org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 import static org.lwjgl.glfw.GLFW.GLFW_RELEASE;
@@ -160,7 +160,7 @@ public final class Engine implements ShutDown {
 	/**
 	 * Version of the current application distribution.
 	 */
-	public static final String VERSION_STRING = String.format("%s %d.%d%d" , "Beta" , 1 , 0 , 4);
+	public static final String VERSION_STRING = String.format("%s %d.%d%d" , "Beta" , 1 , 0 , 5);
 
 	/**
 	 * Containers for program files and assets.
@@ -172,7 +172,7 @@ public final class Engine implements ShutDown {
 		exportsRoot = CSFolder.establishRoot("exports") ,
 		debugRoot = CSFolder.establishRoot("debug");
 	
-	private static boolean isDebug = false , isPythonInstalled = false;
+	private static boolean isDebug = false , isPythonInstalled = false , useSteam = true;
 	
 	/**
 	 * Contains reserved strings that cannot be used as script names, and are script names that cannot be uploaded to the Workshop.
@@ -212,6 +212,7 @@ public final class Engine implements ShutDown {
 		//parse arguments
 		List<String> args = List.of(programArgs);		
 		if(args.contains("-d")) preinitializeDebug();
+		if(args.contains("-ns")) useSteam = false;
 
 		stbi_flip_vertically_on_write(true);
 		
@@ -257,7 +258,7 @@ public final class Engine implements ShutDown {
 	 */
 	public boolean isSteamInitialized() {
 		
-		return steam.initialized();
+		return useSteam && steam.initialized();
 		
 	}
 	
@@ -332,14 +333,19 @@ public final class Engine implements ShutDown {
 	 */
 	Engine() {
 		
-		boolean initialized = initializeSteam();
-		//early exit because we need to restart for Steam
-		if(!initialized) {
+		if(useSteam) { 
 			
-			nanoVG = null;
-			display = null;
-			editor = null;
-			return;
+			boolean initialized = initializeSteam();
+		
+			//early exit because we need to restart for Steam
+			if(!initialized) {
+				
+				nanoVG = null;
+				display = null;
+				editor = null;
+				return;
+				
+			}
 			
 		}
 		
@@ -408,7 +414,7 @@ public final class Engine implements ShutDown {
 			
 			realtimeFrameLockup();
 			
-			if(steam.initialized()) SteamAPI.runCallbacks();
+			if(isSteamInitialized()) SteamAPI.runCallbacks();
 			
 		}
 
@@ -1689,7 +1695,7 @@ public final class Engine implements ShutDown {
 		
 		if(display == null) return;
 		
-		Await shutDownSteam = THE_THREADS.async(SteamAPI::shutdown);		
+		if(isSteamInitialized()) THE_THREADS.async(SteamAPI::shutdown);		
 		Await writeFiles = THE_THREADS.async(() -> settings.write(this));
 		
 		display.renderer.post(() -> debugLoggedShutDown(() -> CSJEP.interpreter().shutDown(), "Renderer Python Interpreter"));
@@ -1715,10 +1721,9 @@ public final class Engine implements ShutDown {
 						
 		}
 		
-		steam.shutDown();
+		if(isSteamInitialized()) steam.shutDown();
 		
 		writeFiles.await();
-		shutDownSteam.await();
 		
 	}
 

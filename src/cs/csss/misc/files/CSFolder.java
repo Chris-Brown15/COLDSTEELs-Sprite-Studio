@@ -639,6 +639,8 @@ public final class CSFolder {
 			if(parent != null) Files.createDirectory(Paths.get(parent.getRealPath() + separator + name));
 			else Files.createDirectory(Paths.get(name));
 			
+			seekExistingFiles();
+			
 		} catch (IOException e) {
 
 			e.printStackTrace() ; throw new IllegalStateException("Failed to create directory.");
