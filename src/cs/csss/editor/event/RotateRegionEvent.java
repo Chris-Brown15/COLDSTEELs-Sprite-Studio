@@ -133,7 +133,7 @@ import cs.csss.utils.ByteBufferUtils.CorrectedParameters;
 	}
 
 	@Override public void undo() {
-		
+
 		artboard.removePixels(leftX, bottomY , renderWidth , renderHeight);
 		artboard.putColorsInImage(originalLeftX, originalBottomY, originalBounderWidth , originalBounderHeight, previousOriginalRegion);
 		artboard.putColorsInImage(leftX, bottomY, renderWidth, renderHeight, previousRotatedRegion);

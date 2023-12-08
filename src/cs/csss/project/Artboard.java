@@ -6,8 +6,6 @@ import static cs.core.graphics.StandardRendererConstants.UINT;
 import static cs.core.graphics.StandardRendererConstants.UV;
 
 import static cs.core.utils.CSUtils.specify;
-import static org.lwjgl.opengl.GL11C.GL_UNPACK_ALIGNMENT;
-import static org.lwjgl.opengl.GL11C.glPixelStorei;
 import static cs.core.utils.CSUtils.require;
 
 import static org.lwjgl.system.MemoryUtil.memFree;
@@ -119,13 +117,8 @@ public class Artboard {
 		deepCopyVisualLayers(project , source , newArtboard);	
 		deepCopyNonVisualLayers(project , source , newArtboard);
 		
-		//copies the source artboard's image data to the next one		
-		ByteBuffer sourceTexelBuffer = source.indexTexture.allTexelData();
-
-		glPixelStorei(GL_UNPACK_ALIGNMENT , source.visualLayers.get(0).palette.channelsPerPixel);
-		
-		newArtboard.indexTexture.put(0 , 0 , source.width() , source.height() , sourceTexelBuffer);		
-		source.indexTexture.freeTexelBuffer(sourceTexelBuffer);
+		//copies the image of source onto the new artboard
+		newArtboard.showAllNonHiddenVisualLayers();
 		
 		return newArtboard;
 		
@@ -413,15 +406,15 @@ public class Artboard {
 			//canBulkWrite will be true if there is no layer above the current one modifying any of the pixels of the region.
 			boolean canBulkWrite = !bulkIsUpperRankLayerModifying(activeLayerIndex , xIndex , yIndex , width , height);
 			
-			if(canBulkWrite) indexTexture.put(xIndex , yIndex , width , height , indexPixel);
+			if(canBulkWrite) indexTexture.putSubImage(xIndex , yIndex , width , height , indexPixel);
 			else for(int row = 0 ; row < height ; row++) for(int col = 0 ; col < width ; col++) {
 				
 				boolean isUpperLayerModifying = isUpperRankLayerModifying(activeLayerIndex , xIndex + col , yIndex + row);
-				if(!isUpperLayerModifying) indexTexture.put(xIndex + col , yIndex + row , 1 , 1 , indexPixel);
+				if(!isUpperLayerModifying) indexTexture.putSubImage(xIndex + col , yIndex + row , 1 , 1 , indexPixel);
 				
 			}
 			
-		} else indexTexture.put(xIndex , yIndex , width , height , indexPixel);
+		} else indexTexture.putSubImage(xIndex , yIndex , width , height , indexPixel);
 				
 	}
 
@@ -474,7 +467,7 @@ public class Artboard {
 		 	
 		 	storePixelRegionInBuffer(values, bufferedContents, leftX , bottomY , width, height);
 		 	
-		 	indexTexture.put(leftX, bottomY, width, height, bufferedContents);		 	
+		 	indexTexture.putSubImage(leftX, bottomY, width, height, bufferedContents);		 	
 		 	allocation.free();
 		 	
 		}
@@ -515,7 +508,7 @@ public class Artboard {
 		
 		short[] colorValueLookup = palette.putOrGetColors(pixel);
 		IndexPixel indexPixel = new IndexPixel(colorValueLookup[0], colorValueLookup[1]);
-		indexTexture.put(xIndex, yIndex, width, height, indexPixel);
+		indexTexture.putSubImage(xIndex, yIndex, width, height, indexPixel);
 		
 	}
 	
@@ -572,7 +565,7 @@ public class Artboard {
 			ByteBuffer buffer = allocation.buffer();
 			
 			storePixelRegionInBuffer(pixels, buffer, xIndex, yIndex, width, height);			
-			indexTexture.put(xIndex, yIndex, width, height, buffer);
+			indexTexture.putSubImage(xIndex, yIndex, width, height, buffer);
 			
 			if(!allocation.stackAllocated()) memFree(buffer);
 						
@@ -878,8 +871,12 @@ public class Artboard {
 	 */
 	@RenderThreadOnly public void replacePalettePixelAtIndex(int paletteXIndex , int paletteYIndex , ColorPixel replaceWithThis) {
 		
-		if(replaceWithThis instanceof PalettePixel asPalettePixel) activeLayer().palette.put(paletteXIndex , paletteYIndex , asPalettePixel);
-		else activeLayer().palette.new PalettePixel(replaceWithThis);
+		PalettePixel asPalettePixel;
+		
+		if(replaceWithThis instanceof PalettePixel palettePixel) asPalettePixel = palettePixel;
+		else asPalettePixel = activeLayer().palette.new PalettePixel(replaceWithThis);
+		
+		activeLayer().palette.put(paletteXIndex , paletteYIndex , asPalettePixel);
 		
 	}
 	

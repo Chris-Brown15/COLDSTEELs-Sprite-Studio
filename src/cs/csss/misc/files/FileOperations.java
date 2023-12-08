@@ -3,8 +3,6 @@
  */
 package cs.csss.misc.files;
 
-import static java.util.Objects.isNull; 
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -202,7 +200,7 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 */	
 	public static final <W extends OutputStream> void putString(String stringValue , W writer) throws IOException {
 		
-		if(isNull(stringValue)) {
+		if(stringValue == null) {
 			
 			putString("null" , writer);
 			return;
@@ -839,7 +837,7 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 		int size = switch(remaining) {
 			case 0 -> first;
 			case 1 -> current.put(first).put((byte)reader.read()).rewind().getShort();
-			case 2 -> current.put((byte)0).put(first).put((byte)reader.read()).put((byte)reader.read()).rewind().getInt();
+			case 2 -> current.put((byte)0).put(first).put((byte) reader.read()).put((byte)reader.read()).rewind().getInt();
 			case 3 -> current.put(first).put((byte)reader.read()).put((byte)reader.read()).put((byte)reader.read()).rewind().getInt();
 			default -> throw new IllegalArgumentException("Failed to read list size.");			
 		};

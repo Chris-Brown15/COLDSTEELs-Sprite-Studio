@@ -14,6 +14,7 @@ import static cs.core.ui.CSUIConstants.*;
 
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
+import cs.core.ui.CSNuklear.CSUI.CSLayout.CSCheckBox;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSMenuBar;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSMenuBar.CSMenu;
 import cs.csss.editor.DebugDisabledException;
@@ -24,6 +25,7 @@ import cs.csss.engine.Engine;
 import cs.csss.misc.graphcs.memory.GPUMemoryViewer;
 import cs.csss.project.ArtboardPalette;
 import cs.csss.project.CSSSProject;
+import cs.csss.ui.utils.UIUtils;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
 import cs.core.ui.CSNuklear.CSUI.CSRow;
 import cs.core.ui.CSNuklear.CSUserInterface;
@@ -67,17 +69,25 @@ public class FilePanel {
 		
 		editMenu.new CSDynamicRow().new CSButton("Undo" , editor::undo);
 		editMenu.new CSDynamicRow().new CSButton("Redo" , editor::redo);
+		editMenu.new CSDynamicRow().new CSButton("Create New Script" , editor::startCreateNewScript);
 //		editMenu.new CSDynamicRow().new CSButton("Add Text" , editor::startAddText);
-		editMenu.new CSDynamicRow().new CSButton("Run Artboard Script" , editor::startRunArtboardScript);
-		editMenu.new CSDynamicRow().new CSButton("Run Project Script" , editor::startRunProjectScript);
-		editMenu.new CSDynamicRow().new CSButton("Run Palette Script" , editor::startRunPaletteScript);
+		editMenu.new CSDynamicRow().new CSButton("Run Artboard Script" , editor::startRunArtboardScript2);
+		editMenu.new CSDynamicRow().new CSButton("Run Project Script" , editor::startRunProjectScript2);
+		editMenu.new CSDynamicRow().new CSButton("Run Palette Script" , editor::startRunPaletteScript2);		
+		CSCheckBox colorInputTypeCheck = editMenu.new CSDynamicRow(20).new CSCheckBox(
+			"Color Inputs Are Hex" , 
+			editor::colorInputsAreHex , 
+			editor::toggleColorInputsAreHex
+		);
+		
+		UIUtils.toolTip(colorInputTypeCheck, "Determines whether color input dialogues will expect hexadecimal or decimal input formats.");
 		editMenu.attachedLayout((context , stack) -> {
 			
 			Iterator<ColorPalette> palettes = ColorPalette.palettes();
 			while(palettes.hasNext()) {
 				
 				ColorPalette next = palettes.next();
-				nk_layout_row_dynamic(context , 30 , 1);
+				nk_layout_row_dynamic(context , 20 , 1);
 				if(nk_checkbox_text(context , "Show " + next.name , toByte(stack , next.show()))) next.toggleShow();
 				
 			}
@@ -227,7 +237,7 @@ public class FilePanel {
 				throw new CSSSException(new RuntimeException());
 				
 			});
-			
+						
 		}
 		
 	}

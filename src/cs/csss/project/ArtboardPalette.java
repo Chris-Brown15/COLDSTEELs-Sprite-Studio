@@ -12,18 +12,18 @@ import static org.lwjgl.opengl.GL30C.glTexSubImage2D;
 import static org.lwjgl.opengl.GL30C.glTexImage2D;
 
 import static org.lwjgl.system.MemoryUtil.memCopy;
-
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryStack;
 
 import cs.core.graphics.CSTexture;
 import cs.csss.annotation.RenderThreadOnly;
+import cs.csss.engine.ChannelBuffer;
 import cs.csss.engine.ColorPixel;
-import cs.csss.misc.files.CSFolder;
 import cs.csss.misc.utils.FlexableGraphic;
-import cs.csss.project.io.ExportFileTypes;
 
 /**
  * Implementation of {@code CSTexture} used extensively as a container of color values. The indices of pixels in the artboard are the values 
@@ -110,7 +110,7 @@ import cs.csss.project.io.ExportFileTypes;
 		
 		if(currentRow == paletteHeight) {
 			
-			syserr("Too many colors have been added to this artboard, resetting palette.");
+			syserr("Too many colors have been added to this palette, resetting palette.");
 			currentRow = 0;
 			currentCol = 3;
 			
@@ -171,7 +171,7 @@ import cs.csss.project.io.ExportFileTypes;
 	 * @param yIndex — y index to write to
 	 * @param writeThis — color to write in this palette 
 	 */
-	public void put(final int xIndex , final int yIndex , final PalettePixel writeThis) {
+	public void put(int xIndex , int yIndex , PalettePixel writeThis) {
 
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 
@@ -194,13 +194,13 @@ import cs.csss.project.io.ExportFileTypes;
 		
 	}
 		
-	PalettePixel getColorByIndices(final int xIndex , final int yIndex) {
+	PalettePixel getColorByIndices(int xIndex , int yIndex) {
 		
 		return new PalettePixel(paletteMemory , xIndex , yIndex);
 		
 	}
 	
-	PalettePixel getColorByIndicesFromTexelBuffer(final ByteBuffer texelBuffer , final int xIndex , final int yIndex) {
+	PalettePixel getColorByIndicesFromTexelBuffer(ByteBuffer texelBuffer , int xIndex , int yIndex) {
 		
 		return new PalettePixel(paletteMemory , xIndex , yIndex);
 		
@@ -213,25 +213,18 @@ import cs.csss.project.io.ExportFileTypes;
 	 * <B>Note:</B> Must be called from the render thread.
 	 * 
 	 * @param colors
-	 * @return {@code int[]} containing the x and y coordinates of {@code colors}.
+	 * @return {@code short[]} containing the x and y coordinates of {@code colors}.
 	 */
 	public short[] putOrGetColors(PalettePixel colors) {
 		
 		boolean foundMatch = false;
-		short 
-			row = 0 ,
-			col = 0
-		;
+		short row = 0 , col = 0;
 
 		//iterate over palette
-		FindMatch: {
+		FindMatch: for(; row <= currentRow ; row++) for(; col < currentCol ; col++) {
 			
-			for(; row <= currentRow ; row++) for(; col < currentCol ; col++) {
-				
-				PalettePixel currentPixel = new PalettePixel(paletteMemory , col , row);
-				if(foundMatch = colors.compareTo(currentPixel) == 0) break FindMatch;
-				
-			}
+			PalettePixel currentPixel = new PalettePixel(paletteMemory , col , row);
+			if(foundMatch = colors.compareTo(currentPixel) == 0) break FindMatch;
 			
 		}
 				  	
@@ -318,22 +311,7 @@ import cs.csss.project.io.ExportFileTypes;
 		return currentRow;
 		
 	}
-	
-	/**
-	 * Exports this palette as a standalone image.
-	 * 
-	 * @param folder — folder this will export to
-	 * @param fileName — name this file will be
-	 * @param extension — what type of file should be exported
-	 * @param quality — quality value, only used if {@code extension == ExtensionType.JPEG}
-	 */
-	public void exportAsStandaloneImage(CSFolder folder , String fileName , ExportFileTypes extension , int quality) {
-	
-		String name = folder.getRealPath() + CSFolder.separator + fileName + extension.ending;
-		extension.callbackOf().export(name, paletteMemory, paletteWidth, paletteHeight, channelsPerPixel);
-		
-	}
-	
+
 	/**
 	 * Sets the alpha channels of the background checkered colors to 0, making those colors invisible.
 	 */
@@ -361,6 +339,31 @@ import cs.csss.project.io.ExportFileTypes;
 		
 		put(0 , 0 , new PalettePixel(darkerCheckeredBackground));
 		put(1 , 0 , new PalettePixel(lighterCheckeredBackground));
+		
+	}
+	
+	/**
+	 * Returns a list representation of the contents of this palette. The elements of this list
+	 * 
+	 * @return List containing the colors of this palette.
+	 */
+	public List<ColorPixel> getColorsAsList(int size) {
+
+		int numberPixels = (currentRow * paletteWidth) + currentCol;
+		List<ColorPixel> pixels = new ArrayList<>();
+		
+		int position = (2 + Math.max(numberPixels - 2 - size , 0)) * pixelSizeBytes;
+		int palettePosition = numberPixels * pixelSizeBytes;
+		
+		while(position < palettePosition) {
+			
+			ChannelBuffer color = new ChannelBuffer();
+			for(byte i = 0 ; i < channelsPerPixel ; i++) color.i(i , paletteMemory.get(position++));
+			pixels.add(color);
+			
+		}
+		
+		return pixels;
 		
 	}
 	

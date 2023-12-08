@@ -5,6 +5,9 @@ import static cs.csss.ui.utils.UIUtils.toolTip;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.function.Function;
 
 import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
 import static org.lwjgl.nuklear.Nuklear.nk_propertyi;
@@ -28,10 +31,13 @@ import cs.csss.editor.palette.ColorPalette;
 import cs.csss.engine.ChannelBuffer;
 import cs.csss.engine.ColorPixel;
 import cs.csss.engine.Engine;
+import cs.csss.engine.Logging;
 import cs.csss.project.Artboard;
 import cs.csss.project.CSSSProject;
+import cs.csss.ui.menus.DialogueInputBox;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.ui.prefabs.InputBox;
+import cs.core.utils.CSUtils;
 
 /**
  * Left hand side panel. This panel contains buttons and UI elements for modifying artboards.
@@ -46,7 +52,7 @@ public class LHSPanel {
 
 	private final Editor editor;
 	private byte[] previousFrameColorBuffer = new byte[4] , currentColorBuffer = new byte[4];
-	private boolean equals;
+	private boolean previousColorEqualsCurrent;
 	
 	/**
 	 * Creates a left hand side panel.
@@ -109,6 +115,36 @@ public class LHSPanel {
 			colorInput("Blue" , 2 , rgbRow);
 			colorInput("Alpha" , 3 , alphaRow1);
 			
+			ui.new CSDynamicRow(30).new CSButton("Input Whole Color" , this::startWholeColorInput);
+			
+			/*
+			 * Auto Palette
+			 */
+			ui.attachedLayout((context , stack) -> {
+				
+				List<ColorPixel> currentPalette = editor.currentPaletteColorsAsList();
+				
+				if(currentPalette != null) {
+					
+					int sublistSize = currentPalette.size();
+					if(sublistSize == 0) return;
+										
+					nk_layout_row_dynamic(context , 20 , 1);
+					nk_text(context , "Recent Colors:" , TEXT_LEFT|TEXT_CENTERED);
+					
+					nk_layout_row_dynamic(context , 30 , 15);
+										
+					for(ListIterator<ColorPixel> iter = currentPalette.listIterator(0) ; iter.hasNext() ; ) {
+						
+						ColorPixel x = iter.next();
+						if(nk_button_color(context , colorForCurrentChannels(x , stack))) editor.setSelectedColor(x);
+						
+					}
+					
+				}
+				
+			});
+			
 			/*
 			 * Color Palettes
 			 */
@@ -125,10 +161,6 @@ public class LHSPanel {
 					
 					if(!next.show()) continue;
 					
-					nk_layout_row_dynamic(context , 20 , 1);
-					nk_text(context , next.name + ":", TEXT_LEFT|TEXT_CENTERED);
-					
-					nk_layout_row_dynamic(context , 30 , 15);					
 					ColorPixel currentColor = new ChannelBuffer(
 						currentColorBuffer[0] , 
 						currentColorBuffer[1] , 
@@ -137,9 +169,26 @@ public class LHSPanel {
 					);
 					
 					ColorPixel[] pixels;
-					if(!equals) pixels = next.generate(currentColor , editor.project().getChannelsPerPixelOfCurrentLayer());
-					else pixels = next.get();
+					if(!previousColorEqualsCurrent) { 
+						
+						if(Engine.isDebug()) try {
+							
+							pixels = next.generate(currentColor , editor.project().getChannelsPerPixelOfCurrentLayer());
+
+						} catch(Exception e) {
+							
+							Logging.sysDebug("Color Palette generate colors failed");
+							e.printStackTrace();
+							continue;
+							
+						} else pixels = next.generate(currentColor , editor.project().getChannelsPerPixelOfCurrentLayer());
 					
+					} else pixels = next.get();
+
+					nk_layout_row_dynamic(context , 20 , 1);
+					nk_text(context , next.name + ":", TEXT_LEFT|TEXT_CENTERED);
+					
+					nk_layout_row_dynamic(context , 30 , 15);
 					for(ColorPixel x : pixels) if(nk_button_color(context , colorForCurrentChannels(x , stack))) editor.setSelectedColor(x);
 				
 				}
@@ -152,7 +201,7 @@ public class LHSPanel {
 			});
 			
 			/*
-			 * Cursor Artboard Poositions
+			 * Cursor Artboard Positions
 			 */
 			
 			ui.attachedLayout((context , stack) -> {
@@ -169,7 +218,6 @@ public class LHSPanel {
 				String yString = indices[1] == -1 ? "Y: OoB" : "Y: " + indices[1];
 				nk_text(context , xString , TEXT_LEFT|TEXT_CENTERED);
 				nk_text(context , yString , TEXT_LEFT|TEXT_CENTERED);
-				
 				
 			});
 			
@@ -195,28 +243,28 @@ public class LHSPanel {
 			
 			//script brushes next
 			CSDynamicRow scriptBrushRow = ui.new CSDynamicRow(30);						
-			CSRadio scriptBrushRadio = scriptBrushRow.new CSRadio(
+			CSRadio simpleBrushRadio = scriptBrushRow.new CSRadio(
 				"Script Brush" , 
-				() -> editor.currentBrush() == Editor.theScriptBrush() , 
-				() -> editor.setBrushTo(Editor.theScriptBrush()));
+				() -> editor.currentBrush() != null && editor.currentBrush() == Editor.theScriptBrush2() , 
+				() -> editor.setBrushTo(Editor.theScriptBrush2()));
 			
-			scriptBrushRow.new CSButton("Select" , () -> editor.startSelectSimpleScriptBrush(scriptBrushRadio));
+			scriptBrushRow.new CSButton("Select" , () -> editor.startSelectSimpleScriptBrush2(simpleBrushRadio));
 			
 			CSDynamicRow modifyingScriptBrushRow = ui.new CSDynamicRow(30);
 			CSRadio scriptModifyingBrushRadio = modifyingScriptBrushRow.new CSRadio(
 				"Modifying Script Brush" , 
-				() -> editor.currentBrush() == Editor.theModifyingScriptBrush() , 
-				() -> editor.setBrushTo(Editor.theModifyingScriptBrush()));
+				() -> editor.currentBrush() != null && editor.currentBrush() == Editor.theModifyingScriptBrush2() , 
+				() -> editor.setBrushTo(Editor.theModifyingScriptBrush2()));
 
-			modifyingScriptBrushRow.new CSButton("Select" , () -> editor.startSelectModifyingScriptBrush(scriptModifyingBrushRadio));
+			modifyingScriptBrushRow.new CSButton("Select" , () -> editor.startSelectModifyingScriptBrush2(scriptModifyingBrushRadio));
 			
 			CSDynamicRow selectingBrushRow = ui.new CSDynamicRow(30);
 			CSRadio scriptSelectingBrushRadio = selectingBrushRow.new CSRadio(
 				"Selecting Script Brush" , 
-				() -> editor.currentBrush() == Editor.theSelectingScriptBrush() , 
-				() -> editor.setBrushTo(Editor.theSelectingScriptBrush()));
+				() -> editor.currentBrush() != null && editor.currentBrush() == Editor.theSelectingScriptBrush2() , 
+				() -> editor.setBrushTo(Editor.theSelectingScriptBrush2()));
 
-			selectingBrushRow.new CSButton("Select" , () -> editor.startSelectSelectingScriptBrush(scriptSelectingBrushRadio));
+			selectingBrushRow.new CSButton("Select" , () -> editor.startSelectSelectingScriptBrush2(scriptSelectingBrushRadio));
 			
 			//this is a slider that lets you modify the brush radius if the brush is a modifying brush
 			ui.attachedLayout((context , stack) -> {
@@ -224,15 +272,18 @@ public class LHSPanel {
 				if(editor.currentBrush() instanceof CSSSModifyingBrush) {
 				
 					CSSSModifyingBrush asModifying = (CSSSModifyingBrush) editor.currentBrush();					
-					nk_layout_row_dynamic(context , 30 , 1);			 	
-					int maxWidth = editor.currentArtboard() != null ? (editor.currentArtboard().height() / 2) - 1 : 999;				
-					asModifying.radius(nk_propertyi(context , "Brush Radius" , 1 , asModifying.radius() + 1 , maxWidth , 1 , 1 ) - 1);
+					nk_layout_row_dynamic(context , 30 , 1);									
+					asModifying.radius(nk_propertyi(context , "Brush Radius" , 1 , asModifying.radius() + 1 , editor.maxBrushRadius() , 1 , 1) - 1);
 					
 				}
 				
 				//set the last frame color value and update the editor if the last frame color doesnt match the current 
-				equals = Arrays.equals(previousFrameColorBuffer, currentColorBuffer);
-				if(!equals) editor.setSelectedColor(currentColorBuffer[0], currentColorBuffer[1], currentColorBuffer[2], currentColorBuffer[3]);
+				previousColorEqualsCurrent = Arrays.equals(previousFrameColorBuffer, currentColorBuffer);
+				if(!previousColorEqualsCurrent) { 
+					
+					editor.setSelectedColor(currentColorBuffer[0], currentColorBuffer[1], currentColorBuffer[2], currentColorBuffer[3]);
+				
+				}
 
 				for(int i = 0 ; i < previousFrameColorBuffer.length ; i++) previousFrameColorBuffer[i] = currentColorBuffer[i];
 				
@@ -274,11 +325,20 @@ public class LHSPanel {
 		
 		CSButton button = layout.new CSButton("Input " + color , () -> {
 			
-			new InputBox(nuklear , "Input " + color + " Value" , .4f , 0.4f , 4 , CSNuklear.DECIMAL_FILTER , res -> {
+			boolean hexWhenStarted = editor.colorInputsAreHex();
+			
+			new InputBox(
+				nuklear , 
+				"Input " + color + " Value" , 
+				.4f , 
+				0.4f , 
+				hexWhenStarted ? 3 : 4 , 
+				hexWhenStarted ? CSNuklear.HEX_FILTER : CSNuklear.DECIMAL_FILTER , 
+				res -> {
 				
 				if(res.length() == 0) return;
 				
-				int value = Integer.parseInt(res);
+				int value = hexWhenStarted ? CSUtils.parseHexInt(res, 0, res.length()) : Integer.parseInt(res);
 				
 				if(channels() < 3) { 
 					
@@ -289,7 +349,7 @@ public class LHSPanel {
 					
 					byte[] colors = colors();
 					colors[index] = (byte) value;					
-					this.rgbPicker().color(colors[0], colors[1], colors[2], channels() == 4 ? colors[3] : (byte)0xff);
+					rgbPicker().color(colors[0], colors[1], colors[2], channels() == 4 ? colors[3] : (byte)0xff);
 					
 				}				
 				
@@ -384,6 +444,13 @@ public class LHSPanel {
 	
 	private NkColor colorForCurrentChannels(ColorPixel source , MemoryStack stack) {
 		
+		if(source == null) { 
+			
+			byte zero = (byte)0;
+			return NkColor.malloc(stack).set(zero , zero , zero , zero);
+			
+		}
+		
 		int channels = channels();
 		byte max = (byte) 0xff;
 		return switch(channels) {
@@ -395,6 +462,51 @@ public class LHSPanel {
 		
 		};
 				
+	}
+	
+	private void startWholeColorInput() {
+
+		boolean hexWhenStarted = editor.colorInputsAreHex();
+		int channels = editor.project().getChannelsPerPixelOfCurrentLayer();
+		int charsPerChannel = hexWhenStarted ? 2 : 3;
+		
+		int totalChars = channels * charsPerChannel;
+		new DialogueInputBox(
+			nuklear , 
+			"Input Color Code" , 
+			.4f , 
+			.4f , 
+			totalChars + 1 , 
+			hexWhenStarted ? CSNuklear.HEX_FILTER : CSNuklear.DECIMAL_FILTER , 
+			res -> {
+			
+				if(res.length() == 0) return;
+				
+				int red , green , blue , alpha;
+	
+				if(res.length() < 4 * charsPerChannel) {
+					
+					StringBuilder append = new StringBuilder(res);
+					while(append.length() < totalChars) append.append('0');
+					res = append.toString();
+					
+				}
+				
+				Function<String , Integer> parse = hexWhenStarted ? string -> CSUtils.parseHexInt(string, 0, charsPerChannel) : Integer::parseInt;
+				red = parse.apply(res.substring(0, charsPerChannel));
+				green = parse.apply(res.substring(charsPerChannel, 2 * charsPerChannel));
+				blue = parse.apply(res.substring(2 * charsPerChannel, 3 * charsPerChannel));
+				alpha = parse.apply(res.substring(3 * charsPerChannel, 4 * charsPerChannel));
+				if(channels == 3) alpha = 255;	
+				
+				switch(channels) {
+					case 1 -> twoDColor.gray = (short) red;
+					case 2 -> twoDColor.set((short)red , (short) green);
+					default -> rgbPicker().color(red / 255f, green / 255f , blue / 255f , alpha / 255f);					
+				}
+				
+		});
+		
 	}
 
 }

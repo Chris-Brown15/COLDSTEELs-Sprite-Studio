@@ -13,12 +13,21 @@ import cs.csss.annotation.RenderThreadOnly;
  */
 @RenderThreadOnly public abstract class CSSSModifyingBrush extends CSSSBrush {
 
+	//Fields of this class are public for the benefit of Jython. In Jython, Python classes that extend Java classes cannot access protected fields
+	//seemingly, only public ones.
+	
 	//represents the radius of the brush
-	protected int radius = 0;
+	public int radius = 0;
 	
-	protected int[] values = new int[4];
+	public int[] values = new int[4];
 	
-	CSSSModifyingBrush(String tooltip , boolean stateful) {
+	/**
+	 * Creates a new modifying brush.
+	 * 
+	 * @param tooltip — tooltip for this brush
+	 * @param stateful — whether this brush is stateful
+	 */
+	public CSSSModifyingBrush(String tooltip , boolean stateful) {
 		
 		super(tooltip , stateful);
 	
@@ -35,7 +44,7 @@ import cs.csss.annotation.RenderThreadOnly;
 	 * @return Array containing four values, {@code xIndex}, {@code yIndex}, width, and height. The indices point to the lower left pixel of
 	 *  	   a region, and width and height are the number of pixels to extend this region.
 	 */
-	protected int[] centerAroundRadius(int xIndex , int yIndex , int artboardWidth , int artboardHeight) {
+	public int[] centerAroundRadius(int xIndex , int yIndex , int artboardWidth , int artboardHeight) {
 		
 		xIndex -= radius;
 		yIndex -= radius;
@@ -45,13 +54,15 @@ import cs.csss.annotation.RenderThreadOnly;
 		//the indices are negative so we add them
 		if(xIndex < 0) { 
 
-			width += xIndex ; xIndex = 0;
+			width += xIndex; 
+			xIndex = 0;
 			
 		}
 		
 		if(yIndex < 0) { 
 			
-			height += yIndex ; yIndex = 0;
+			height += yIndex; 
+			yIndex = 0;
 			
 		}
 		

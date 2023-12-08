@@ -23,7 +23,7 @@ public abstract class CSSSEvent {
 	 * 
 	 * @param isRenderEvent
 	 */
-	public CSSSEvent(final boolean isRenderEvent , final boolean isTransientEvent) {
+	public CSSSEvent(boolean isRenderEvent , boolean isTransientEvent) {
 		
 		this.isRenderEvent = isRenderEvent;
 		this.isTransientEvent = isTransientEvent;

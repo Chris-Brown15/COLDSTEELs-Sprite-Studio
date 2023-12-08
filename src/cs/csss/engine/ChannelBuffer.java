@@ -122,6 +122,23 @@ public class ChannelBuffer implements ColorPixel {
 		
 	}
 	
+	/**
+	 * Sets the channel value indexed by {@code i}. 
+	 *  
+	 * @param i — index of a color value to set
+	 * @param color — color value to store
+	 */
+	public synchronized void i(byte i , byte color) {
+		
+		switch(i) {
+			case 0 -> r = color;
+			case 1 -> g = color;
+			case 2 -> b = color;
+			case 3 -> a = color;
+		}
+		
+	}
+	
 	@Override public byte r() {
 		
 		return r;
@@ -169,5 +186,11 @@ public class ChannelBuffer implements ColorPixel {
 		return (short)Byte.toUnsignedInt(a);
 	
 	}
+
+	@Override public String toString() {
+		return "ChannelBuffer [r = " + ur() + ", g = " + ug() + ", b = " + ub() + ", a = " + ua() + "]";
+	}
+	
+	
 
 }

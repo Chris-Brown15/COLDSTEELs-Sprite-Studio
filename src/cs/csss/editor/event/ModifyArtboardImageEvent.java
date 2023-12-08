@@ -3,9 +3,6 @@ package cs.csss.editor.event;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.engine.ColorPixel;
 import cs.csss.project.Artboard;
-import cs.csss.project.Layer;
-import cs.csss.project.LayerPixel;
-import cs.csss.project.IndexPixel;
 
 /**
  * Generic event for modifying an artboard index texture layers. This event will write to the index texture conditionally based on layer 
@@ -25,9 +22,6 @@ import cs.csss.project.IndexPixel;
 	;
 	
 	private final ColorPixel color;
-	
-	private final IndexPixel[][] regionPreviousIndices;
-	private final LayerPixel[][] regionPreviousLayerMods;
 
 	/**
 	 * Creates a modify artboard image event.
@@ -51,7 +45,7 @@ import cs.csss.project.IndexPixel;
 			
 		} 
 		
-		if(yIndex < 0) { 
+		if(yIndex < 0) {
 			
 			height +=  yIndex;
 			yIndex = 0;
@@ -68,10 +62,7 @@ import cs.csss.project.IndexPixel;
 		this.height = height;
 
 		this.color = ColorPixel.copyOf(color);
-		regionPreviousIndices = artboard.getRegionOfIndexPixels(xIndex, yIndex, width, height);
-		
-		regionPreviousLayerMods = artboard.getRegionOfLayerPixels(xIndex, yIndex, width, height);
-		
+
 	}
 
 	@Override public void _do() {
@@ -82,18 +73,8 @@ import cs.csss.project.IndexPixel;
 
 	@Override public void undo() {
 
-		Layer active = artboard.activeLayer();
-		artboard.writeToIndexTexture(xIndex, yIndex, width, height, regionPreviousIndices);
-		
-		for(int row = 0 ; row < height ; row++) for(int col = 0 ; col < width ; col++) {
-			
-			LayerPixel previousLayerPixel = regionPreviousLayerMods[row][col];
+		artboard.removePixels(xIndex, yIndex, width, height);
 
-			if(previousLayerPixel == null) active.remove(xIndex + col , yIndex + row);
-			else active.put(previousLayerPixel);
-			
-		}
-		
 	}
 
 }

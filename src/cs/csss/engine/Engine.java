@@ -19,6 +19,7 @@ import static org.lwjgl.opengl.GL14C.GL_FUNC_ADD;
 import static org.lwjgl.opengl.GL14C.glBlendEquation;
 import static org.lwjgl.stb.STBImageWrite.stbi_flip_vertically_on_write;
 
+import java.awt.Desktop;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -27,8 +28,11 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
+import org.joml.Vector3f;
 import org.lwjgl.nuklear.NkPluginFilter;
 import org.lwjgl.system.Configuration;
 
@@ -55,15 +59,14 @@ import cs.core.utils.exceptions.RequirementFailedException;
 import cs.core.utils.exceptions.SpecificationBrokenException;
 import cs.core.utils.files.TTF;
 import cs.core.utils.threads.Await;
-import cs.core.utils.threads.CSThreads;
 import cs.coreext.nanovg.CoordinateSpace;
 import cs.coreext.nanovg.NanoVG;
 import cs.coreext.nanovg.NanoVGFrame;
 import cs.coreext.nanovg.NanoVGTypeface;
-import cs.coreext.python.CSJEP;
 import cs.csss.annotation.InDevelopment;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
+import cs.csss.editor.ScriptType;
 import cs.csss.editor.brush.CSSSSelectingBrush;
 import cs.csss.editor.event.MoveLayerRankEvent;
 import cs.csss.editor.event.ShutDownProjectEvent;
@@ -94,9 +97,9 @@ import cs.csss.ui.menus.ModifyControlsMenu;
 import cs.csss.ui.menus.NewAnimationMenu;
 import cs.csss.ui.menus.NewNonVisualLayerMenu;
 import cs.csss.ui.menus.NewProjectMenu;
+import cs.csss.ui.menus.NewScriptMenu;
 import cs.csss.ui.menus.NewVisualLayerMenu;
 import cs.csss.ui.menus.NotificationBox;
-import cs.csss.ui.menus.PythonNotFoundNotificationBox;
 import cs.csss.ui.menus.SelectScriptMenu;
 import cs.csss.ui.menus.SetAnimationFrameSwapTypeMenu;
 import cs.csss.ui.menus.SteamWorkshopItemUpdateMenu;
@@ -139,7 +142,7 @@ import cs.ext.steamworks.UGCQuery;
  *		  		</li>
  *		  	</ol>
  *		</li>
- * 	</ul>								
+ * 	</ul>
  * </p>	
  * 
  * @author Chris Brown
@@ -148,9 +151,9 @@ import cs.ext.steamworks.UGCQuery;
 public final class Engine implements ShutDown {
 
 	/**
-	 * Thread pool for the application, using a number of threads equal to {@code Runtime.getRuntime().availableProcessors() / 4}.
+	 * Thread pool for the application.
 	 */
-	public static final CSThreads THE_THREADS = new CSThreads(Runtime.getRuntime().availableProcessors() / 4);
+	public static final ExecutorService THE_THREADS = Executors.newCachedThreadPool();
 	
 	/**
 	 * Scheduler object that can receive code and execute it based on some predicate.
@@ -160,7 +163,7 @@ public final class Engine implements ShutDown {
 	/**
 	 * Version of the current application distribution.
 	 */
-	public static final String VERSION_STRING = String.format("%s %d.%d%d" , "Beta" , 1 , 0 , 5);
+	public static final String VERSION_STRING = String.format("%s %d.%d%d" , "Beta" , 1 , 1 , 4);
 
 	/**
 	 * Containers for program files and assets.
@@ -172,7 +175,7 @@ public final class Engine implements ShutDown {
 		exportsRoot = CSFolder.establishRoot("exports") ,
 		debugRoot = CSFolder.establishRoot("debug");
 	
-	private static boolean isDebug = false , isPythonInstalled = false , useSteam = true;
+	private static boolean isDebug = false , useSteam = true;
 	
 	/**
 	 * Contains reserved strings that cannot be used as script names, and are script names that cannot be uploaded to the Workshop.
@@ -198,10 +201,8 @@ public final class Engine implements ShutDown {
 		//initialize logging
 		try {
 			
-			Logging.initialize(OP_TO_STD);
-			PythonChecker findPython = new PythonChecker();
-			isPythonInstalled = findPython.findResult();
-			
+			Logging.initialize(true);
+						
 		} catch(IOException e) {
 			
 			e.printStackTrace();
@@ -210,11 +211,16 @@ public final class Engine implements ShutDown {
 		}
 		
 		//parse arguments
-		List<String> args = List.of(programArgs);		
+		List<String> args = List.of(programArgs);
+		if(!args.isEmpty()) syserr("args: " + args);
 		if(args.contains("-d")) preinitializeDebug();
 		if(args.contains("-ns")) useSteam = false;
 
 		stbi_flip_vertically_on_write(true);
+		
+		//load the ControlChord class and Hotkey classes for the purposes of the user settings2
+		Hotkey.COPY_REGION_HOTKEY.isKeyboard();
+		ControlChord.NEW_PROJECT.isKeyboard();
 		
 	}
 		
@@ -241,17 +247,6 @@ public final class Engine implements ShutDown {
 	}
 	
 	/**
-	 * Returns whether a valid version of Python is installed so that scripts can be invoked.
-	 * 
-	 * @return {@code true} if a valid version of Python is installed.
-	 */
-	public static boolean isPythonInstalled() {
-		
-		return isPythonInstalled;
-		
-	}
-
-	/**
 	 * Returns whether the Steam API was initialized.
 	 * 
 	 * @return {@code true} if Steam was initialized.
@@ -271,6 +266,7 @@ public final class Engine implements ShutDown {
 	public static boolean isReservedScriptName(String name) {
 		
 		for(String x : reservedScriptNames) if(x.equals(name)) return true;
+		for(String x : reservedScriptNames) if(x.length() > 3 && name.equals(x.substring(0 , x.length() - 3))) return true;		
 		return false;
 		
 	}
@@ -280,8 +276,7 @@ public final class Engine implements ShutDown {
 	 */
 	static void finalShutDown() {
 		
-		Logging.shutDown();
-		THE_THREADS.shutDown();
+		THE_THREADS.shutdown();
 		CSDisplay.finalShutDown();
 		
 		
@@ -309,20 +304,27 @@ public final class Engine implements ShutDown {
 		/**
 		 * Used to track whether we should be in real time mode or event driven mode.
 		 */
-		realtimeMode = false;
+		realtimeMode = false ;
 
 	private int realtimeTargetFPS = 60;
 	private double realtimeFrameTime = 1000 / realtimeTargetFPS;
 
  	private Timer frameTimer = new Timer();
  	
-	private final UserSettings settings = new UserSettings();
+	private final UserSettings2 settings2 = new UserSettings2();
 	
 	private final NanoVG nanoVG;
 	
 	public final List<NamedNanoVGTypeface> loadedFonts = Collections.synchronizedList(new ArrayList<>());
 
 	private Steamworks steam;	
+	
+	/**
+	 * Kept for the benefit of dragging the camera around. 
+	 */
+	private float previousCursorX , previousCursorY;
+	
+	private CursorDragState cursorDragState = CursorDragState.NOT_DRAGGING;
 	
 	/**
 	 * Constructs the engine and initializes its members.
@@ -368,7 +370,9 @@ public final class Engine implements ShutDown {
 		openGLStateInitialize();
 		
 		editor = new Editor(this , display);
-		
+
+		settings2.read(this , editor);
+
 		setOnScroll();	
 		setOnMouseInput();		
 		setOnFileDrop();
@@ -377,8 +381,6 @@ public final class Engine implements ShutDown {
 		enqueueRender();	
 		
 		CSSSException.registerTheEngine(this);
-		
-		THE_THREADS.async(Logging::deleteOldLogs);
 		
 		CSUtils.onRequirementFailed = message -> new CSSSException(message , new RequirementFailedException(message));
 		CSUtils.onSpecificationBroken = message -> new CSSSException(message , new SpecificationBrokenException(message));
@@ -397,7 +399,7 @@ public final class Engine implements ShutDown {
 	void run() {
 
 		if(display == null) return;
-		
+
 		while(display.persist()) {
 			
 			getInputs();
@@ -412,9 +414,11 @@ public final class Engine implements ShutDown {
 			
 			renderScene();
 			
-			realtimeFrameLockup();
+			updatePreviousCursorPositions();
 			
 			if(isSteamInitialized()) SteamAPI.runCallbacks();
+
+			realtimeFrameLockup();
 			
 		}
 
@@ -448,6 +452,7 @@ public final class Engine implements ShutDown {
 	
 				editor.renderSelectingBrushRender();				
 				editor.renderSelectingBrushBounder(frame);
+				editor.renderModifyingBrushBounder(frame);
 				
 			}
 			
@@ -519,6 +524,27 @@ public final class Engine implements ShutDown {
 	}
 
 	/**
+	 * Sets the previous cursor coordinates.
+	 */
+	private void updatePreviousCursorPositions() {
+
+		if(Control.TWO_D_CURSOR_DRAG.pressed() && cursorDragState == CursorDragState.NOT_DRAGGING) {
+			
+			float[] cursorCoords = getCursorWorldCoords();
+			float xDistance = Math.abs(previousCursorX - cursorCoords[0]);
+			float yDistance = Math.abs(previousCursorY - cursorCoords[1]);
+			cursorDragState = xDistance > yDistance ? CursorDragState.DRAGGING_HORIZONTAL : CursorDragState.DRAGGING_VERTICAL;
+			
+		} else if(!Control.TWO_D_CURSOR_DRAG.pressed()) cursorDragState = CursorDragState.NOT_DRAGGING;
+		
+		float[] cursorCoords = getCursorWorldCoords();
+		//only update the previous coordiante if the drag state is not locked into the other axis.
+		if(cursorDragState != CursorDragState.DRAGGING_HORIZONTAL) previousCursorY = cursorCoords[1];		
+		if(cursorDragState != CursorDragState.DRAGGING_VERTICAL) previousCursorX = cursorCoords[0];
+		
+	}
+	
+	/**
 	 * Allows the user to move artboards and animations around freely.
 	 */
 	private void runProjectFreemove() {
@@ -542,10 +568,10 @@ public final class Engine implements ShutDown {
 		if(currentProject != null) {
 			
 			//not the best way to do this 
-			if(ControlChord.newAnimation.struck()) startNewAnimation();
-			else if(ControlChord.newArtboard.struck()) startNewArtboard();
-			if(ControlChord.newNonVisualLayer.struck()) startNewNonVisualLayer();
-			if(ControlChord.newVisualLayer.struck()) startNewVisualLayer();
+			if(ControlChord.NEW_ANIMATION.struck()) startNewAnimation();
+			else if(ControlChord.NEW_ARTBOARD.struck()) startNewArtboard();
+			if(ControlChord.NEW_NON_VISUAL_LAYER.struck()) startNewNonVisualLayer();
+			if(ControlChord.NEW_VISUAL_LAYER.struck()) startNewVisualLayer();
 			
 		}
 		
@@ -576,7 +602,7 @@ public final class Engine implements ShutDown {
 		
 		if(Control.TOGGLE_FULLSCREEN_HOTKEY.struck()) toggleFullScreen();
 		if(numberOpenDialogues == 0) Hotkey.updateHotkeys(editor);
-		if(ControlChord.newProject.struck()) startNewProject(); 
+		if(ControlChord.NEW_PROJECT.struck()) startNewProject(); 
 		
 	}
 
@@ -601,7 +627,12 @@ public final class Engine implements ShutDown {
 	public float[] getCursorWorldCoords() {
 		
 		double[] coords = display.window.cursorPosition();
-		return getCursorWorldCoords(new float[] {(float) coords[0] , (float) coords[1]});
+		float[] worldCoords = getCursorWorldCoords(new float[] {(float) coords[0] , (float) coords[1]});
+		//set the direction we are not dragging to the previous cursor's position for that axis.
+		if(cursorDragState == CursorDragState.DRAGGING_HORIZONTAL) worldCoords[1] = previousCursorY;
+		else if(cursorDragState == CursorDragState.DRAGGING_VERTICAL) worldCoords[0] = previousCursorX;
+		
+		return worldCoords;
 		
 	}
 
@@ -733,6 +764,28 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Returns the x position of the cursor in world space last frame.
+	 * 
+	 * @return X position of the cursor in world space last frame. 
+	 */
+	public float previousCursorX() {
+		
+		return previousCursorX;
+		
+	}
+
+	/**
+	 * Returns the y position of the cursor in world space last frame.
+	 * 
+	 * @return Y position of the cursor in world space last frame. 
+	 */
+	public float previousCursorY() {
+		
+		return previousCursorY;
+		
+	}
+	
 	/* UI ELEMENTS */
 	
 	/**
@@ -856,21 +909,17 @@ public final class Engine implements ShutDown {
 	 */
 	public void startSelectScriptMenu(String scriptSubdirectory , Consumer<File> onComplete) {
 		
-		if(isPythonInstalled) {
-			
-			if(currentProject == null) return;		
-			SelectScriptMenu script = new SelectScriptMenu(display.nuklear , scriptSubdirectory);
-			
-			THE_TEMPORAL.onTrue(script::readyToFinish , () -> {
-				
-				File selected;			
-				if((selected = script.selectedScript()) == null) return;			
-				onComplete.accept(selected);
-				
-			});
-			
-		} else new PythonNotFoundNotificationBox(display.nuklear , windowSize()[1]);
+		if(currentProject == null) return;		
+		SelectScriptMenu script = new SelectScriptMenu(display.nuklear , scriptSubdirectory);
 		
+		THE_TEMPORAL.onTrue(script::readyToFinish , () -> {
+			
+			File selected;			
+			if((selected = script.selectedScript()) == null) return;			
+			onComplete.accept(selected);
+			
+		});
+			
 	}
 	
 	/**
@@ -1156,26 +1205,35 @@ public final class Engine implements ShutDown {
 		THE_TEMPORAL.onTrue(menu::readyToFinish, () -> {
 			
 			if(menu.get() == null || menu.get().equals("")) return;
-			
-			CTSPFile file = new CTSPFile(menu.get());
-			
-			try {
-				
-				file.read();
-				display.renderer.post(() -> currentProject(new CSSSProject(this , file)));
-				
-			} catch (FileNotFoundException e) {
-				
-				e.printStackTrace();
-				
-			} catch (IOException e) {
-
-				e.printStackTrace();
-				
-			}
+			loadProject(menu.get());
 			
 		});
 		
+	}
+	
+	/**
+	 * Attempts to load the {@code CTSP} file named {@code projectFileName}.
+	 * 
+	 * @param projectFileName — name of the project to load
+	 */
+	public void loadProject(String projectFileName) {
+
+		CTSPFile file = new CTSPFile(projectFileName);
+		
+		try {
+			
+			file.read();
+			display.renderer.post(() -> currentProject(new CSSSProject(this , file)));
+			
+		} catch (FileNotFoundException e) {
+			
+			e.printStackTrace();
+			
+		} catch (IOException e) {
+
+			e.printStackTrace();
+			
+		}
 	}
 	
 	/**
@@ -1256,6 +1314,35 @@ public final class Engine implements ShutDown {
 	
 	}
 
+	public void startCreateNewScript() {
+		
+		NewScriptMenu newMenu = new NewScriptMenu(display.nuklear);
+		THE_TEMPORAL.onTrue(newMenu::finished, () -> {
+			
+			ScriptType x = newMenu.type();
+			if(x == null) return;
+			
+			String scriptName = newMenu.nameInput();
+			if(isReservedScriptName(scriptName)) return;
+
+			CSFolder scripts = programRoot.getSubdirectory("scripts").getSubdirectory(x.associatedFolderName);
+			File newScript = new File(scripts.getRealPath() + CSFolder.separator + scriptName + ".py");
+
+			try {
+				
+				newScript.createNewFile();
+				if(Desktop.isDesktopSupported()) Desktop.getDesktop().open(newScript);
+				
+			} catch (IOException e) {
+
+				e.printStackTrace();
+				
+			}			
+			
+		});		
+		
+	}
+	
 	/**
 	 * Begins the exit process of Sprite Studio.
 	 */
@@ -1356,7 +1443,6 @@ public final class Engine implements ShutDown {
 		programRoot.seekExistingFiles();
 		exportsRoot.seekExistingFiles();
 		debugRoot.seekExistingFiles();
-		settings.read(this);
 		
 	}
 	
@@ -1537,7 +1623,7 @@ public final class Engine implements ShutDown {
 	 */
 	@InDevelopment public void getCreatedWorkshopItems() {
 	
-		THE_THREADS.async(() -> {
+		THE_THREADS.submit(() -> {
 			
 		 	int accountID = steam.userAPI().getSteamID().getAccountID();
 		 	int appID = SteamApplicationData.steamAppID(); 
@@ -1637,6 +1723,68 @@ public final class Engine implements ShutDown {
 		
 	}
 	
+	/**
+	 * Returns whether the application is in fullscreen mode.
+	 * 
+	 * @return Whether the application is in fullscreen mode.
+	 */
+	public boolean isFullscreen() {
+		
+		return isFullScreen;
+		
+	}
+	
+	/**
+	 * Sets the sizes of the window.
+	 * 
+	 * @param width — new width of the window
+	 * @param height — new height of the window
+	 */
+	public void setWindowSize(int width , int height) {
+		
+		display.window.size(width, height);
+		
+	}
+	
+	/**
+	 * Returns the position of the window in virtual monitor space.
+	 * 
+	 * @return Position array of the window.
+	 */
+	public int[] getWindowPosition() {
+		
+		return display.window.position();
+		
+	}
+	
+	/**
+	 * Moves the window to the given x and y coordinates in virtual monitor space.
+	 * 
+	 * @param x — x coordiante for the top left corner of the monitor
+	 * @param y — y coordiante for the top left corner of the monitor
+	 */
+	public void setWindowPosition(int x, int y) {
+		
+		display.window.moveTo(x, y);
+		
+	}
+	
+	/**
+	 * Returns the translation of the camera. 
+	 * 
+	 * @return Translation of the camera.
+	 */
+	public float[] getCameraTranslation() {
+		
+		float[] cameraPosition = new float[2];
+		Vector3f translation = new Vector3f();
+		camera.viewTranslation().getTranslation(translation);
+		cameraPosition[0] = translation.x;
+		cameraPosition[1] = translation.y;
+		return cameraPosition;
+		
+	}
+	
 	private boolean initializeSteam() {
 
 		steam = new Steamworks(2616440);
@@ -1662,7 +1810,7 @@ public final class Engine implements ShutDown {
 		
 			sysDebug("Number Subscribed Items" , steam.UGCAPI().getNumSubscribedItems());
 			
-			THE_THREADS.async(() -> WorkshopDownloadHelper.initializeDownloads(steam.UGCAPI()));
+			THE_THREADS.submit(() -> WorkshopDownloadHelper.initializeDownloads(steam.UGCAPI()));
 				
 		}
 		
@@ -1678,7 +1826,7 @@ public final class Engine implements ShutDown {
 			
 			CSFile file = files.next();
 			String filepath = file.getRealPath();
-			THE_THREADS.async(() -> {
+			THE_THREADS.submit(() -> {
 				
 				TTF font = new TTF(14 , filepath);
 				NanoVGTypeface nanoFont = nanoVG.createFont(font);
@@ -1695,15 +1843,11 @@ public final class Engine implements ShutDown {
 		
 		if(display == null) return;
 		
-		if(isSteamInitialized()) THE_THREADS.async(SteamAPI::shutdown);		
-		Await writeFiles = THE_THREADS.async(() -> settings.write(this));
+		if(isSteamInitialized()) THE_THREADS.submit(SteamAPI::shutdown);		
+		settings2.write(this, editor);
 		
-		display.renderer.post(() -> debugLoggedShutDown(() -> CSJEP.interpreter().shutDown(), "Renderer Python Interpreter"));
-
 		debugLoggedShutDown(nanoVG::shutDown, "NanoVG");
 		debugLoggedShutDown(editor::shutDown, "Editor");
-				
-		debugLoggedShutDown(() -> CSJEP.interpreter().shutDown(), "Main Python Interpreter");
 				
 		display.window.detachContext();
 		sysDebug("Detached render context.");
@@ -1722,9 +1866,7 @@ public final class Engine implements ShutDown {
 		}
 		
 		if(isSteamInitialized()) steam.shutDown();
-		
-		writeFiles.await();
-		
+				
 	}
 
 	@Override public boolean isFreed() {
@@ -1738,6 +1880,14 @@ public final class Engine implements ShutDown {
 		sysDebug("Shutting down " + shutDownName + "...");
 		code.invoke();
 		sysDebug(shutDownName + " shut down.");
+		
+	}
+	
+	private enum CursorDragState {
+		
+		NOT_DRAGGING ,
+		DRAGGING_HORIZONTAL ,
+		DRAGGING_VERTICAL;
 		
 	}
 	

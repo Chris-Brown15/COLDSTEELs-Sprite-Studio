@@ -13,7 +13,8 @@ import java.util.function.Supplier;
 import cs.csss.engine.ColorPixel;
 
 /**
- * Defines the behaviors of color generators. These 
+ * Color palettes are objects that can generate an array of colors via their {@link ColorPalette#generate() generate()} method. The size of this 
+ * array is {@link ColorPalette #valueScale() valueScale()}.
  */
 public abstract class ColorPalette {
 
@@ -90,7 +91,11 @@ public abstract class ColorPalette {
 	 * Name of the palette as displayed to the user.
 	 */
 	public final String name;
-	protected int valueScale;
+	
+	/**
+	 * The number of values to generate each time {@code generate} is invoked.
+	 */
+	public int valueScale;
 	
 	private boolean show = true;
 	
@@ -153,14 +158,13 @@ public abstract class ColorPalette {
 	 * Generates an array of color pixels from the given source pixel and of the given value scale according to the semantics of the implementor.
 	 * 
 	 * @param source — pixel to draw from
-	 * 
 	 * @param channels — channels resulting pixels will contain
 	 * @return Array containing color pixels containing palette colors.
 	 */
 	public abstract ColorPixel[] generate(ColorPixel source, int channels);
 	
 	/**
-	 * Gets an array of colors that was last generated.
+	 * Gets the array of colors that was last generated.
 	 * 
 	 * @return Array containing color pixels.
 	 */

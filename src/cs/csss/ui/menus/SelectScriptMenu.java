@@ -39,22 +39,25 @@ public class SelectScriptMenu extends Dialogue {
 		ui.options = UI_TITLED|UI_BORDERED;
 		
 		CSFolder scriptsDir = CSFolder.getRoot("program").getOrCreateSubdirectory("scripts").getOrCreateSubdirectory(scriptDirectory);
+		File scriptsDirFile = scriptsDir.asFile();
 		
 		scriptsDir.seekExistingFiles();
 		
 		ArrayList<CSRadio> radios = new ArrayList<>();
-		
-		scriptsDir.filesIterator().forEachRemaining(file -> newRadio(file.asFile(), radios));
+		File[] files = scriptsDirFile.listFiles((file , name) -> name.endsWith(".py"));
+		for(File x : files) newRadio(x , radios);
 		
 		ScriptType typeFromDirectoryName = ScriptType.getTypeFromDirectoryName(scriptDirectory);
 		String asTag = typeFromDirectoryName.asTagName();
 		
 		//check with the workshop scripts here
+		//only include an item from the workshop if it does not match a file in the local installation. Prefer to show locally installed versions
 		WorkshopDownloadHelper.forEachDownload(item -> {
 			
 			if(item.hasTag(asTag)) {
 				
 				File script = new File(item.folder()).listFiles((director , name) -> name.endsWith(".py"))[0];
+				for(File x : files) if(x.getName().equals(script.getName())) return;
 				newRadio(script , radios);
 				
 			}			

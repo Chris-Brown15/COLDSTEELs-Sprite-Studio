@@ -106,7 +106,7 @@ public class SpriteStudioSteamWorkshopCallbacks implements SteamUGCCallback {
 			
 		}
 		
-		Engine.THE_THREADS.async(() -> {
+		Engine.THE_THREADS.submit(() -> {
 			
 			WorkshopDownloadHelper.downloadUnDownloadedOrOutOfDateItems(ugc, WorkshopDownloadHelper.getSubscribedItems(ugc));
 			

@@ -5,6 +5,7 @@ package cs.csss.misc.utils;
 
 import static java.util.Objects.isNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.RandomAccess;
@@ -237,6 +238,21 @@ public final class MiscUtils {
 		result |= buffer;
 		return signed ? -result : result;
 
+	}
+	
+	/**
+	 * Like {@link java.util.List#of() List.of()} but returns a modifyable list instead of an unmodifyable list.
+	 * 
+	 * @param <T> — type of data to store
+	 * @param items — items to store in the new list
+	 * @return Modifyable {@link List} containing the given elements in the same order they are encountered in {@code items}.
+	 */
+	public static <T> List<T> modifyableOf(@SuppressWarnings("unchecked") T...items) {
+		
+		ArrayList<T> list = new ArrayList<>(items.length);
+		for(T x : items) list.add(x);
+		return list;
+		
 	}
 	
 	/**

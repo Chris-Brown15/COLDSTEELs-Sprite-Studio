@@ -21,6 +21,7 @@ import static org.lwjgl.nuklear.Nuklear.nk_spacer;
 import static org.lwjgl.nuklear.Nuklear.nk_edit_string;
 import static org.lwjgl.nuklear.Nuklear.nk_propertyi;
 import static org.lwjgl.nuklear.Nuklear.nk_color_pick;
+import static org.lwjgl.nuklear.Nuklear.nk_text_colored;
 
 import static org.lwjgl.system.MemoryUtil.memUTF8;
 
@@ -145,33 +146,44 @@ import cs.csss.ui.menus.VectorTextMenu;
 				toByte(stack , expandAnimations))
 			) expandAnimations = !expandAnimations;
 			
-			if(expandAnimations) project.forEachAnimation(animation -> {
-				
-				nk_layout_row_begin(context , NK_STATIC , 30 , 2);
+			if(expandAnimations) {
 
-				pad(context , TIER_TWO_PADDING);
-				
-				nk_layout_row_push(context , ui.interfaceWidth() - TIER_TWO_PADDING - 40);
-				if(nk_selectable_text(context , animation.name() , OPTION_TEXT , asByte(editor.isCurrentAnimation(animation)))) { 
-					
-					editor.project().currentAnimation(animation);
+				if(project.numberAnimations() == 0) {
+
+					noItemPresentText(context , stack, "No Animations present.");
+					addItemInProjectMenuText(context);
 					
 				}
 				
-				nk_layout_row_end(context);
-				
-				if(editor.isCurrentAnimation(animation)) {
+				project.forEachAnimation(animation -> {
 					
 					nk_layout_row_begin(context , NK_STATIC , 30 , 2);
-					pad(context , TIER_THREE_PADDING);
-					
-					nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);
-					if(nk_button_text(context , "Delete")) Engine.THE_TEMPORAL.onTrue(() -> true, editor.project()::deleteAnimation);
-										
-				}
-				
-			});
 
+					pad(context , TIER_TWO_PADDING);
+					
+					nk_layout_row_push(context , ui.interfaceWidth() - TIER_TWO_PADDING - 40);
+					if(nk_selectable_text(context , animation.name() , OPTION_TEXT , asByte(editor.isCurrentAnimation(animation)))) { 
+						
+						editor.project().currentAnimation(animation);
+						
+					}
+					
+					nk_layout_row_end(context);
+					
+					if(editor.isCurrentAnimation(animation)) {
+						
+						nk_layout_row_begin(context , NK_STATIC , 30 , 2);
+						pad(context , TIER_THREE_PADDING);
+						
+						nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);
+						if(nk_button_text(context , "Delete")) Engine.THE_TEMPORAL.onTrue(() -> true, editor.project()::deleteAnimation);
+											
+					}
+					
+				});
+
+			}
+			
 			/*
 			 * Visual Layer Section
 			 */
@@ -187,41 +199,37 @@ import cs.csss.ui.menus.VectorTextMenu;
 				
 			}
 			
-			if(expandVisual) {
-				
-				project.forEachVisualLayerPrototype(layer -> {
+			if(expandVisual) project.forEachVisualLayerPrototype(layer -> {
 					
-					nk_layout_row_begin(context , NK_STATIC , 30 , 2);
+				nk_layout_row_begin(context , NK_STATIC , 30 , 3);
 
-					pad(context , TIER_TWO_PADDING);
+				pad(context , TIER_TWO_PADDING);
 					
-					nk_layout_row_push(context , ui.interfaceWidth() - TIER_TWO_PADDING - 40);
-					nk_text(context , layer.UIString() , dropdownTextOptions);
-													
-					nk_layout_row_end(context);				
-					
-					button(context , TIER_THREE_PADDING ,  30 , "Delete" , () -> {
-						
-						if(project.numberVisualLayers() == 1) new NotificationBox(
-							"Cannot Delete Layer" , 
-							"You cannot delete this layer because at least one visual layer must always be present." ,
-							nuklear
-						);
-						else new ConfirmationBox(
-							nuklear , 
-							"Sure?" ,
-							"Are You Sure You Want To Delete " + layer.name() + "? This will remove this layer from every artboard." , 
-							0.4f , 
-							0.4f , 
-							() -> editor.rendererPost(() -> editor.project().deleteVisualLayer(layer)) , 
-							() -> {}
-						);
-						
-					});
-					
-				});
+				int totalSize = ui.interfaceWidth() - TIER_TWO_PADDING - 40;
+				nk_layout_row_push(context , totalSize / 2);
+				nk_text(context , layer.UIString() , dropdownTextOptions);
 				
-			}
+				nk_layout_row_push(context , totalSize / 2);
+				if(nk_button_text(context , "Delete")) {
+					
+					if(project.numberVisualLayers() == 1) new NotificationBox(
+						"Cannot Delete Layer" , 
+						"You cannot delete this layer because at least one visual layer must always be present." ,
+						nuklear
+					); 
+					else new ConfirmationBox(
+						nuklear , 
+						"Sure?" ,
+						"Are You Sure You Want To Delete " + layer.name() + "? This will remove this layer from every artboard." , 
+						0.4f , 
+						0.4f , 
+						() -> editor.rendererPost(() -> editor.project().deleteVisualLayer(layer)) , 
+						() -> {}
+					);
+						
+				}
+					
+			});				
 			
 			/*
 			 * Nonvisual Layer Section
@@ -240,31 +248,41 @@ import cs.csss.ui.menus.VectorTextMenu;
 				toByte(stack , expandNonvisual))
 			) expandNonvisual = !expandNonvisual;
 			
-			if(expandNonvisual) project.forEachNonVisualLayerPrototype(layer -> {
-				
-				nk_layout_row_begin(context , NK_STATIC , 30 , 2);
+			if(expandNonvisual) {
 
-				pad(context , TIER_TWO_PADDING);
+				if(project.numberNonVisualLayers() == 0) {
+					
+					noItemPresentText(context , stack, "No Nonvisual Layers present.");
+					addItemInProjectMenuText(context);
+					
+				}
 				
-				nk_layout_row_push(context , ui.interfaceWidth() - TIER_TWO_PADDING - 40);
-				nk_text(context , layer.UIString() , dropdownTextOptions);
-				
-				nk_layout_row_end(context);
-				
-				button(context , TIER_THREE_PADDING , 30 , "Delete" , () -> {
-					 new ConfirmationBox(
-						nuklear , 
-						"Sure?" ,
-						"Are You Sure You Want To Delete " + layer.name() + "? This will remove this layer from every artboard." , 
-						0.4f , 
-						0.4f , 
-						() -> editor.rendererPost(() -> editor.project().deleteNonVisualLayer(layer)) , 
-						() -> {}
-					);
+				project.forEachNonVisualLayerPrototype(layer -> {
+					
+					nk_layout_row_begin(context , NK_STATIC , 30 , 2);
+
+					pad(context , TIER_TWO_PADDING);
+					
+					nk_layout_row_push(context , ui.interfaceWidth() - TIER_TWO_PADDING - 40);
+					nk_text(context , layer.UIString() , dropdownTextOptions);
+					
+					nk_layout_row_end(context);
+					
+					button(context , TIER_THREE_PADDING , 30 , "Delete" , () -> {
+						 new ConfirmationBox(
+							nuklear , 
+							"Sure?" ,
+							"Are You Sure You Want To Delete " + layer.name() + "? This will remove this layer from every artboard." , 
+							0.4f , 
+							0.4f , 
+							() -> editor.rendererPost(() -> editor.project().deleteNonVisualLayer(layer)) , 
+							() -> {}
+						);
+					});
+					
 				});
-				
-			});
 
+			}
 			/*
 			 * Artboard Section
 			 */
@@ -282,141 +300,151 @@ import cs.csss.ui.menus.VectorTextMenu;
 			
 			}
 			
-			if(expandArtboards) project.forEachArtboard(artboard -> {
-	
-				nk_layout_row_begin(context , NK_STATIC , 30 , 2);
-
-				pad(context , TIER_TWO_PADDING);
+			if(expandArtboards) {
 				
-				boolean active = editor.currentArtboard() == artboard;
-				
-				nk_layout_row_push(context , ui.interfaceWidth() - TIER_TWO_PADDING - 40);
-				nk_selectable_text(context , editor.getArtboardUIName(artboard) , dropdownTextOptions , toByte(stack , active));
-				nk_layout_row_end(context);				
-				
-				//This part is for the active artboard. It displays the layer instances for that artboard and lets the user change which 
-				//layer is active.				
-				if(!active) return;
-				
-				//modify artboard buttons
-				
-				nk_layout_row_begin(context , NK_STATIC , 30 , 4);
-				
-				pad(context , TIER_THREE_PADDING);
-				int rowWidth = (ui.interfaceWidth() - TIER_THREE_PADDING - 54) / 2;
-				nk_layout_row_push(context , rowWidth);
-				if(nk_button_text(context , "Copy")) editor.rendererPost(() -> editor.addRender(project.deepCopy(artboard).render()));
-				
-				nk_layout_row_push(context , rowWidth);
-				if(nk_button_text(context , "Remove")) Engine.THE_TEMPORAL.onTrue(() -> true , () -> editor.rendererPost(() -> {
+				if(project.getNumberNonCopiedArtboards() == 0) {
 					
-					editor.project().removeArtboard(artboard);
-				
-				}));
-				
-				nk_layout_row_end(context);
-				
-				//visual layers
-				
-				nk_layout_row_begin(context , NK_STATIC , 30 , 2);
-				pad(context , TIER_THREE_PADDING);
-				nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);
-
-				if(nk_selectable_symbol_text(context , toMenuSymbol(expandVisualLayers) , "Visual Layers" , TEXT_MIDDLE , asByte(
-					expandVisualLayers
-				))) { 
-					
-					expandVisualLayers = !expandVisualLayers;
+					noItemPresentText(context , stack, "No Artboards present.");
+					addItemInProjectMenuText(context);
 					
 				}
-
-				nk_layout_row_end(context);
-
-				if(expandVisualLayers) artboard.forEachVisualLayer(layer -> {
-
-					int rank = artboard.getLayerRank(layer);
+				
+				 project.forEachArtboard(artboard -> {
 					
-					nk_layout_row_begin(context , NK_STATIC , 20 , 2);
-					pad(context , TIER_FOUR_PADDING);
-					
-					boolean activeLayer = artboard.isActiveLayer(layer);
-					
-					nk_layout_row_push(context , ui.interfaceWidth() - TIER_FOUR_PADDING - 50);
-					if(nk_radio_text(context , layer.name + " -> Rank " + rank , toByte(stack , activeLayer))) { 
+					nk_layout_row_begin(context , NK_STATIC , 30 , 2);
+
+					pad(context , TIER_TWO_PADDING);
 						
-						editor.eventPush(new SwitchToVisualLayerEvent(artboard , editor.project() , layer));
+					boolean active = editor.currentArtboard() == artboard;
 						
-					}
+					nk_layout_row_push(context , ui.interfaceWidth() - TIER_TWO_PADDING - 40);
+					nk_selectable_text(context , editor.getArtboardUIName(artboard) , dropdownTextOptions , toByte(stack , active));
+					nk_layout_row_end(context);				
+						
+					//This part is for the active artboard. It displays the layer instances for that artboard and lets the user change which 
+					//layer is active.				
+					if(!active) return;
+					
+					//modify artboard buttons
+					
+					nk_layout_row_begin(context , NK_STATIC , 30 , 4);
+					
+					pad(context , TIER_THREE_PADDING);
+					int rowWidth = (ui.interfaceWidth() - TIER_THREE_PADDING - 54) / 2;
+					nk_layout_row_push(context , rowWidth);
+					if(nk_button_text(context , "Copy")) editor.rendererPost(() -> editor.addRender(project.deepCopy(artboard).render()));
+					
+					nk_layout_row_push(context , rowWidth);
+					if(nk_button_text(context , "Remove")) Engine.THE_TEMPORAL.onTrue(() -> true , () -> editor.rendererPost(() -> {
+						
+						editor.project().removeArtboard(artboard);
+						
+					}));
 					
 					nk_layout_row_end(context);
 					
-					//stuff to modify the active layer.
+					//visual layers
 					
-					if(activeLayer) {
+					nk_layout_row_begin(context , NK_STATIC , 30 , 2);
+					pad(context , TIER_THREE_PADDING);
+					nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);
+
+					if(nk_selectable_symbol_text(context , toMenuSymbol(expandVisualLayers) , "Visual Layers" , TEXT_MIDDLE , asByte(
+						expandVisualLayers
+					))) { 
 						
-						button(context , TIER_FIVE_PADDING , "Set Rank" , () -> editor.startMoveLayerRankEvent(layer));
+						expandVisualLayers = !expandVisualLayers;
 						
-						activeLayerCheckBox(context , "Hide" , layer.hiding() , () -> {
-							
-							editor.eventPush(new HideLayerEvent(artboard , artboard.getLayerRank(layer)));
-							
-						});
-						
-						activeLayerCheckBox(context , "Lock" , layer.locked() , () -> layer.toggleLock());
-												
 					}
 
-				});
-			
-				//nonvisual layers
-				
-				nk_layout_row_begin(context , NK_STATIC , 30 , 2);
-				pad(context , TIER_THREE_PADDING);
-				nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);
-				
-				if(nk_selectable_symbol_text(
-					context , 
-					toMenuSymbol(expandNonVisualLayers) , 
-					"Nonvisual Layers" , 
-					TEXT_MIDDLE, 
-					asByte(expandNonVisualLayers)
-				)) { 
-					
-					expandNonVisualLayers = !expandNonVisualLayers;
-					
-				}
+					nk_layout_row_end(context);
 
-				nk_layout_row_end(context);
-				
-				if(expandNonVisualLayers) artboard.forEachNonVisualLayer(layer -> {
-					
-					nk_layout_row_begin(context , NK_STATIC , 20 , 2);
-					pad(context , TIER_FOUR_PADDING);
-					
-					nk_layout_row_push(context , ui.interfaceWidth() - TIER_FOUR_PADDING - 40);
-					if(nk_radio_text(context , layer.name , toByte(stack , artboard.isActiveLayer(layer)))) { 
+					if(expandVisualLayers) artboard.forEachVisualLayer(layer -> {
+
+						int rank = artboard.getLayerRank(layer);
 						
-						editor.eventPush(new SwitchToNonVisualLayerEvent(artboard , editor.project() , layer));
+						nk_layout_row_begin(context , NK_STATIC , 20 , 2);
+						pad(context , TIER_FOUR_PADDING);
+						
+						boolean activeLayer = artboard.isActiveLayer(layer);
+						
+						nk_layout_row_push(context , ui.interfaceWidth() - TIER_FOUR_PADDING - 50);
+						if(nk_radio_text(context , layer.name + " -> Rank " + rank , toByte(stack , activeLayer))) { 
+							
+							editor.eventPush(new SwitchToVisualLayerEvent(artboard , editor.project() , layer));
+							
+						}
+						
+						nk_layout_row_end(context);
+						
+						//stuff to modify the active layer.
+						
+						if(activeLayer) {
+							
+							button(context , TIER_FIVE_PADDING , "Set Rank" , () -> editor.startMoveLayerRankEvent(layer));
+							
+							activeLayerCheckBox(context , "Hide" , layer.hiding() , () -> {
+								
+								editor.eventPush(new HideLayerEvent(artboard , artboard.getLayerRank(layer)));
+								
+							});
+							
+							activeLayerCheckBox(context , "Lock" , layer.locked() , () -> layer.toggleLock());
+													
+						}
+
+					});
 					
+					//nonvisual layers
+					
+					nk_layout_row_begin(context , NK_STATIC , 30 , 2);
+					pad(context , TIER_THREE_PADDING);
+					nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);
+					
+					if(nk_selectable_symbol_text(
+						context , 
+						toMenuSymbol(expandNonVisualLayers) , 
+						"Nonvisual Layers" , 
+						TEXT_MIDDLE, 
+						asByte(expandNonVisualLayers)
+					)) { 
+						
+						expandNonVisualLayers = !expandNonVisualLayers;
+						
 					}
-					
+
 					nk_layout_row_end(context);
 					
-					if(artboard.isActiveLayer(layer)) {
+					if(expandNonVisualLayers) artboard.forEachNonVisualLayer(layer -> {
 						
-						activeLayerCheckBox(context , "Hide" , layer.hiding() , () -> editor.rendererPost(() -> {
-							
-							if(!layer.hiding()) layer.hide(artboard);
-							else layer.show(artboard);
-							
-						}));
+						nk_layout_row_begin(context , NK_STATIC , 20 , 2);
+						pad(context , TIER_FOUR_PADDING);
 						
-					}
-					
-				});
+						nk_layout_row_push(context , ui.interfaceWidth() - TIER_FOUR_PADDING - 40);
+						if(nk_radio_text(context , layer.name , toByte(stack , artboard.isActiveLayer(layer)))) { 
+							
+							editor.eventPush(new SwitchToNonVisualLayerEvent(artboard , editor.project() , layer));
+						
+						}
+						
+						nk_layout_row_end(context);
+						
+						if(artboard.isActiveLayer(layer)) {
+							
+							activeLayerCheckBox(context , "Hide" , layer.hiding() , () -> editor.rendererPost(() -> {
+								
+								if(!layer.hiding()) layer.hide(artboard);
+								else layer.show(artboard);
+								
+							}));
+							
+						}
+						
+					});
 
-				
-			});
+				});
+						
+			}
 			
 //			nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 //			pad(context , TIER_ONE_PADDING);
@@ -654,6 +682,27 @@ import cs.csss.ui.menus.VectorTextMenu;
 		return result;
 		
 	}
+	
+	private void addItemInProjectMenuText(NkContext context) {
+
+		nk_layout_row_begin(context , NK_STATIC , 20 , 2);
+		pad(context , TIER_TWO_PADDING);
+		nk_layout_row_push(context  ,ui.interfaceWidth() - TIER_TWO_PADDING - 40);
+		nk_text(context , "Add one in the 'Project' drop down." , TEXT_LEFT|TEXT_CENTERED);
+		nk_layout_row_end(context);
+		
+	}
+	
+	private void noItemPresentText(NkContext context , MemoryStack stack , String text) {
+
+		nk_layout_row_begin(context , NK_STATIC , 20 , 2);
+		pad(context , TIER_TWO_PADDING);
+		NkColor color = NkColor.malloc(stack).set((byte)0xee , (byte)0xee , (byte)0x0 , (byte)0xff);
+		nk_layout_row_push(context  ,ui.interfaceWidth() - TIER_TWO_PADDING - 40);
+		nk_text_colored(context , text , TEXT_LEFT|TEXT_CENTERED , color);
+		nk_layout_row_end(context);
+			
+	}	
 
 	private void onTrue(Lambda onTrue) {
 		

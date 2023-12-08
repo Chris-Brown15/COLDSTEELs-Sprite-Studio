@@ -14,26 +14,31 @@ import org.lwjgl.system.MemoryStack;
 /**
  * Color picker used for two channel color pickers.
  */
-public class TwoChannelColorPicker {
+class TwoChannelColorPicker {
 
 	private final NkContext context;
 	
-	public BooleanSupplier doLayout = () -> true;
+	BooleanSupplier doLayout = () -> true;
 	
-	public short
-		gray = 0,
-		alpha = 255;
+	short gray = 0, alpha = 255;
 	
-	public boolean hasAlpha = false;
+	boolean hasAlpha = false;
 	
 	/**
 	 * Creates a two channel color picker.
 	 * 
 	 * @param context — the nuklear context
 	 */
-	public TwoChannelColorPicker(NkContext context) {
+	TwoChannelColorPicker(NkContext context) {
 		
 		this.context = context;
+		
+	}
+	
+	void set(short gray , short alpha) {
+		
+		this.gray = gray;
+		this.alpha = alpha;
 		
 	}
 	

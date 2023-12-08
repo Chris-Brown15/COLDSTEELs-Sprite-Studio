@@ -5,20 +5,17 @@ way as other brush types but they have a few additional features which you can s
 
 '''
 from cs.csss.engine import Control
+from cs.csss.editor.brush import CSSSSelectingBrush
 
 tooltip = "Simple Brush"
 stateful = True
 isRenderEvent = False
 isTransientEvent = False
 
-def __SimpleSelectorBrush(brush):
-	return SimpleSelectingBrush(brush)
+def __SimpleSelectorBrush2(tooltip):
+	return SimpleSelectingBrush(tooltip)
 
-class SimpleSelectingBrush:
-	def __init__(self , brush):
-		self.brush = brush
-		self.brush.bounder.color = 0xff
-
+class SimpleSelectingBrush(CSSSSelectingBrush):
 	def use(self , artboard , editor , xIndex , yIndex):
 		pass
 
@@ -28,4 +25,4 @@ class SimpleSelectingBrush:
 	def update(self , artboard , editor):
 		cursorPosition = editor.cursorCoords()
 		if Control.MOVE_SELECTION_AREA.pressed():
-			self.brush.bounder.moveCorner(cursorPosition[0] , cursorPosition[1])
+			self.selectionBounder.moveCorner(cursorPosition[0] , cursorPosition[1])

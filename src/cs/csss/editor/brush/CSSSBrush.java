@@ -62,7 +62,13 @@ import cs.csss.project.Artboard;
 	 */
 	public final boolean stateful;
 		
-	CSSSBrush(final String tooltip , boolean stateful){
+	/**
+	 * Creates a new CSSSBrush which will have the given tooltip, and is stateful if {@code stateful} is <code>true</code>. 
+	 * 
+	 * @param tooltip — tooltip for this brush
+	 * @param stateful — whether this brush is stateful
+	 */
+	public CSSSBrush(final String tooltip , boolean stateful) {
 		
 		allBrushes.add(this);
 		this.toolTip = tooltip;

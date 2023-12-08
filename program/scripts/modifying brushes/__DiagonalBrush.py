@@ -20,6 +20,8 @@ See the various comments in the code for my reasoning through this code.
 from cs.csss.engine import Control
 from java.util import ArrayList
 from cs.csss.project.utils import Artboards
+from cs.csss.editor.brush import CSSSModifyingBrush
+from cs.csss.editor.event import CSSSEvent
 
 #our variables for this brush
 tooltip = "Draws a diagonal line on th artboard."
@@ -29,13 +31,10 @@ isRenderEvent = True
 isTransientEvent = False
 
 #called from Java and creates the brush instance
-def __DiagonalBrush(brush):
-	return DiagonalBrush(brush)
+def __DiagonalBrush(tooltip , stateful):
+	return DiagonalBrush(tooltip , stateful)
 
-class DiagonalBrush:
-	def __init__(self , brush):
-		self.brush = brush
-
+class DiagonalBrush(CSSSModifyingBrush):
 	#use must return an event object, it cannot return None
 	def use(self , artboard , editor , xIndex , yIndex):
 		#the editor supplies the color the user has selected from the color picker on the left hand side panel
@@ -43,8 +42,8 @@ class DiagonalBrush:
 		#here we use the centerAroundRadius method. It uses the parameters we give it as well as the radius value of the brush (which is modified by the slider on the LHS 
 		#panel), and produces an array which is very useful to stop from going out of bounds with modifications. Try revising this script by removing this method and see what 
 		#happens when you try to modify an area close to the edge of the artboard (you'll crash).
-		snappedCoords = self.brush.centerAroundRadius(xIndex , yIndex , artboard.width() , artboard.height())
-		return DiagonalEvent(artboard , snappedCoords[0] , snappedCoords[1] , snappedCoords[2] , snappedCoords[3] , color)
+		self.centerAroundRadius(xIndex , yIndex , artboard.width() , artboard.height())
+		return DiagonalEvent(artboard , self.values[0] , self.values[1] , self.values[2] , self.values[3] , color)
 
 	#canUse returns a boolean notating whether the use method should be called
 	#Since this brush modifies a diagonal region of pixels, we can use this brush if at least one of the pixels on the current layer who lies on the region we want to change 
@@ -61,11 +60,11 @@ class DiagonalBrush:
 		#get the index pixel corresponding the color selected in the editor
 		indices = artboard.putInPalette(editor.selectedColors())
 		#centerAroundRadius again to make sure our checks don't go out of bounds
-		snappedCoords = self.brush.centerAroundRadius(xIndex , yIndex , artboard.width() , artboard.height())
+		self.centerAroundRadius(xIndex , yIndex , artboard.width() , artboard.height())
 		#pull out these variable for convenience.
-		leftX = snappedCoords[0]
-		bottomY = snappedCoords[1]
-		totalHeight = bottomY + snappedCoords[3]
+		leftX = self.values[0]
+		bottomY = self.values[1]
+		totalHeight = bottomY + self.values[3]
 		#while we haven't crossed the total region. Since our rise over run is 1/1 and we have a square region of pixels, we only need to check one of the two variables; I use
 		#the y coordinate to track the iteration
 		while bottomY < totalHeight:
@@ -83,9 +82,11 @@ class DiagonalBrush:
 		return False
 
 #this is the event returned by the brush when we can actually use it.
-class DiagonalEvent:
+class DiagonalEvent(CSSSEvent):
 	#notice the init function does not do anything besides store variables in the instance.
 	def __init__(self , artboard , leftX , bottomY , width , height , color):
+		#initialize the super class, CSSSEvent
+		super(CSSSEvent , self).__init__(True , False)
 		self.artboard = artboard
 		self.leftX = leftX
 		self.bottomY = bottomY

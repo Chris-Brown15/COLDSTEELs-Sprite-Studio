@@ -9,6 +9,8 @@ import static cs.csss.utils.NumberUtils.nearestGreaterOrEqualPowerOfTwo;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 import cs.core.graphics.CSOrthographicCamera;
 import cs.core.graphics.CSStandardRenderer;
@@ -17,6 +19,7 @@ import cs.coreext.nanovg.NanoVG;
 import cs.coreext.nanovg.NanoVGFrame;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.engine.Engine;
+import cs.csss.engine.Logging;
 import cs.csss.misc.graphcs.framebuffer.Framebuffer;
 import cs.csss.misc.graphcs.framebuffer.RenderBuffer;
 import cs.csss.project.ArtboardPalette;
@@ -78,14 +81,17 @@ import cs.csss.utils.ByteBufferUtils;
  * 		</li>
  * 	</ul>
  * </p>
+ * <p>
+ * 	The actual image rendering implementation of the exporter has been moved to {@link cs.csss.project.io.ImageGrabber ImageGrabber}.  
+ * </p>
  * 
  * 	<b>TODO:</b>
  * <p>
- * 	All downloaded frames four byte per pixel byte buffers which are converted into the cooresponding type. We should use different render 
- * 	buffers for each format of pixels.
+ * 	Any project, no matter its number of channels, is rendered as a four byte per pixel image. Once it's downloaded, its converted into a byte 
+ * 	buffer of the appropriate type for the number of channels per pixel of the project. This is clearly inferior to rendering the image as a propper
+ * 	number of channels per pixel the first time.
  * </p>
  * 	
- * 
  * @author Chris Brown
  */
 @RenderThreadOnly public class ProjectExporter {
@@ -327,14 +333,24 @@ import cs.csss.utils.ByteBufferUtils;
 		
 		ByteBuffer exportBuffer = channels == 4 ? download : (download = ByteBufferUtils.reformatBufferRedAlpha(download , channels)); 
 		
-		//list of export tasks
-		Lambda[] exportTasks = constructExportTasks(name , download , channels , finishedExporters);
-		
 		//pass tasks to the thread pool
-		Engine.THE_THREADS.fork(Engine.THE_THREADS.numberThreads() , exportTasks);		
+		try {
+
+			Engine.THE_THREADS.invokeAll(Set.of(constructExportTasks(name , download , channels , finishedExporters)));
+			
+		} catch (InterruptedException e) {
+
+			e.printStackTrace();
+			
+		}		
 		
 		//once all tasks have completed, free the downloaded memory
-		Engine.THE_TEMPORAL.onTrue(() -> finishedExporters.get() == exporters.size() ,  () -> memFree(exportBuffer));
+		Engine.THE_TEMPORAL.onTrue(() -> finishedExporters.get() == exporters.size() , () -> {
+		
+			Logging.sysDebug("Finished exporting");
+			memFree(exportBuffer);
+		
+		});
 		
 		return new ExportFinishedAwait(finishedExporters , exporters.size());
 		
@@ -345,7 +361,7 @@ import cs.csss.utils.ByteBufferUtils;
 	 */
 	private void exportPalettes() {
 		
-		Engine.THE_THREADS.async(() -> {
+		Engine.THE_THREADS.submit(() -> {
 			
 			for(ExportCallbackAndName x : exporters) {
 				
@@ -425,9 +441,10 @@ import cs.csss.utils.ByteBufferUtils;
 	 * @param finishedExporters — atomic counter for completed exports 
 	 * @return Array of functions to be passed to the thread pool
 	 */
-	private Lambda[] constructExportTasks(String exportName , ByteBuffer download , int channels , AtomicInteger finishedExporters) {
+	private Callable<Object>[] constructExportTasks(String exportName , ByteBuffer download , int channels , AtomicInteger finishedExporters) {
 		
-		Lambda[] tasks = new Lambda[exporters.size()];
+		@SuppressWarnings("unchecked")
+		Callable<Object>[] tasks = new Callable[exporters.size()];
 		
 		for(int i = 0 ; i < tasks.length ; i++) {
 			
@@ -438,6 +455,7 @@ import cs.csss.utils.ByteBufferUtils;
 				ExportCallbackAndName iter = exporters.get(j); 
 				iter.callback().export(exportFolderPath + exportName + iter.extension() , download , exportWidth , exportHeight , channels);
 				finishedExporters.incrementAndGet();
+				return null;
 				
 			};
 			

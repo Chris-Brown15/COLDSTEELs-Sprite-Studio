@@ -5,16 +5,21 @@ import static org.lwjgl.nuklear.Nuklear.nk_text_wrap;
 import static cs.core.ui.CSUIConstants.*;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.util.ArrayList;
+
+import org.python.core.PyObject;
+import org.python.core.adapter.ClassicPyObjectAdapter;
+import org.python.util.PythonInterpreter;
 
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSCheckBox;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
+import cs.core.ui.CSNuklear.CSUI.CSLayout.CSText;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
-import cs.coreext.python.CSJEP;
 import cs.csss.engine.Engine;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.project.CSSSProject;
@@ -137,13 +142,12 @@ public class ProjectExporterUI extends DroppedFileAcceptingDialogue {
 		ExportFileTypes[] types = ExportFileTypes.values();		
 		for(int i = 0 ; i < types.length ; i ++) {
 			
-			int j = i;
-			
+			int j = i;			 
 			ui.new CSDynamicRow(25).new CSCheckBox(types[i].toString() , false , () -> {
 				
-				ExportCallbackAndName newExport = new ExportCallbackAndName(types[j].callbackOf(), types[j].ending);
-				if(exporters.contains(newExport)) exporters.remove(newExport);
-				exporters.add(newExport);
+				//if an item of the same extension was removed, break out, otherwise continue to add a new exporter
+				if(exporters.removeIf(item -> item.extension().equals(types[j].ending))) return;
+				exporters.add(new ExportCallbackAndName(types[j].callbackOf(), types[j].ending));
 				
 			});
 			
@@ -151,6 +155,8 @@ public class ProjectExporterUI extends DroppedFileAcceptingDialogue {
 		
 		CSDynamicRow scriptRow = ui.new CSDynamicRow(30);
 		doExportScript = scriptRow.new CSCheckBox("Script" , false , () -> {});
+		CSText text = scriptRow.new CSText(() -> "(" + new File(scriptPath).getName() + ")");
+		text.doLayout = () -> scriptPath != null;
 		
 		ui.attachedLayout((context , stack) -> {
 			
@@ -161,17 +167,34 @@ public class ProjectExporterUI extends DroppedFileAcceptingDialogue {
 		scriptRow.new CSButton("Select" , () -> engine.startSelectScriptMenu("exporters" , file -> {
 			
 			scriptPath = file.getAbsolutePath();
-
+			String filename = file.getName();
+			
 			exporters.add(new ExportCallbackAndName((filepath , data , width , height , channels) -> {
 				
-				try(CSJEP python = CSJEP.interpreter()) {
+				try(PythonInterpreter python = new PythonInterpreter()) {
 					
-					python.run(scriptPath);
-					python.invoke("export", filepath , data , width , height , channels);
+					try {
+						
+						python.execfile(new FileInputStream(file));
+						PyObject export = python.get("export");
+						ClassicPyObjectAdapter adapter = new ClassicPyObjectAdapter();
+						export.__call__(new PyObject[] {
+							adapter.adapt(filepath) , 
+							adapter.adapt(data) , 
+							adapter.adapt(width) , 
+							adapter.adapt(height) , 
+							adapter.adapt(channels)
+						});
+						
+					} catch (Exception e) {
+					
+						e.printStackTrace();
+					
+					}
 					
 				}
 				
-			} , new File(scriptPath).getName()));
+			} , filename.substring(0 , filename.length() - 3)));
 
 		}));
 		

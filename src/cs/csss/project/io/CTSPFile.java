@@ -59,6 +59,20 @@ public class CTSPFile {
 	public static final String FILE_EXTENSION = ".ctsp";
 
 	/**
+	 * Returns whether a project of the given name is found in the {@code "data/projects/"} folder. The given file may or may not end in 
+	 * {@link CTSPFile#FILE_EXTENSION CTSPFile.FILE_EXTENSION}, either is valid.
+	 * 
+	 * @param projectName — the name of a prospective project file.
+	 * @return {@code true} if a file exists with the given name.
+	 */
+	public static boolean projectExists(String projectName) {
+		
+		if(!projectName.endsWith(FILE_EXTENSION)) projectName += FILE_EXTENSION;
+		return Files.exists(Paths.get(projectRoot.getRealPath() + CSFolder.separator + projectName));
+		
+	}
+
+	/**
 	 * name of a ctsp file + FILE_EXTENSION
 	 */
 	private final String fullFileName;
@@ -148,7 +162,7 @@ public class CTSPFile {
 	 */
 	public void read() throws IOException {
 		
-		specify(Files.exists(Paths.get(projectRoot.getRealPath() + CSFolder.separator + fullFileName)) , "File does not exist.");
+		specify(projectExists(fullFileName) , "File does not exist.");
 		
 		try(FileInputStream reader = new FileInputStream(projectRoot.getRealPath() + CSFolder.separator + fullFileName)) {
 			
@@ -171,7 +185,7 @@ public class CTSPFile {
 		Logging.sysDebug("File Read Complete");
 		
 	}
-
+	
 	/* helper methods */
 	
 	private void writePaletteChunks(FileOutputStream writer) throws IOException {

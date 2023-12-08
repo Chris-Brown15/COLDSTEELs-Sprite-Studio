@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Stack;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.engine.ColorPixel;
@@ -382,12 +384,20 @@ import cs.csss.project.utils.RegionIterator;
 	
 	@Override public void _do() {
 
-		Engine.THE_THREADS.fork(
-			3, 
-			() -> initialRow(clickedX , clickedY), 
-			() -> startNorthernIteration(clickedX , clickedY), 
-			() -> startSouthernIteration(clickedX , clickedY)
-		).await();
+		Future<?> initialRow = Engine.THE_THREADS.submit(() -> initialRow(clickedX , clickedY));
+		Future<?> northern = Engine.THE_THREADS.submit(() -> startNorthernIteration(clickedX , clickedY));
+		Future<?> southern = Engine.THE_THREADS.submit(() -> startSouthernIteration(clickedX , clickedY));
+		try {
+
+			initialRow.get();
+			northern.get();
+			southern.get();
+			
+		} catch (InterruptedException | ExecutionException e) {
+			
+			e.printStackTrace();
+						
+		}
 		
 		//find missed parts by iterating over mods 
 		mods.sort((mod1 , mod2) -> mod2.y - mod1.y);

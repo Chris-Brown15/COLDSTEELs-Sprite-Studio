@@ -76,7 +76,8 @@ public final class CSFolder {
 		this.name = name;
 		parent = null;
 		mkDir();
-		
+		seekExistingFiles();
+
 	}
 
 	/**
@@ -93,7 +94,8 @@ public final class CSFolder {
 		this.name = name;
 		parent.addSubdirectory(this);
 		mkDir();
-		
+		seekExistingFiles();
+
 	}
 	
 	/**
@@ -123,8 +125,6 @@ public final class CSFolder {
 	 * @throws IOException if creating a the file throws an IO execption.
 	 */
 	public CSFile createFile(String name , FileComposition fileContents) {
-		
-		specify(fileContents , "Files must not be null.");
 		
 		CSFile file = new CSFile(this , name , fileContents);
 		file.write();		
@@ -156,6 +156,17 @@ public final class CSFolder {
 		}
 		
 		return directories;
+		
+	}
+	
+	/**
+	 * Returns the number of subdirectories in this directory.
+	 * 
+	 * @return Number of subdirectories in this directory.
+	 */
+	public int numberSubdirectories() {
+		
+		return subdirectories.size();
 		
 	}
 	
@@ -437,16 +448,14 @@ public final class CSFolder {
 	}
 	
 	/**
-	 * Gets the subdirectory of the given name, requiring such a directory to be found.
+	 * Gets the subdirectory of the given name (identical to {@link CSFolder#getOrCreateSubdirectory(String) getOrCreateSubDirectory()} .
 	 * 
 	 * @param name — name of a subdirectory within this directory
 	 * @return The given subdirectory.
 	 */
 	public CSFolder getSubdirectory(String name) {
 		
-		CSFolder result = subdirectories.get(name);
-		specify(result , name + " is not in this directory.");		 
-		return result;
+		return getOrCreateSubdirectory(name);
 		
 	}
 	 
@@ -638,8 +647,6 @@ public final class CSFolder {
 			
 			if(parent != null) Files.createDirectory(Paths.get(parent.getRealPath() + separator + name));
 			else Files.createDirectory(Paths.get(name));
-			
-			seekExistingFiles();
 			
 		} catch (IOException e) {
 

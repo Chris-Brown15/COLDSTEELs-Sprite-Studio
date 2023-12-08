@@ -48,7 +48,8 @@ import cs.csss.project.LayerPixel;
 		
 	}
 	
-	protected final SelectionAreaBounder selectionBounder = new SelectionAreaBounder();
+	//public for the benefit of Jython. See CSSSModifyingBrush.java for explanation.
+	public final SelectionAreaBounder selectionBounder = new SelectionAreaBounder();
 	
 	/**
 	 * Creates a new selecting brush with the given tooltip.
@@ -91,7 +92,7 @@ import cs.csss.project.LayerPixel;
 	 * @param editor — the editor
 	 * @param cursor — int array containing the cursor's positions
 	 */
-	protected void newRender(Artboard current , Editor editor , int[] cursor) {
+	public void newRender(Artboard current , Editor editor , int[] cursor) {
 		
 		int leftX = selectionBounder.LX(); 
 	 	int bottomY = selectionBounder.BY();
@@ -130,7 +131,7 @@ import cs.csss.project.LayerPixel;
 	 * @param current — the current artboard
 	 * @param editor — the editor
 	 */
-	protected void newRender(Artboard current , Editor editor) {
+	public void newRender(Artboard current , Editor editor) {
 		
 		float[] midpoint = selectionBounder.midpoint();
 		int[] asInts = {(int)midpoint[0] , (int)midpoint[1]};

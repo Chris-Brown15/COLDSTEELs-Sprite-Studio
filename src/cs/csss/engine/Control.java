@@ -45,28 +45,17 @@ public class Control {
 			GLFW_MOUSE_BUTTON_LEFT , 
 			false
 		) ,
-		GO_UP_ONE_LAYER = new Control(
-			"Up One Layer" ,
-			"Sets the active layer to the one above the current one." ,
-			GLFW_MOUSE_BUTTON_4 ,
-			false
-		) ,
-		GO_DOWN_ONE_LAYER = new Control(
-			"Down One Layer" ,
-			"Sets the active layer to the one below the current one." ,
-			GLFW_MOUSE_BUTTON_5 ,
-			false
-		) ,
 		MOVE_SELECTION_AREA = new Control(
 			"Move Selection Area" , 
 			"Moves the selection area if one is present." , 
 			GLFW_MOUSE_BUTTON_RIGHT , 
 			false
 		) ,
-		MOVE_OBJECT_UP = new Control("Move Object Up" , "Moves an object up." , GLFW_KEY_UP) ,
-		MOVE_OBJECT_DOWN = new Control("Move Object Down" , "Moves an object down." , GLFW_KEY_DOWN) ,
-		MOVE_OBJECT_LEFT = new Control("Move Object Left" , "Moves an object left." , GLFW_KEY_LEFT) ,
-		MOVE_OBJECT_RIGHT = new Control("Move Object Right" , "Moves an object right." , GLFW_KEY_RIGHT);
+		TRANSLATE_CAMERA = new Control("Move Camera" , "Move the camera when pressed" , GLFW_MOUSE_BUTTON_MIDDLE , false) ,
+		INCREASE_BRUSH_SIZE = new Control("Increase Brush Size" , "Increases the brush size if the current brush has a radius." , GLFW_KEY_MINUS) ,
+		DECREASE_BRUSH_SIZE = new Control("Decrease Brush Size" , "Decreases the brush size if the current brush has a radius." , GLFW_KEY_EQUAL) ,
+		TWO_D_CURSOR_DRAG = new Control("Drag Cursor" , "Drag the cursor one direction only." , GLFW_KEY_TAB)
+		;
 
 	/**
 	 * Returns an iterator over all controls.
@@ -140,7 +129,7 @@ public class Control {
 	 * @param name — name of this control
 	 * @param toolTipString — {@code String} representing a tooltip for this control
 	 */ 
-	public Control(final String name ,final String toolTipString) {
+	public Control(final String name , final String toolTipString) {
 		
 		controls.add(this);
 		this.name = name;

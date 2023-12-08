@@ -572,6 +572,17 @@ public class CSSSProject implements ShutDown {
 	}
 	
 	/**
+	 * Returns an iterator over all visual layer prototypes of this project.
+	 * 
+	 * @return Iterator over all visual layer prototypes of this project.
+	 */
+	public Iterator<VisualLayerPrototype> visualLayers() {
+		
+		return visualLayerPrototypes.iterator();
+		
+	}
+	
+	/**
 	 * Invokes {@code callback} for all existing artboards, including shallow copies.
 	 * 
 	 * @param callback — consumer of an artboard
@@ -968,6 +979,8 @@ public class CSSSProject implements ShutDown {
 		
 		engine.renderer().removeRender(artboard.render());
 		artboard.render().shutDown();
+		
+		if(artboard == currentArtboard) currentArtboard = null;
 		
 		Engine.THE_TEMPORAL.onTrue(() -> true, () -> {
 			

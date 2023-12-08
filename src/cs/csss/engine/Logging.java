@@ -1,62 +1,38 @@
 package cs.csss.engine;
 
-import static cs.core.utils.CSUtils.require;
-
-import java.io.File;
+import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.util.Iterator;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
-
-import cs.csss.misc.files.CSFile;
-import cs.csss.misc.files.CSFolder;
+import java.io.PrintStream;
 
 /**
- * Logging class providing utilities for logging and printing information about the running instance of Sprite Studio in an asynchronous
- * way.
+ * Logging class providing utilities for logging and printing information about the running instance of Sprite Studio. Principally this class provides
+ * the ability to print to multiple places at once.
  * 
  * @author Chris Brown
  *
  */
 public class Logging {
 
-	public static final int OP_TO_STD = 0b1, OP_TO_FILE = 0b10;
-	public static int operations = OP_TO_STD;
-	private static final int linefeed = System.lineSeparator().getBytes()[0];
-
+	private static boolean printToFile;
+	
 	public static final String OBJECT_STRING_SEPARATOR = ", ";
 	private static final String DEBUG_PRINT_PREFIX = "[DEBUG] " , LOG_FILE_TYPE = ".txt";
-		
-	private static volatile FileOutputStream logWriter;	
-	private static LoggingThread loggingThread = new LoggingThread();
-	private static final LocalDateTime launchTime = LocalDateTime.now();
+	private static final PrintStream stdOut = System.out , stdErr = System.err;
+	private static PrintStream fileOut , fileErr;
 	
-	static void initialize(int _operations) throws IOException {
+	static void initialize(boolean printToFile) throws IOException {
 		
-		operations = _operations;
+		Logging.printToFile = printToFile;
 		
-		if(has(OP_TO_FILE)) { 
+		if(printToFile) { 
 			
-			CSFolder logs = Engine.debugRoot.getOrCreateSubdirectory("log");
-			String nameString = String.format(
-				"Y %dD %dM %dS %d" , 
-				launchTime.getYear() , 
-				launchTime.getDayOfYear(), 
-				launchTime.getMinute() , 
-				launchTime.getSecond()
-			);
+			fileOut = new PrintStream(new BufferedOutputStream(new FileOutputStream("debug/out" + LOG_FILE_TYPE)) , true);
+			fileErr = new PrintStream(new BufferedOutputStream(new FileOutputStream("debug/err" + LOG_FILE_TYPE)) , true);
 			
-			File log = CSFile.makeFile(logs, nameString + LOG_FILE_TYPE);
-			logWriter = new FileOutputStream(log);	
-			log.deleteOnExit();
 			sysout("Initialized Log Writer");
 			
 		}
-		
-		loggingThread.start();
 		
 		sysout(String.format("Version: %s" , Engine.VERSION_STRING));
 		
@@ -69,7 +45,7 @@ public class Logging {
 	 */
 	public static void sysout(Object... x) {
 		
-		sysoutInternal(System.out::println , x);
+		sysoutInternal(x);
 		
 	}
 	
@@ -79,9 +55,18 @@ public class Logging {
 	 * @param x — objects to print
 	 */
 	public static void syserr(Object... x) {
+
+		String print = stringFromVararg(x);
 		
-		sysoutInternal(System.err::println , x);
-		
+		System.err.println(print);
+		if(printToFile) {
+			
+			System.setErr(fileErr);
+			System.err.println(print);
+			System.setErr(stdErr);
+			
+		}
+				
 	}
 	
 	/**
@@ -95,157 +80,34 @@ public class Logging {
 				
 	}
 	
-	private static void sysoutInternal(Consumer<Object> printer , Object... x) {
+	private static void sysoutInternal( Object... x) {
 
-		loggingThread.enqueue(() -> {
-
-			StringBuilder string = new StringBuilder();
+		String print = stringFromVararg(x);
+		
+		System.out.println(print);
+		if(printToFile) {
 			
-			if(Engine.isDebug()) if(has(OP_TO_STD)) string.append(DEBUG_PRINT_PREFIX);
+			System.setOut(fileOut);
+			System.out.println(print);
+			System.setOut(stdOut);
 			
-			for(int i = 0 ; i < x.length - 1 ; i++) string.append(x[i]).append(OBJECT_STRING_SEPARATOR);
-			string.append(x[x.length - 1]);
-			
-			String result = string.toString();
-			
-			if(has(OP_TO_STD)) printer.accept(result);
-			
-			if(has(OP_TO_FILE)) try {
+		}
 				
-				logWriter.write(result.getBytes()) ; logWriter.write(linefeed);
-					
-			} catch (IOException e) {}
-			
-		});
-			
-		loggingThread.awaken();
-		
 	}
-	
-	private static boolean has(int someOperation) {
 		
-		require(someOperation >= OP_TO_STD && someOperation <= OP_TO_FILE);
+	private static String stringFromVararg(Object... args) {
+
+		StringBuilder string = new StringBuilder();
 		
-		return (operations & someOperation) == someOperation;
+		if(Engine.isDebug()) string.append(DEBUG_PRINT_PREFIX);
+		
+		for(int i = 0 ; i < args.length - 1 ; i++) string.append(args[i]).append(OBJECT_STRING_SEPARATOR);
+		string.append(args[args.length - 1]);
+		
+		return string.toString();
 		
 	}
 	
 	private Logging() {}
-
-	static void shutDown() {
-
-		loggingThread.endPersist();
-		
-		if(!has(OP_TO_FILE)) return;
-		
-		try {
-			
-			logWriter.close();
-			
-		} catch (IOException e) {}
-		
-		logWriter = null;
-		operations &= ~OP_TO_FILE;
-		
-	}
-
-	/**
-	 * Deletes any log 7 days old or older. 
-	 */
-	static void deleteOldLogs() {
-		
-		CSFolder debug = CSFolder.getRoot("debug");
-		Iterator<CSFile> files = debug.filesIterator();
-		final int day = launchTime.getDayOfYear();
-		
-		FindOldFiles: while(files.hasNext()) {
-			
-			CSFile next = files.next();
-			String name = next.name();			
-			char[] chars = name.toCharArray();
-			for(int i = 0 ; i < chars.length ; i++) if(chars[i] == 'D') {
-								
-				//go the first number
-				i += 2;
-				
-				int j = i;
-				while(chars[j] != 'M') j++;
-				String asString = new String(chars , i , j - i);
-				int logDay = Integer.parseInt(asString);				
-				if(day >= logDay + 7) { 
-					
-					files.remove();
-					next = CSFile.delete(next);
-					continue FindOldFiles;
-					
-				}
-				
-			}
-			
-		}
-		
-	}
-	
-	private static class LoggingThread extends Thread {
-		
-		private final AtomicBoolean persist = new AtomicBoolean(true);
-		private final ConcurrentLinkedDeque<Runnable> prints = new ConcurrentLinkedDeque<>();
-		
-		LoggingThread() {
-			
-			setDaemon(true);
-			setName("Logging Thread");
-		
-		}
-		
-		@Override public void run() {
-			
-			while(persist.get()) {
-				
-				try {
-				
-					synchronized(this) {
-						
-						wait();
-						
-					}
-					
-					while(!prints.isEmpty()) prints.poll().run();
-					
-				} catch (InterruptedException e) {
-					
-					e.printStackTrace();
-					
-				}
-				
-			}
-			
-		}
-		
-		private void awaken() {
-			
-			synchronized(this) {
-				
-				notify();
-				
-			}
-			
-		}
-		
-		private void enqueue(Runnable code) {
-		
-			prints.add(code);
-
-		}
-		
-		private void endPersist() {
-		
-			persist.set(false);
-			awaken();
-			
-		}
-		
-	}
-	
 	
 }

@@ -57,36 +57,35 @@ So, the function named after this file is invoked from Sprite Studio and it retu
 those methods must do as described. The use() method should return an object that looks like an event as mentioned elsewhere.
 
 '''
-from java.lang import System
 from cs.csss.engine import Control
+from cs.csss.editor.brush import CSSSBrush
+from cs.csss.editor.event import CSSSEvent
 
 tooltip = "This is a tooltip"
 stateful = False
 isRenderEvent = True
 isTransientEvent = False
 
-def __SimpleBrush(brush):
-	return SimpleBrush(brush)
+def __SimpleBrush2(tooltip , stateful):
+	return SimpleBrush(tooltip , stateful)
 
-class SimpleBrush:
-	def __init__(self , brush):
-		self.brush = brush
-
+class SimpleBrush(CSSSBrush):
 	def use(self , artboard , editor , cursorX , cursorY):
-		return SimpleBrushEvent(artboard)
+		return SimpleBrushEvent(artboard , True , False)
 
 	def canUse(self , artboard , editor , cursorX , cursorY):
 		return Control.ARTBOARD_INTERACT.pressed()
 
-class SimpleBrushEvent:
-	def __init__(self , artboard):
+class SimpleBrushEvent(CSSSEvent):
+	def __init__(self , artboard , isRenderEvent , isTransientEvent):
+		super(CSSSEvent , self).__init__(isRenderEvent , isTransientEvent)
 		self.artboard = artboard
 
 	def _do(self):
-		System.out.println("Hello Brush")
+		print("Hello Brush")
 
 	def undo(self):
-		System.out.println("hsurB olleH")
+		print("hsurB olleH")
 
 	def shutDown(self):
-		System.out.println("Shutting Down Event")
+		print("Shutting Down Event")

@@ -126,6 +126,7 @@ public final class UIUtils {
 	 */
 	public static void toolTip(CSElement element , String tooltip) {
 		
+		if(element.toolTip != null) element.toolTip.shutDown();
 		int width = textLength(tooltip);		
 		element.initializeToolTip(HOVERING|MOUSE_PRESSED, MOUSE_RIGHT, 0, width);
 		element.toolTip.new CSDynamicRow(20).new CSText(tooltip);

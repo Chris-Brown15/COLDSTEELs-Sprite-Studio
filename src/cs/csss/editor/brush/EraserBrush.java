@@ -11,6 +11,9 @@ import cs.csss.project.Artboard;
  */
 @RenderThreadOnly public class EraserBrush extends CSSSModifyingBrush {
 
+	/**
+	 * Creates the eraser brush.
+	 */
 	public EraserBrush() {
 
 		super("Removes a pixel or region of pixels from the artboard." , false);

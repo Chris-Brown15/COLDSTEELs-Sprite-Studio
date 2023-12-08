@@ -41,7 +41,7 @@ import cs.csss.project.Artboard;
 	@Override public void _do() {
 				
 		artboard.replacePalettePixelAtIndex(xIndex, yIndex, newValue);
-
+		
 	}
 
 	@Override public void undo() {

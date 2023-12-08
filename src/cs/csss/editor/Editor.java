@@ -1,9 +1,9 @@
 package cs.csss.editor;
 
-import java.io.File;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.Consumer;
@@ -16,37 +16,29 @@ import cs.core.graphics.CSRender;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
 import cs.core.utils.Lambda;
 import cs.core.utils.ShutDown;
-import cs.core.utils.data.CSCHashMap;
-import cs.core.utils.data.CSHashMapEntry;
 import cs.core.utils.threads.Await;
 import cs.core.utils.threads.ConstructingAwait;
 import cs.coreext.nanovg.NanoVGFrame;
-import cs.coreext.python.CSJEP;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.brush.CSSSBrush;
+import cs.csss.editor.brush.CSSSModifyingBrush;
 import cs.csss.editor.brush.CSSSSelectingBrush;
 import cs.csss.editor.brush.Copy_RegionBrush;
 import cs.csss.editor.brush.Delete_RegionBrush;
 import cs.csss.editor.brush.EraserBrush;
 import cs.csss.editor.brush.Eye_DropperBrush;
 import cs.csss.editor.brush.Flood_FillBrush;
-import cs.csss.editor.brush.ModifyingScriptBrush;
 import cs.csss.editor.brush.PencilBrush;
 import cs.csss.editor.brush.Move_RegionBrush;
 import cs.csss.editor.brush.Replace_AllBrush;
 import cs.csss.editor.brush.RotateBrush;
 import cs.csss.editor.brush.Scale_RegionBrush;
-import cs.csss.editor.brush.ScriptBrush;
-import cs.csss.editor.brush.SelectingScriptBrush;
+import cs.csss.editor.event.AnonymousEvent;
 import cs.csss.editor.event.CSSSEvent;
-import cs.csss.editor.event.ShutDownEventEvent;
+import cs.csss.editor.event.NOPEvent;
 import cs.csss.editor.palette.AnalogousPalette;
-import cs.csss.editor.palette.ColorPalette;
 import cs.csss.editor.palette.ComplementaryPalette;
 import cs.csss.editor.palette.MonochromaticPalette;
-import cs.csss.editor.palette.PaletteScriptMeta;
-import cs.csss.editor.palette.ScriptColorPalette;
-import cs.csss.editor.event.RunScriptEvent;
 import cs.csss.editor.ui.AnimationPanel;
 import cs.csss.editor.ui.FilePanel;
 import cs.csss.editor.ui.LHSPanel;
@@ -57,14 +49,12 @@ import cs.csss.engine.ColorPixel;
 import cs.csss.engine.Control;
 import cs.csss.engine.Engine;
 import cs.csss.engine.Logging;
-import cs.csss.misc.utils.MiscUtils;
 import cs.csss.project.Animation;
 import cs.csss.project.Artboard;
 import cs.csss.project.ArtboardPalette;
 import cs.csss.project.CSSSProject;
 import cs.csss.project.VisualLayer;
-import jep.JepException;
-import jep.python.PyObject;
+import cs.csss.ui.utils.UIUtils;
 
 /**
  * Editor handles tasks relating to modifying artboards. It functions on a largely event-driven architecture where implementations of 
@@ -74,10 +64,8 @@ import jep.python.PyObject;
  *
  */
 public class Editor implements ShutDown {
-	
-	private static final int 
-		DEFAULT_UNDO_REDO_STACK_SIZE = 1024 ,
-		DEFAULT_HASH_MAP_SIZE = 13;
+		
+	static final int DEFAULT_UNDO_REDO_STACK_SIZE = 1024;
 		
 	//create the brushes used by all editors
 	public static final PencilBrush thePencilBrush = new PencilBrush();
@@ -90,29 +78,18 @@ public class Editor implements ShutDown {
 	public static final RotateBrush theRotateBrush = new RotateBrush();
 	public static final Scale_RegionBrush theScaleBrush = new Scale_RegionBrush();
 	public static final Copy_RegionBrush theCopyBrush = new Copy_RegionBrush();
-	private static volatile ScriptBrush theScriptBrush = null;
-	private static volatile ModifyingScriptBrush theModifyingScriptBrush = null;
-	private static volatile SelectingScriptBrush theSelectingScriptBrush = null;
-	
+	private static volatile CSSSBrush theScriptBrush2 = null;
+	private static volatile CSSSModifyingBrush theModifyingScriptBrush2 = null;
+	private static volatile CSSSSelectingBrush theSelectingScriptBrush2 = null;
+
 	/**
 	 * Returns the current script brush.
 	 * 
 	 * @return Current script brush.
 	 */
-	public static ScriptBrush theScriptBrush() {
+	public static CSSSBrush theScriptBrush2() {
 		
-		return theScriptBrush;
-		
-	}
-
-	/**
-	 * Sets the script brush to {@code theScriptBrush}
-	 * 
-	 * @param theScriptBrush — new script brush
-	 */
-	public static void theScriptBrush(ScriptBrush theScriptBrush) {
-		
-		Editor.theScriptBrush = theScriptBrush;
+		return theScriptBrush2;
 		
 	}
 
@@ -121,70 +98,42 @@ public class Editor implements ShutDown {
 	 * 
 	 * @return Current modifying script brush.
 	 */
-	public static ModifyingScriptBrush theModifyingScriptBrush() {
+	public static CSSSModifyingBrush theModifyingScriptBrush2() {
 		
-		return theModifyingScriptBrush;
-		
-	}
-
-	/**
-	 * Sets the modifying script brush to {@code theModifyingScriptBrush}
-	 * 
-	 * @param theModifyingScriptBrush — new modifying script brush
-	 */
-	public static void theModifyingScriptBrush(ModifyingScriptBrush theModifyingScriptBrush) {
-		
-		Editor.theModifyingScriptBrush = theModifyingScriptBrush;
+		return theModifyingScriptBrush2;
 		
 	}
 
 	/**
-	 * Returns the current selecting script brush.
+	 * Returns the current modifying script brush.
 	 * 
-	 * @return the theSelectingScriptBrush
+	 * @return Current selecting script brush.
 	 */
-	public static SelectingScriptBrush theSelectingScriptBrush() {
+	public static CSSSSelectingBrush theSelectingScriptBrush2() {
 		
-		return theSelectingScriptBrush;
+		return theSelectingScriptBrush2;
 		
 	}
-
-	/**
-	 * Sets the selecting script brush to {@code theSelectingScriptBrush}
-	 * 
-	 * @param theSelectingScriptBrush — new selecting script brush
-	 */
-	public static void theSelectingScriptBrush(SelectingScriptBrush theSelectingScriptBrush) {
-		
-		Editor.theSelectingScriptBrush = theSelectingScriptBrush;
-		
-	}
-
+	
 	public final IntConsumer setCameraMoveRate;
 	public final IntSupplier getCameraMoveRate;
 	
-	private final Engine engine;	
-	private final LHSPanel leftSidePanel;
-
+	private final Engine engine;
+	private final JythonScriptExecutor jython = new JythonScriptExecutor(Engine.isDebug());
+		
 	private volatile CSSSBrush currentBrush = thePencilBrush;
 	
 	private ConcurrentLinkedDeque<CSSSEvent> events = new ConcurrentLinkedDeque<>();
 	private UndoRedoStack redos = new UndoRedoStack(DEFAULT_UNDO_REDO_STACK_SIZE) , undos = new UndoRedoStack(DEFAULT_UNDO_REDO_STACK_SIZE);
 	
-	private volatile CSCHashMap<EventScriptMeta , String> 
-		loadedArtboardScripts = new CSCHashMap<>(DEFAULT_HASH_MAP_SIZE) ,
-		loadedProjectScripts = new CSCHashMap<>(DEFAULT_HASH_MAP_SIZE);
-	
-	private volatile CSCHashMap<BrushScriptMeta , String>
-		loadedSimpleBrushScripts = new CSCHashMap<>(DEFAULT_HASH_MAP_SIZE) ,
-		loadedModifyingBrushScripts = new CSCHashMap<>(DEFAULT_HASH_MAP_SIZE) ,
-		loadedSelectingBrushScripts = new CSCHashMap<>(DEFAULT_HASH_MAP_SIZE);
-	
-	private volatile CSCHashMap<PaletteScriptMeta , String> loadedPaletteScripts = new CSCHashMap<>(DEFAULT_HASH_MAP_SIZE);
-	
 	private final AnimationPanel animationPanel;
+	private final LHSPanel leftSidePanel;
 	
 	private ChannelBuffer currentColor = new ChannelBuffer();
+	
+	private boolean colorInputsAreHex = false;
+	
+	private final SelectionAreaBounder brushBounder = new SelectionAreaBounder();
 	
 	/**
 	 * Creates an editor object. 
@@ -218,12 +167,12 @@ public class Editor implements ShutDown {
 		updateCurrentBrush();
 		//add new events
 		editArtboardOnControls();
-		undoRedoOnControls();
+		updateEditorControls();
 		//handle them
 		handleEvents();	
 		//update the current project's animation if running
 		playAnimation();
-		
+				
 	}
 	
 	/**
@@ -234,30 +183,43 @@ public class Editor implements ShutDown {
 	public void eventPush(CSSSEvent event) {
 		
 		events.add(event);
-		//only shut down event right away if it is transient. Otherwise, it wont get added to the undo queue and therefore it will be lost
-		if(event.isTransientEvent && event instanceof ShutDown asShutDown) { 
+
+		if(event.isTransientEvent) events.add(shutDownEventReflection(event)); 
+		else {
 			
-			eventPush(new ShutDownEventEvent(event.isRenderEvent , asShutDown));
+			CSSSEvent removed = undos.push(event);
+			if(removed == null) return;
+			eventPush(shutDownEventReflection(removed));
 			
 		}
 
-		CSSSEvent removed = undos.push(event);
-		if(removed != null && removed instanceof ShutDown asShutDown) events.add(new ShutDownEventEvent(removed.isRenderEvent , asShutDown));
-	
 	}
 
 	/**
 	 * Handles any events associated with this editor.
-	 * 
-	 * @param renderer — the renderer, needed in case an event must be executed by the renderer
 	 */
 	void handleEvents() {
 
 		for(CSSSEvent x : events) {
+
+			Lambda _do = Engine.isDebug() ? () -> {
+				
+				try {
+					
+					x._do();
+				
+				} catch(Exception e) {
+					
+					Logging.syserr("Event excepted " + x);
+					e.printStackTrace();
+					
+				}
+				
+			} : x::_do;
 			
-			if(x.isRenderEvent) engine.renderer().post(x::_do);
+			if(x.isRenderEvent) engine.renderer().post(_do);
 			else x._do();
-		
+			
 		}
 		
 		events.clear();
@@ -266,21 +228,53 @@ public class Editor implements ShutDown {
 	
 	private void editArtboardOnControls() {
 
+		CSSSProject project = project();
+		
+		if(project == null) return;
+		
+		boolean cursorInBoundsForBrush = cursorInBoundsForBrush();
 		float[] cursor = engine.getCursorWorldCoords();			
-		Artboard current = setCurrentArtboard(cursor);
 
-		if(!cursorInBoundsForBrush() || currentBrush == null || project() == null || project().freemoveMode()) return;
+		Artboard current = project.currentArtboard();
+		
+		if(project.freemoveMode() && Control.ARTBOARD_INTERACT.struck()) {
+			
+			if(current == null) project.setCurrentArtboardByMouse(cursor[0], cursor[1]); 
+			else project.currentArtboard(null);
+			return;		
+			
+		}
+		
+		if(!cursorInBoundsForBrush || currentBrush == null) return;
+		
+		if(Control.ARTBOARD_INTERACT.pressed()) current = setCurrentArtboard(cursor); 
 		
 		if(current != null && current.isCursorInBounds(cursor)) {
 		
 			int[] pixelIndex = current.worldToPixelIndices(cursor);
 			
 			//TODO: make these only go to the renderer if needed
-
+			
+			Artboard finalCurrent = current;
+			
 			engine.renderer().post(() -> {
 
-				boolean canUse = currentBrush.canUse(current , this , pixelIndex[0] , pixelIndex[1]);				
-				if(canUse) eventPush(currentBrush.use(current , this , pixelIndex[0] , pixelIndex[1]));				
+				if(Engine.isDebug()) try {
+					
+					boolean canUse = currentBrush.canUse(finalCurrent , this , pixelIndex[0] , pixelIndex[1]);
+					if(canUse) eventPush(currentBrush.use(finalCurrent , this , pixelIndex[0] , pixelIndex[1]));
+					
+				} catch(Exception e) {
+					
+					Logging.syserr("Brush _do failed for brush " + currentBrush);
+					e.printStackTrace();
+					
+				} else {
+					
+					boolean canUse = currentBrush.canUse(finalCurrent , this , pixelIndex[0] , pixelIndex[1]);
+					if(canUse) eventPush(currentBrush.use(finalCurrent , this , pixelIndex[0] , pixelIndex[1]));
+				
+				}
 				
 			}).await();
 						
@@ -291,7 +285,7 @@ public class Editor implements ShutDown {
 	/**
 	 * Handles undo and redo based on the state of the undo and redo keys.
 	 */
-	private void undoRedoOnControls() {
+	private void updateEditorControls() {
 
 		if(Control.PRELIM.pressed()) if(Control.PRELIM2.pressed()) {
 			
@@ -305,6 +299,24 @@ public class Editor implements ShutDown {
 		
 		}
 		
+		if(Control.TRANSLATE_CAMERA.pressed() && !engine.isCursorHoveringUI()) {
+
+			float previousX = engine.previousCursorX();
+			float previousY = engine.previousCursorY();
+			float[] current = engine.getCursorWorldCoords();
+			
+			engine.camera().translate(current[0] - previousX, current[1] - previousY);
+						
+		}
+		
+		if(currentBrush instanceof CSSSModifyingBrush asModifying) {
+			
+			int radius = asModifying.radius();
+			if(Control.DECREASE_BRUSH_SIZE.struck()) asModifying.radius(radius + 1);
+			if(Control.INCREASE_BRUSH_SIZE.struck() && radius > 0) asModifying.radius(radius - 1);
+			
+		}
+		
 	}
 
 	/**
@@ -312,11 +324,46 @@ public class Editor implements ShutDown {
 	 */
 	private void updateCurrentBrush() {
 		
-		if(currentBrush != null && currentBrush.stateful) {
-		
-			CSSSProject project = project();
-			rendererPost(() -> currentBrush.update(project == null ? null : project.currentArtboard() , this)).await();
+		if(currentBrush != null) {
+			
+			if(currentBrush.stateful) {
+				
+				CSSSProject project = project();
+				rendererPost(() -> {
+				
+					if(Engine.isDebug()) {
 						
+						try {
+							
+							currentBrush.update(project == null ? null : project.currentArtboard() , this);
+						
+						} catch(Exception e) {
+							
+							Logging.syserr("Brush update failed for brush " + currentBrush);
+							e.printStackTrace();
+														
+						}
+						
+					} else currentBrush.update(project == null ? null : project.currentArtboard() , this);
+				
+				}).await();
+			
+			}
+			
+			Artboard current = currentArtboard();
+			if(currentBrush instanceof CSSSModifyingBrush modifingBrush && current != null) {
+				
+				//update the bounder
+				float[] cursorPosition = engine.getCursorWorldCoords();
+				int radius = modifingBrush.radius();
+
+				brushBounder.LX(cursorPosition[0] - radius -.5f);
+				brushBounder.RX(cursorPosition[0] + radius +.5f);
+				brushBounder.BY(cursorPosition[1] - radius -.5f);
+				brushBounder.TY(cursorPosition[1] + radius +.5f);
+				
+			}
+			
 		}
 		
 	}
@@ -375,6 +422,17 @@ public class Editor implements ShutDown {
 	}
 	
 	/**
+	 * Renders the frame of the modifying brush bounder iff the current brush is a modifying brush.
+	 * 
+	 * @param frame — the NanoVG frame
+	 */
+	@RenderThreadOnly public void renderModifyingBrushBounder(NanoVGFrame frame) {
+		
+		if(currentBrush instanceof CSSSModifyingBrush && currentArtboard() != null) brushBounder.render(frame);
+		
+	}
+	
+	/**
 	 * Returns the current brush.
 	 * 
 	 * @return The current brush.
@@ -403,7 +461,9 @@ public class Editor implements ShutDown {
 	 */
 	public Artboard currentArtboard() {
 	
-		return engine.currentArtboard();
+		CSSSProject currentProject = engine.currentProject();
+		if(currentProject != null) return currentProject.currentArtboard();
+		return null;
 		
 	}
 	
@@ -485,8 +545,14 @@ public class Editor implements ShutDown {
 	 */
 	public void setSelectedColor(ColorPixel other) {
 		
-		setSelectedColor(other.r() , other.g() , other.b() , other.a());
-		
+		byte zero = (byte)0;
+		switch(engine.currentProject().getChannelsPerPixelOfCurrentLayer()) {
+			case 1 -> setSelectedColor(other.r() , zero , zero , zero);
+			case 2 -> setSelectedColor(other.r() , other.g() , zero , zero);
+			case 3 -> setSelectedColor(other.r() , other.g() , other.b() , (byte)0xff);
+			case 4 -> setSelectedColor(other.r() , other.g() , other.b() , other.a());
+		}
+				
 	}
 	
 	/**
@@ -773,6 +839,17 @@ public class Editor implements ShutDown {
 	}
 	
 	/**
+	 * Returns the max radius a brush can have.
+	 * 
+	 * @return Max radius a brush can have.
+	 */
+	public int maxBrushRadius() {
+		
+		return currentArtboard() != null ? (currentArtboard().height() / 2) - 1 : 999;
+		
+	}
+	
+	/**
 	 * Toggles on or off the animation panel.
 	 */
 	public void toggleAnimationPanel() {
@@ -984,502 +1061,128 @@ public class Editor implements ShutDown {
 	}
 
 	/**
-	 * Creates an UI element to select a script to run on the current project.
+	 * Starts a new menu to select and run an artboard script. Once one is selected, it is pushed as an event.
 	 */
-	public void startRunProjectScript() {
+	public void startRunArtboardScript2() {
 		
+		if(currentArtboard() == null) return;
+		engine.startSelectScriptMenu("artboards", file -> {
+			
+			jython.registerArtboardScript(file);			
+			jython.runArtboardScript(this, file.getName());
+			
+		});
+		
+	}
+	
+	/**
+	 * Starts a new menu to select and run a project script. Once one is selected, it is pushed as an event.
+	 */
+	public void startRunProjectScript2() {
+		
+		if(project() == null) return;
 		engine.startSelectScriptMenu("projects", file -> {
 			
-			EventScriptMeta eventScriptMeta = initializeOrGetEventScript(file , loadedProjectScripts);
-			if(eventScriptMeta == null) { 
-				
-				Logging.syserr("Failed to run script due to an error, aborting operation.");
-				return;
-				
-			}
-			
-			Consumer<List<String>> code = (args) -> {
-				
-				CSJEP jep = CSJEP.interpreter();
-				try {
-
-					PyObject asPyObject = invokeScriptFunction(jep, asScriptName(eventScriptMeta), args, project() , this);
-					eventPush(new RunScriptEvent(eventScriptMeta.isRenderEvent() , eventScriptMeta.isTransientEvent() , asPyObject));
-					
-				} catch(JepException e) {
-					
-					e.printStackTrace();
-					return;
-					
-				}
-
-			};
-				
-			pushScriptCode(eventScriptMeta , file , code);
+			jython.registerProjectScript(file);
+			jython.runProjectScript(this , file.getName());
 			
 		});
 		
 	}
 	
 	/**
-	 * Invokes the script pointed to by {@code script}.
-	 * 
-	 * @param script — a script file
-	 */ 
-	public void startRunArtboardScript() {
-		
-		engine.startSelectScriptMenu("artboards" , file -> {
-			
-			EventScriptMeta eventScriptMeta = initializeOrGetEventScript(file , loadedArtboardScripts);
-			if(eventScriptMeta == null) { 
-				
-				Logging.syserr("Failed to run script due to an error, aborting operation.");
-				return;
-				
-			}
-			
-			Consumer<List<String>> code = (args) -> {
-
-				CSJEP jep = CSJEP.interpreter();				
-				try {
-
-					String functionName = asScriptName(eventScriptMeta);					
-					PyObject asPyObject = invokeScriptFunction(jep, functionName, args, currentArtboard() , this);
-					eventPush(new RunScriptEvent(eventScriptMeta.isRenderEvent() , eventScriptMeta.isTransientEvent() , asPyObject));
-					
-				} catch(JepException e) {
-					
-					e.printStackTrace();
-					return;
-					
-				}
-							
-			};
-			
-			pushScriptCode(eventScriptMeta , file , code);
-			
-		});
-		
-	}
-
-	/**
-	 * Creates an UI element for selecting script for a custom palette.
+	 * Starts a new menu to select a palette script. Once one is selected, it is run, creating a new palette.
 	 */
-	public void startRunPaletteScript() {
-		
+	public void startRunPaletteScript2() {
+	
 		engine.startSelectScriptMenu("palettes", file -> {
 			
-			String title = file.getName();
-			//already has the given entry, return, only happens in nondebug mode
-			if (loadedPaletteScripts.hasKey(title)) return;
-			
-			PaletteScriptMeta meta = initializeOrGetPaletteScriptMeta(file);
-						
-			if(meta == null) {
-				
-				Logging.syserr("Failed to run script due to an error, aborting operation."); 
-				return;
-				
-			}
-			
-			CSJEP jep = CSJEP.interpreter();
-			String functionName = asScriptName(title);
-			
-			//try to remove a palette of the name of the palette we are adding from the data structures.
-			//this only happens in debug mode.
-			ColorPalette.remove(meta.name());			
-			
-			ScriptColorPalette palette = new ScriptColorPalette(meta.name());
-			PyObject paletteObject = invokeScriptFunction(jep , functionName , null , palette , null);			
-			palette.setScriptData(paletteObject);
-			palette.setValueScale(meta.defaultValueScale());
+			jython.registerPaletteScript(file);
+			jython.getPalette(this, file);
 			
 		});
 		
 	}
 	
 	/**
-	 * Creates an UI element for selecting a script for the script brush to use.
+	 * Starts a menu to select the current simple script brush.
 	 * 
-	 * @param radioButton — a button whose tooltip will be set to the tooltip of the brush script selected
+	 * @param radio — the radio button whose tooltip will be updated to the selected brush's tooltip
 	 */
-	public void startSelectSimpleScriptBrush(CSRadio radioButton) {
+	public void startSelectSimpleScriptBrush2(CSRadio radio) {
 		
 		engine.startSelectScriptMenu("simple brushes", file -> {
 			
-			//must happen in the main thread
-			BrushScriptMeta meta = initializeOrGetBrushScript(file, loadedSimpleBrushScripts);
-			if(meta == null) {
-				
-				Logging.sysDebug("Failed to compile brush script, aborting operation.");
-				return;
-				
-			}
-			
-			//do this in the main thread, catching an exception along the way to try to ensure the render thread wont throw an exception
-			try {
-				
-				invokeScriptFunction(CSJEP.interpreter(), asScriptName(meta), null , new ScriptBrush(meta) , null);
-								
-			} catch(JepException e) {
-				
-				e.printStackTrace();
-				return;
-				
-			}
-			
-			//must happen in the render thread
-			rendererPost(() -> {
-				
-				CSJEP rendererJep = CSJEP.interpreter();
-				ScriptBrush newScriptBrush = new ScriptBrush(meta);
-				PyObject object = invokeScriptFunction(rendererJep, asScriptName(meta), null , newScriptBrush , null);
-				
-				newScriptBrush.setScriptBrush(object, meta);
-				boolean isActiveBrushThis = currentBrush == theScriptBrush;
-				if(theScriptBrush != null) theScriptBrush.shutDown();
-				theScriptBrush = newScriptBrush;
-				if(isActiveBrushThis) setBrushTo(theScriptBrush);
-				theScriptBrush.setupToolTip(radioButton);
-				
-			});
+			jython.registerSimpleBrushScript(file);
+			theScriptBrush2 = jython.getSimpleBrush(this , file);
+			if(theScriptBrush2 != null) UIUtils.toolTip(radio, jython.getSimpleBrushInfo(file.getName()).tooltip());
 			
 		});
 		
 	}
 
 	/**
-	 * Creates an UI element for selecting a script for the modifying script brush to use.
+	 * Starts a menu to select the current modifying script brush.
 	 * 
-	 * @param radioButton — a button whose tooltip will be set to the tooltip of the modifying brush script selected
+	 * @param radio — the radio button whose tooltip will be updated to the selected brush's tooltip
 	 */
-	public void startSelectModifyingScriptBrush(CSRadio radioButton) {
+	public void startSelectModifyingScriptBrush2(CSRadio radio) {
 		
 		engine.startSelectScriptMenu("modifying brushes", file -> {
 			
-			//must happen in the main thread
-			BrushScriptMeta meta = initializeOrGetBrushScript(file, loadedModifyingBrushScripts);
-			if(meta == null) {
-				
-				Logging.sysDebug("Failed to compile brush script, aborting operation.");
-				return;
-				
-			}
-			
-			try {
-				
-				invokeScriptFunction(CSJEP.interpreter(), asScriptName(meta), null , new ScriptBrush(meta) , null);
-								
-			} catch(JepException e) {
-				
-				e.printStackTrace();
-				return;
-				
-			}		
-			//must happen in the render thread
-			rendererPost(() -> {
-			
-				try {
-
-					CSJEP rendererJep = CSJEP.interpreter();
-					ModifyingScriptBrush newScriptBrush = new ModifyingScriptBrush(meta);
-					PyObject object = invokeScriptFunction(rendererJep, asScriptName(meta), null , newScriptBrush , null);
-					
-					newScriptBrush.setScriptBrush(object, meta);
-					boolean isActiveBrushThis = currentBrush == theModifyingScriptBrush;
-					if(theModifyingScriptBrush != null) theModifyingScriptBrush.shutDown();
-					theModifyingScriptBrush = newScriptBrush;
-					if(isActiveBrushThis) setBrushTo(theModifyingScriptBrush);
-					theModifyingScriptBrush.setupToolTip(radioButton);
-					
-				} catch(Exception e) {
-					
-					e.printStackTrace();
-					return;
-					
-				}
-				
-			});
+			jython.registerModifyingBrushScript(file);
+			theModifyingScriptBrush2 = jython.getModifyingBrush(this , file);
+			if(theModifyingScriptBrush2 != null) UIUtils.toolTip(radio, jython.getModifyingBrushInfo(file.getName()).tooltip());
 			
 		});
 		
 	}
 
 	/**
-	 * Creates an UI element for selecting a script for the selecting script brush to use.
+	 * Starts a menu to select the current selecting script brush.
 	 * 
-	 * @param radioButton — a button whose tooltip will be set to the tooltip of the selecting brush script selected
+	 * @param radio — the radio button whose tooltip will be updated to the selected brush's tooltip
 	 */
-	public void startSelectSelectingScriptBrush(CSRadio radioButton) {
-
+	public void startSelectSelectingScriptBrush2(CSRadio radio) {
+		
 		engine.startSelectScriptMenu("selecting brushes", file -> {
-
-			BrushScriptMeta meta = initializeOrGetBrushScript(file, loadedSelectingBrushScripts);
-			if(meta == null) {
-				
-				Logging.sysDebug("Failed to compile brush script, aborting operation.");
-				return;
-				
-			}
-
-			try {
-				
-				invokeScriptFunction(CSJEP.interpreter(), asScriptName(meta), null , new ScriptBrush(meta) , null);
-								
-			} catch(JepException e) {
-				
-				e.printStackTrace();
-				return;
-				
-			}
-			rendererPost(() -> {
-				
-				CSJEP rendererJep = CSJEP.interpreter();
-				SelectingScriptBrush newScriptBrush = new SelectingScriptBrush(meta);
-				PyObject object = invokeScriptFunction(rendererJep, asScriptName(meta), null , newScriptBrush , null);
-				
-				newScriptBrush.setScriptBrush(object, meta);
-				boolean isActiveBrushThis = currentBrush == theSelectingScriptBrush;
-				if(theSelectingScriptBrush != null) theSelectingScriptBrush.shutDown();
-				theSelectingScriptBrush = newScriptBrush;
-				if(isActiveBrushThis) setBrushTo(theSelectingScriptBrush);
-				theSelectingScriptBrush.setupToolTip(radioButton);
-				
-			});	
 			
-		});			
+			jython.registerSelectingBrushScript(file);
+			theSelectingScriptBrush2 = jython.getSelectingBrush(this , file);
+			if(theSelectingScriptBrush2 != null) UIUtils.toolTip(radio, jython.getSelectingBrushInfo(file.getName()).tooltip());
 			
-	}
-	
-	private void pushScriptCode(EventScriptMeta eventScriptMeta , File file , Consumer<List<String>> code) {
-
-		//get user arguments, then procede.
-		if(eventScriptMeta.takesArguments()) {
-			
-			engine.startScriptArgumentInput(file.getName(), Optional.ofNullable(eventScriptMeta.argumentDialogueText()), result -> {
-				
-				List<String> args = List.of(result.split(" "));
-				
-				if(eventScriptMeta.isRenderEvent()) rendererPost(() -> code.accept(args));
-				else code.accept(args);
-				
-			});		
-			
-		}
-		//invoke the script without arguments
-		else {
-
-			if(eventScriptMeta.isRenderEvent()) rendererPost(() -> code.accept(null));
-			else code.accept(null);
-				
-		}
+		});
 		
 	}
 	
 	/**
-	 * Used to invoke the function sharing its name with the python file, returning the result of the function call.
-	 * 
-	 * @param jep — python interpreter to use
-	 * @param functionName — name of the function
-	 * @param args — additional, user given arguments to the function to call
-	 * @param argument1 — some argument to pass to the called function
-	 * @param argument2 — some argument to pass to the called function
-	 * @return Result of the called function.
-	 * @throws JepException if an error occurs in the python function.
+	 * Creates a UI menu for creating a new script.
 	 */
-	private PyObject invokeScriptFunction(
-		CSJEP jep , 
-		String functionName , 
-		List<String> args , 
-		Object argument1 , 
-		Object argument2
-	) throws JepException { 
+	public void startCreateNewScript() {
 		
-		//set up argument array to pass to Python
-		int argumentsInfo = MiscUtils.numberNonNull(argument1 , argument2);
-		if(args != null && args.size() > 0) argumentsInfo++;
-
-		Object[] arguments = new Object[argumentsInfo];
-		argumentsInfo = 0;
-		if(argument1 != null) arguments[argumentsInfo++] = argument1;
-		if(argument2 != null) arguments[argumentsInfo++] = argument2;
-		if(args != null && args.size() > 0) arguments[argumentsInfo++] = args;
+		engine.startCreateNewScript();
 		
-		//use arguments to invoke function
-		Object result = jep.invoke(functionName , arguments);
-		Objects.requireNonNull(result);
+	}
 		
-		if(!(result instanceof PyObject)) throw new NotEventTypeException(result);
-		return (PyObject) result;
+	void startScriptArgumentInput(String scriptName, Optional<String> dialogueText , Consumer<String> onFinish) {
+		
+		engine.startScriptArgumentInput(scriptName, dialogueText, onFinish);
 		
 	}
 	
-	/**
-	 * This method takes a script file and a hash map and caches information about the script which helps subsequent executions be faster.
-	 * The hash map stores the script meta returned by this method as a value, hashed by the name of the script. This means there should be
-	 * different hash maps for different types of script.
-	 * 
-	 * @param scriptFile — a file pointing to a .py file 
-	 * @param targetMap — a hash map to store the cached metadata in
-	 * @return Script metadata, or null in the case the script cannot be run.
-	 */
-	private EventScriptMeta initializeOrGetEventScript(File scriptFile , CSCHashMap<EventScriptMeta , String> targetMap) {
-
-		String name = scriptFile.getName() , realPath = scriptFile.getAbsolutePath();
-		
-		synchronized(targetMap) {
-			
-			CSHashMapEntry<EventScriptMeta , String> scriptContainer = targetMap.getEntry(name);
-						
-			if(scriptContainer != null) return scriptContainer.value();
-
-			CSJEP localJep = CSJEP.interpreter();
-			boolean[] scriptData;
-			String dialogueText;
-			
-			//this try block will run the script and attempt to gather its metadata.
-			try {
-				
-				localJep.run(realPath);
-				scriptData = new boolean[] {
-					(boolean) localJep.get("isRenderEvent") , 
-					getOrDefault(localJep , "isTransientEvent" , false) ,
-					getOrDefault(localJep , "takesArguments" , false)						
-				};
-
-				dialogueText = getOrDefault(localJep , "argumentDialogueText" , null);
-				
-			} catch(JepException e) {
-				
-				e.printStackTrace();
-				//returning null means the script cannot be executed as it currently exists.
-				return null;
-				
-			}
-
-			EventScriptMeta scriptMetadata = new EventScriptMeta(scriptData[0] , scriptData[1] , scriptData[2] , dialogueText , name);
-			
-			/*
-			 * If in debug, rerun the script every time to verify whether its a renderer event or not.
-			 *  
-			 * Basically, script writers can launch the application in debug mode while they're developing their script. This will allow
-			 * them to constantly recompute whether the script is renderer only or not.
-			 * 
-			 * By not putting the renderEvent boolean in the hash map, we ensure we reinitialize the script every time it's invoked.
-			 * 
-			 */				
-			if(!Engine.isDebug()) targetMap.put(scriptMetadata , name);
-			
-			/*
-			 * If this is a render event, run the script in the render thread.                                                          
-			 * TODO: swap this. make the render thread the first one to run the script, then do it in the main thread only if the event 
-			 * is actually a nonrender event. This scenario will occur much less often, so we would usually half the amount of time this
-			 * method takes. We dont do it this way because if any exception occurs in the render thread, the application doesn't handle
-			 * it and it freezes.                                                                                                       
-			 */
-			if(scriptData[0]) rendererPost(() -> {
-				
-				CSJEP jep = CSJEP.interpreter();
-				jep.run(realPath);
-				
-			}).await();
-			
-			return scriptMetadata;
-	
-		}
-		
-	}
-
-	private BrushScriptMeta initializeOrGetBrushScript(File file , CSCHashMap<BrushScriptMeta , String> targetMap) {
-		
-		synchronized(targetMap) {
-
-			String title = file.getName();
-			CSHashMapEntry<BrushScriptMeta , String> meta = targetMap.getEntry(title);
-			if(meta != null) return meta.value();
-
-			//for some reason, if running the python code for the first time causes an error in the render thread, the application dies.
-			//so we have to run it twice, once in the main thread to make sure it won't throw an exception in the render thread, then in 
-			//the render thread.
-			String path = file.getAbsolutePath();
-			try {
-				
-				CSJEP.interpreter().run(path);
-				
-			} catch(Exception e) {
-				
-				e.printStackTrace();
-				return null;
-				
-			}
-			
-			BrushScriptMeta scriptMeta = rendererMake(() -> {
-
-				CSJEP jep = CSJEP.interpreter();
-				jep.run(path);
-							
-				return new BrushScriptMeta(
-					getOrDefault(jep , "tooltip" , "") , 
-					getOrDefault(jep , "stateful" , false) , 
-					title , 
-					jep.get("isRenderEvent") , 
-					jep.get("isTransientEvent")
-				);
-					
-			}).get();
-			
-			if(!Engine.isDebug()) targetMap.put(scriptMeta, title);
-			
-			return scriptMeta;
-			
-		}
-		
-	}
-
-	private PaletteScriptMeta initializeOrGetPaletteScriptMeta(File file) {
-		
-		synchronized(loadedPaletteScripts) {
-			
-			String title = file.getName();
-			CSHashMapEntry<PaletteScriptMeta , String> metaEntry = loadedPaletteScripts.getEntry(title);
-			if(metaEntry != null) return metaEntry.value();
-			
-			try {
-				
-				CSJEP jep = CSJEP.interpreter();
-				jep.run(file.getAbsolutePath());
-			
-				String paletteName = getOrDefault(jep , "name" , title + " Palette");
-				long initialValueScale = jep.get("initialValueScale");
-				PaletteScriptMeta meta = new PaletteScriptMeta(paletteName , (int)initialValueScale);
-				//don't add the metadata to the hashmap in debug mode for the sake of hot reloading
-				if(!Engine.isDebug()) loadedPaletteScripts.put(meta, title);
-				return meta;
-				
-			} catch(Exception exception) { 
-				
-				exception.printStackTrace();
-				return null;
-				
-			}
-			
-		}
-		
-	}
-	
-	private String asScriptName(EventScriptMeta eventScriptMeta) {
+	String asScriptName(EventScriptMeta eventScriptMeta) {
 		
 		return asScriptName(eventScriptMeta.scriptName());
 		
 	}
 	
-	private String asScriptName(BrushScriptMeta brushScriptMeta) {
+	String asScriptName(BrushScriptMeta brushScriptMeta) {
 		
 		return asScriptName(brushScriptMeta.scriptName());
 		
 	}
 	
-	private String asScriptName(String string) {
+	String asScriptName(String string) {
 		
 		return string.substring(0, string.length() - 3);
 		
@@ -1500,6 +1203,69 @@ public class Editor implements ShutDown {
 		
 	}
 
+	/**
+	 * Returns whether color inputs are as hex or decimal 
+	 *  
+	 * @return Whether color inputs are as hex or decimal.
+	 */
+	public boolean colorInputsAreHex() {
+		
+		return colorInputsAreHex;
+		
+	}
+	
+	/**
+	 * Toggles the state of whethers color inputs are as hex or decimal.
+	 */
+	public void toggleColorInputsAreHex() {
+		
+		colorInputsAreHex = !colorInputsAreHex; 
+		
+	}
+	
+	public List<ColorPixel> currentPaletteColorsAsList() {
+		
+		CSSSProject project = engine.currentProject();
+		if(project != null) {
+			
+			ArtboardPalette currentPalette = project.currentPalette();
+			if(currentPalette != null) return currentPalette.getColorsAsList(15);
+			
+		}
+		
+		return null;
+		
+	}
+
+	/**
+	 * Uses reflection to detect whether a shutdown method is present on the given event. This is for the advantage of Jython implementations of 
+	 * {@code CSSSEvent}. 
+	 * 
+	 * @param event — the event to shut down
+	 * @return An event that will shutdown the given event.
+	 */
+	private CSSSEvent shutDownEventReflection(CSSSEvent event) {
+		
+		Method shutDownMethod;
+		try {
+			
+			shutDownMethod = event.getClass().getMethod("shutDown");
+			return new AnonymousEvent(event.isRenderEvent , () -> {
+				
+				try {
+					
+					shutDownMethod.invoke(event);
+					
+				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {}
+				
+			});
+			
+		} catch (NoSuchMethodException | SecurityException e) {}
+				
+		return new NOPEvent();
+			
+	}
+	
 	@Override public void shutDown() {
 
 		animationPanel.shutDown();
@@ -1511,25 +1277,6 @@ public class Editor implements ShutDown {
 	@Override public boolean isFreed() {
 
 		return animationPanel.isFreed();
-		
-	}
-
-	private <T> T getOrDefault(CSJEP jep , String variableName , T _default) {
-		
-		T result;
-		
-		try {
-			
-			result = jep.get(variableName);
-			
-		} catch(JepException e) {
-			
-			Logging.sysDebug(variableName + " was not found, defaulting to " + _default);
-			result = _default;
-			
-		}
-		
-		return result;		
 		
 	}
 	

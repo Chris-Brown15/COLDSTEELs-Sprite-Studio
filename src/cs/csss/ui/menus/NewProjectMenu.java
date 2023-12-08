@@ -29,7 +29,7 @@ public class NewProjectMenu extends Dialogue {
 	
 	static {
 		
-		Engine.THE_THREADS.async(() -> {
+		Engine.THE_THREADS.submit(() -> {
 			
 			CSFolder projectsFolder = CSFolder.getRoot("data").getOrCreateSubdirectory("projects");
 			projectsFolder.seekExistingFiles();

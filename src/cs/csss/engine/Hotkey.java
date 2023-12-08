@@ -28,9 +28,9 @@ public class Hotkey extends Control {
 		ROTATE_REGION_HOTKEY = new Hotkey("Rotate Region" , GLFW_KEY_I , () -> Editor.theRotateBrush) ,
 		SCALE_REGION_HOTKEY = new Hotkey("Scale Region" , GLFW_KEY_O , () -> Editor.theScaleBrush) ,
 		COPY_REGION_HOTKEY = new Hotkey("Copy Region" , GLFW_KEY_C , () -> Editor.theCopyBrush) ,
-		SCRIPT_REGION_HOTKEY = new Hotkey("Script" , GLFW_KEY_J , Editor::theScriptBrush),
-		MODIFYING_SCRIPT_REGION_HOTKEY = new Hotkey("Script" , GLFW_KEY_K , Editor::theModifyingScriptBrush) ,
-		SELECTING_SCRIPT_REGION_HOTKEY = new Hotkey("Script" , GLFW_KEY_L , Editor::theSelectingScriptBrush);
+		SIMPLE_SCRIPT_BRUSH_HOTKEY = new Hotkey("Script Brush" , GLFW_KEY_J , Editor::theScriptBrush2),
+		MODIFYING_SCRIPT_BRUSH_HOTKEY = new Hotkey("Modifing Script Brush" , GLFW_KEY_K , Editor::theModifyingScriptBrush2) ,
+		SELECTING_REGION_SCRIPT_HOTKEY = new Hotkey("Selecting Script Brush" , GLFW_KEY_L , Editor::theSelectingScriptBrush2);
 	
 	/**
 	 * Updates the hotkeys, setting controls based on whether the hotkey was pressed.

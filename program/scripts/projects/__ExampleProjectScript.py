@@ -20,6 +20,14 @@ class PrintProjectInfoEvent:
 		self.editor = editor
 
 	def _do(self):
-		self.project.forEachAnimation(lambda x: System.out.println(x.name()))
-		self.project.forEachVisualLayerPrototype(lambda x: System.out.println(x.name()))
-		self.project.forEachNonVisualLayerPrototype(lambda x: System.out.println(x.name()))
+		animationIterator = self.project.animations()
+		while animationIterator.hasNext():
+			print(animationIterator.next())
+		
+		visualLayerIterator = self.project.visualLayers()
+		while visualLayerIterator.hasNext():
+			print(visualLayerIterator.next())
+
+		nonvisualLayerIterator = self.project.nonvisualLayers()
+		while nonvisualLayerIterator.hasNext():
+			print(nonvisualLayerIterator.next())

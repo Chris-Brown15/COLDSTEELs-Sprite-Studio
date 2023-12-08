@@ -66,15 +66,12 @@ public class IndexTexture extends CSTexture {
 	/**
 	 * Checkered background values
 	 */
-	public static volatile int
-		backgroundWidth = 8 ,
-		backgroundHeight = 8;
+	public static volatile int backgroundWidth = 8 , backgroundHeight = 8;
 	
 	IndexPixel darkerTransparentBackground = new IndexPixel(0 , 0);
 	IndexPixel lighterTransparentBackground = new IndexPixel(1 , 0);
 	
-	int width;
-	int height;
+	int width , height;
 		
 	/**
 	 * Tracks some additional variables but does not modify the behavior of {@linkplain IndexTexture#initialize(CSGraphic, int) initialize}.
@@ -120,7 +117,7 @@ public class IndexTexture extends CSTexture {
 	 * 					  the layout of this buffer should be such that the first values modify the pixel at {@code (xIndex , yIndex)} and
 	 * 					  the last values modify the pixel at {@code (xIndex + width - 1 , yIndex + height - 1)}
 	 */
-	void put(int xIndex , int yIndex , int widthPixels , int heightPixels , ByteBuffer imageData) {
+	void putSubImage(int xIndex , int yIndex , int widthPixels , int heightPixels , ByteBuffer imageData) {
 		
 		activate();
 		glTexSubImage2D(GL_TEXTURE_2D , 0 , xIndex , yIndex , widthPixels , heightPixels , glDataFormat , glChannelType , imageData);
@@ -129,7 +126,7 @@ public class IndexTexture extends CSTexture {
 	}
 	
 	/**
-	 * {@code Number} version of {@linkplain IndexTexture#put(int, int, int, int, ByteBuffer) putColor} in which the values of the
+	 * {@code Number} version of {@linkplain IndexTexture#putSubImage(int, int, int, int, ByteBuffer) putColor} in which the values of the
 	 * given array are considered channel values and buffered into offheap memory and passed to the graphics card.
 	 * 
 	 * @param xIndex — x index of the bottom left corner of the region to recolor
@@ -138,7 +135,7 @@ public class IndexTexture extends CSTexture {
 	 * @param heightPixels — height of the region to recolor; extends from the {@code yIndex}
 	 * @param imageData — a pixel pointing to a position in the palette whose color will be rendered 
 	 */
-	void put(int xIndex , int yIndex , int widthPixels , int heightPixels , LookupPixel imageData) {
+	void putSubImage(int xIndex , int yIndex , int widthPixels , int heightPixels , LookupPixel imageData) {
 		
 		if(xIndex < 0) xIndex = 0;
 		if(yIndex < 0) yIndex = 0;
@@ -153,7 +150,7 @@ public class IndexTexture extends CSTexture {
 			for(int i = 0 ; i < imageDataAsPtr.limit() ; i += 2) imageDataAsPtr.put(imageData.lookupX()).put(imageData.lookupY());			
 			imageDataAsPtr.rewind();
 			
-			put(xIndex, yIndex, widthPixels, heightPixels, imageDataAsPtr);
+			putSubImage(xIndex, yIndex, widthPixels, heightPixels, imageDataAsPtr);
 			
 			allocation.free();
 			
@@ -180,7 +177,7 @@ public class IndexTexture extends CSTexture {
 				
 				if(row + regionHeight > height) regionHeight = height - row;
 				if(col + regionWidth > width) regionWidth = width - col;
-				put(col , row , regionWidth , regionHeight , pixel);
+				putSubImage(col , row , regionWidth , regionHeight , pixel);
 				
 				lower = !lower;
 				

@@ -21,6 +21,23 @@ public enum ScriptType {
 	EXPORTER("exporters") ,
 	PALETTE("palettes")
 	;
+
+	/**
+	 * Returns a type of script based on {@code directoryName}, which is understood to be one of the eumerations' {@code associatedFolderName}.
+	 * 
+	 * @param directoryName — name of an associated directory
+	 * @return Type who has an associated folder name equal to {@code directoryName}.
+	 * @throws NullPointerException if {@code directoryName} is {@code null}.
+	 * @throws NoSuchElementException if {@code directoryName} does not name an associated folder name of an enumeration.
+	 */
+	public static ScriptType getTypeFromDirectoryName(String directoryName) {
+		
+		Objects.requireNonNull(directoryName);
+		ScriptType[] types = values();
+		for(int i = 0 ; i < types.length ; i++) if(types[i].associatedFolderName.equals(directoryName)) return types[i];
+		throw new NoSuchElementException(directoryName + " does not name a script type via associated folder name.");
+		
+	}
 	
 	/**
 	 * Name of the script folder associated with this script type.
@@ -46,21 +63,4 @@ public enum ScriptType {
 		
 	}
 
-	/**
-	 * Returns a type of script based on {@code directoryName}, which is understood to be one of the eumerations' {@code associatedFolderName}.
-	 * 
-	 * @param directoryName — name of an associated directory
-	 * @return Type who has an associated folder name equal to {@code directoryName}.
-	 * @throws NullPointerException if {@code directoryName} is {@code null}.
-	 * @throws NoSuchElementException if {@code directoryName} does not name an associated folder name of an enumeration.
-	 */
-	public static ScriptType getTypeFromDirectoryName(String directoryName) {
-		
-		Objects.requireNonNull(directoryName);
-		ScriptType[] types = values();
-		for(int i = 0 ; i < types.length ; i++) if(types[i].associatedFolderName.equals(directoryName)) return types[i];
-		throw new NoSuchElementException(directoryName + " does not name a script type via associated folder name.");
-		
-	}
-	
 }

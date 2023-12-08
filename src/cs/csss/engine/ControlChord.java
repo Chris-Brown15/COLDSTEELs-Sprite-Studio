@@ -6,21 +6,21 @@ package cs.csss.engine;
 import static org.lwjgl.glfw.GLFW.*;
 
 /**
- * 
+ * Support for detecting if a key chord is pressed is provided by this class.
  */
 public class ControlChord extends Control {
 
 	public static final ControlChord 
-		newProject = new ControlChord("New Project" , "Opens a dialogue for creating a new project" , GLFW_KEY_P , Control.PRELIM) ,
-		newArtboard = new ControlChord("New Artboard" , "Opens a dialogue for creating a new artboard" , GLFW_KEY_A , Control.PRELIM) ,
-		newAnimation = new ControlChord(
+		NEW_PROJECT = new ControlChord("New Project" , "Opens a dialogue for creating a new project" , GLFW_KEY_P , Control.PRELIM) ,
+		NEW_ARTBOARD = new ControlChord("New Artboard" , "Opens a dialogue for creating a new artboard" , GLFW_KEY_A , Control.PRELIM) ,
+		NEW_ANIMATION = new ControlChord(
 			"New Animation" , 
 			"Opens a dialogue for creating a new animation" , 
 			GLFW_KEY_A , 
 			Control.PRELIM , Control.PRELIM2
 		) ,
-		newVisualLayer = new ControlChord("New Visual Layer" , "Opens a dialogue for creating a new visual layer" , GLFW_KEY_L , Control.PRELIM),
-		newNonVisualLayer = new ControlChord(
+		NEW_VISUAL_LAYER = new ControlChord("New Visual Layer" , "Opens a dialogue for creating a new visual layer" , GLFW_KEY_L , Control.PRELIM),
+		NEW_NON_VISUAL_LAYER = new ControlChord(
 			"New Nonvisual Layer" , 
 			"Opens a dialogue for creating a new nonvisual layer" , 
 			GLFW_KEY_N , 

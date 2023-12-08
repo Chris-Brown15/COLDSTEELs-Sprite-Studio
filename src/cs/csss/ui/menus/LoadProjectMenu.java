@@ -2,7 +2,6 @@ package cs.csss.ui.menus;
 
 import static cs.core.ui.CSUIConstants.*;
 
-import java.io.File;
 import java.util.LinkedList;
 
 import cs.core.ui.CSNuklear;
@@ -10,6 +9,7 @@ import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.utils.Lambda;
+import cs.csss.misc.files.CSFolder;
 
 /**
  * UI menu for loading a project from disk.
@@ -34,8 +34,15 @@ public class LoadProjectMenu extends Dialogue {
 		
 		// load names of projects
 		
-		entries = new File("data/projects").list();
+		CSFolder projects = CSFolder.getRoot("data").getOrCreateSubdirectory("projects");
+		System.out.println(projects.asFile().exists());
 		
+		var subdirectories = projects.filesIterator();
+	 	entries = new String[projects.files().size()];
+	 	System.out.println(projects.files().size());
+	 	int i = 0;
+	 	while(subdirectories.hasNext()) entries[i++] = subdirectories.next().name(); 
+	 	
 		Lambda onFinish = () -> {
 	 		
 			nuklear.removeUserInterface(ui);
