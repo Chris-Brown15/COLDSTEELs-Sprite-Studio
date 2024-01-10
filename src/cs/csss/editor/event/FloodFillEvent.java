@@ -13,8 +13,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import cs.csss.annotation.RenderThreadOnly;
-import cs.csss.engine.ColorPixel;
 import cs.csss.engine.Engine;
+import cs.csss.engine.Pixel;
 import cs.csss.project.Artboard;
 import cs.csss.project.ArtboardPalette.PalettePixel;
 import cs.csss.project.LayerPixel;
@@ -66,12 +66,12 @@ import cs.csss.project.utils.RegionIterator;
 	
 	private int clickedX , clickedY;
 	
-	private final ColorPixel activeColor , clickedPixel;
+	private final Pixel activeColor , clickedPixel;
 	
 	private LayerPixel[][] priorRegion , newRegion;
 	private int bottomY = Integer.MAX_VALUE , leftmostX = Integer.MAX_VALUE , width , height;
 	
-	private List<ArtboardMod> mods = Collections.synchronizedList(new ArrayList<>());	
+	private List<ArtboardMod> mods = Collections.synchronizedList(new ArrayList<>());	 	
 	
 	/**
 	 * Creates a floor fill event.
@@ -81,7 +81,7 @@ import cs.csss.project.utils.RegionIterator;
 	 * @param clickedX — x coordinate of the clicked pixel
 	 * @param clickedY — y coordinate of the clicked pixel
 	 */
-	public FloodFillEvent(Artboard artboard , ColorPixel activeColor , int clickedX , int clickedY ) {
+	public FloodFillEvent(Artboard artboard , Pixel activeColor , int clickedX , int clickedY ) {
 
 		super(true , false);
 		
@@ -370,7 +370,7 @@ import cs.csss.project.utils.RegionIterator;
 			for(int i = 0 ; i < mods.size() ; i ++) { 
 				
 				ArtboardMod x = mods.get(i);
-				artboard.putColorInImage(x.x, x.y, x.width, x.height, activeColor);
+				artboard.putColorInImage2(x.x, x.y, x.width, x.height, activeColor);
 				
 			}
 			
@@ -427,8 +427,6 @@ import cs.csss.project.utils.RegionIterator;
 		if(newRegion == null) handleMods();
 		else artboard.putColorsInImage(leftmostX , bottomY , width , height , newRegion);
 		
-//		stackApproach();
-				
 	}
 
 	@Override public void undo() {

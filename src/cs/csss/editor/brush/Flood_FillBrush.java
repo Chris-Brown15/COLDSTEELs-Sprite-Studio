@@ -4,7 +4,7 @@ import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
 import cs.csss.editor.event.CSSSEvent;
 import cs.csss.editor.event.FloodFillEvent;
-import cs.csss.engine.ColorPixel;
+import cs.csss.engine.Pixel;
 import cs.csss.project.Artboard;
 
 /**
@@ -20,7 +20,7 @@ import cs.csss.project.Artboard;
 
 	@Override public CSSSEvent use(Artboard artboard, Editor editor, int xIndex, int yIndex) {
 
-		return new FloodFillEvent(artboard , editor.selectedColors() , xIndex , yIndex);
+		return new FloodFillEvent(artboard , editor.currentColor() , xIndex , yIndex);
 		
 	}
 	
@@ -28,9 +28,7 @@ import cs.csss.project.Artboard;
 		
 		if(!super.canUse(artboard, editor, xIndex, yIndex)) return false;
 		
-		ColorPixel 
-			colorClicked = artboard.getColorPointedToByIndexPixel(xIndex, yIndex) ,
-			selectedColor = editor.selectedColors();
+		Pixel colorClicked = artboard.getColorPointedToByIndexPixel(xIndex, yIndex) , selectedColor = editor.selectedColorValues();
 		
 		return colorClicked.compareTo(selectedColor) != 0;
 		

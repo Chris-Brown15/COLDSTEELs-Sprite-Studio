@@ -132,7 +132,7 @@ public final class UIUtils {
 		element.toolTip.new CSDynamicRow(20).new CSText(tooltip);
 		
 	}
-	
+		
 	private UIUtils() {}
 
 }

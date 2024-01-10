@@ -147,6 +147,21 @@ public class CSSSProject implements ShutDown {
 	 * @param channelsPerPixel — the channels per pixel of this project
 	 */
 	@RenderThreadOnly public CSSSProject(Engine engine , final String name , int channelsPerPixel) {
+
+		this(engine , name , channelsPerPixel , ArtboardPalette.MAX_WIDTH , ArtboardPalette.MAX_HEIGHT);
+		
+	}
+	
+	/**
+	 * Creates a project with the given palette dimensions.
+	 * 
+	 * @param engine — the engine
+	 * @param name — the name of this project
+	 * @param channelsPerPixel — the channels per pixel of this project
+	 * @param paletteWidth — width of all palettes
+	 * @param paletteHeight — height of all palettes
+	 */
+	public CSSSProject(Engine engine , String name , int channelsPerPixel , int paletteWidth , int paletteHeight) {
 		
 		specify(channelsPerPixel > 0 && channelsPerPixel <= 4 , channelsPerPixel + " is not a valid number of channels per pixel.");
 
@@ -155,12 +170,16 @@ public class CSSSProject implements ShutDown {
 		setName(name);
 		this.channelsPerPixel = channelsPerPixel;
 		
-		visualPalette = new ArtboardPalette(channelsPerPixel);
+		visualPalette = new ArtboardPalette(channelsPerPixel , paletteWidth , paletteHeight);
 
-		for(int i = 1 ; i <= NonVisualLayerPrototype.MAX_SIZE_BYTES ; i++) nonVisualPalettes.add(new ArtboardPalette(i));
+		for(int i = 1 ; i <= NonVisualLayerPrototype.MAX_SIZE_BYTES ; i++) { 
+			
+			nonVisualPalettes.add(new ArtboardPalette(i , paletteWidth , paletteHeight));
+			
+		}
 		
 	 	addVisualLayerPrototype(new VisualLayerPrototype("Default Layer"));
-		
+			
 	}
 
 	/**
@@ -1001,14 +1020,13 @@ public class CSSSProject implements ShutDown {
 	}	
 	
 	/**
-	 * Returns the current palette.
+	 * Returns the current palette. If no artboard is active, the visual palette is returned.
 	 * 
 	 * @return The current palette for the the active layer of the active artboard.
 	 */
 	public ArtboardPalette currentPalette() {
-		
-		if(currentArtboard == null) return null;
-		if(currentArtboard.isActiveLayerVisual()) return visualPalette;
+			
+		if(currentArtboard == null || currentArtboard.isActiveLayerVisual()) return visualPalette;
 		else return getNonVisualPaletteBySize(currentArtboard.activeLayerChannelsPerPixel());
 		
 	}
@@ -1606,7 +1624,7 @@ public class CSSSProject implements ShutDown {
  		int height = chunk.height();
  		byte[] pixelData = chunk.pixelData();
  		
- 		ArtboardPalette palette = new ArtboardPalette(chunk.channels());
+ 		ArtboardPalette palette = new ArtboardPalette(chunk.channels() , width , height);
  		palette.initialize();
  		palette.resizeAndCopy(width , height);
  		

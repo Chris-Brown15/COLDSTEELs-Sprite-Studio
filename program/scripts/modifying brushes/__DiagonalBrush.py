@@ -22,6 +22,7 @@ from java.util import ArrayList
 from cs.csss.project.utils import Artboards
 from cs.csss.editor.brush import CSSSModifyingBrush
 from cs.csss.editor.event import CSSSEvent
+from cs.csss.utils import ScriptingUtils2
 
 #our variables for this brush
 tooltip = "Draws a diagonal line on th artboard."
@@ -38,7 +39,7 @@ class DiagonalBrush(CSSSModifyingBrush):
 	#use must return an event object, it cannot return None
 	def use(self , artboard , editor , xIndex , yIndex):
 		#the editor supplies the color the user has selected from the color picker on the left hand side panel
-		color = editor.selectedColors()		
+		color = editor.currentColor()		
 		#here we use the centerAroundRadius method. It uses the parameters we give it as well as the radius value of the brush (which is modified by the slider on the LHS 
 		#panel), and produces an array which is very useful to stop from going out of bounds with modifications. Try revising this script by removing this method and see what 
 		#happens when you try to modify an area close to the edge of the artboard (you'll crash).
@@ -57,27 +58,25 @@ class DiagonalBrush(CSSSModifyingBrush):
 			return False
 		#cache the active layer
 		activeLayer = artboard.activeLayer()
-		#get the index pixel corresponding the color selected in the editor
-		indices = artboard.putInPalette(editor.selectedColors())
 		#centerAroundRadius again to make sure our checks don't go out of bounds
 		self.centerAroundRadius(xIndex , yIndex , artboard.width() , artboard.height())
 		#pull out these variable for convenience.
 		leftX = self.values[0]
 		bottomY = self.values[1]
 		totalHeight = bottomY + self.values[3]
+
+		currentColor = editor.currentColor()
+
 		#while we haven't crossed the total region. Since our rise over run is 1/1 and we have a square region of pixels, we only need to check one of the two variables; I use
 		#the y coordinate to track the iteration
 		while bottomY < totalHeight:
-			#gets the layer pixel in the layer at the current coordinates.
-			layerPixel = activeLayer.get(leftX , bottomY)			
+			#this method checks whether the given color (the first parameter), matches the color found in the artboard's current layer at the given indices. If they are not
+			#identical, we know the event will have some effect, so we return true
+			if not artboard.doColorsMatch(currentColor , leftX , bottomY):
+				return True
 			#advance iterators
 			leftX = leftX + 1
 			bottomY = bottomY + 1
-			#if the layer pixel we retrieved is None, this means that pixel of the layer was never modified, in which case our brush use will affect it, or
-			#if the layer pixel we retrieved does not point to the same color as what is selected by the color picker, 
-			#if either of these are true, we are clear to use the brush, and doing so will have some affect on the artboard
-			if (layerPixel == None) or (layerPixel.compareTo(indices) != 0):				
-				return True
 		#if we haven't returned true by this point, we know we cannot modify the artboard, so return false. Since we returned False, use() will not be called.
 		return False
 
@@ -94,6 +93,7 @@ class DiagonalEvent(CSSSEvent):
 		self.height = height
 		self.activeColor = color
 		self.finalHeight = self.bottomY + self.height
+		self.finalWidth =  self.leftX + self.width
 		self.previousLayerPixels = ArrayList()
 
 	def _do(self):
@@ -104,7 +104,7 @@ class DiagonalEvent(CSSSEvent):
 			self.forEachOfRegion(lambda x , y: self.previousLayerPixels.add(activeLayer.get(x , y)))
 
 		#iterate diagonally over the region and put the color the user selected in the artboard
-		self.forEachOfRegion(lambda x , y: self.artboard.putColorInImage(x , y , 1 , 1 , self.activeColor))
+		self.forEachOfRegion(lambda x , y: self.artboard.putColorInImage2(x , y , 1 , 1 , self.activeColor))
 		
 	#We can undo this event by putting what was previously in the layer back in it. This is why we cached the previous contents and now we can just put them back.
 	def undo(self):		
@@ -130,7 +130,7 @@ class DiagonalEvent(CSSSEvent):
 	def forEachOfRegion(self , callback):
 		xIter = self.leftX
 		yIter = self.bottomY
-		while yIter < self.finalHeight:
+		while yIter < self.finalHeight and xIter < self.finalWidth:
 			callback(xIter , yIter)
 			xIter = xIter + 1
 			yIter = yIter + 1

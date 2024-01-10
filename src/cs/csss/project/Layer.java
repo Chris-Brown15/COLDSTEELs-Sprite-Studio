@@ -22,10 +22,9 @@ import cs.csss.annotation.Invalidated;
  * Layers are containers of modifications of the Artboard. This class is the base class for all layer types.
  * 
  * <p>
- * 	All layers in Sprite Studio are purely-CPU, Java objects. They do not interact with native memory or VRAM at all. One extender of 
- * 	{@code Layer} can be 'active' at a time. When any attempt to modify the current artboard is made, the active layer stores the 
- * 	modification. From there, if by the semantics of the layer, a visual change of the artboard should be made, the textures of the artboard
- * 	are updated.
+ * 	All layers in Sprite Studio are purely-CPU, Java objects. They do not interact with native memory or VRAM at all. One extender of  {@code Layer} 
+ * 	can be 'active' at a time. When any attempt to modify the current artboard is made, the active layer stores the modification. From there, if by
+ *  the semantics of the layer, a visual change of the artboard should be made, the texture of the artboard is updated.
  * </p>
  * 
  * @author Chris Brown
@@ -70,14 +69,10 @@ public abstract class Layer {
 				
 	}
 	
-	public final int 
-		width ,
-		height;
+	public final int width , height;
 	
-	//if true, this layer cannot be modified.
-	protected boolean 
-		locked = false ,
-		hiding = false;
+	//if locked, this layer cannot be modified, if hiding, the contents of this layer are not in the texture for the artboard.
+	protected boolean locked = false , hiding = false;
 	
 	public final String name;
 	protected final ArtboardPalette palette;

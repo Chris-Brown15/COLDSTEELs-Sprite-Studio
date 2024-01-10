@@ -1,5 +1,9 @@
 package cs.csss.engine;
 
+import static cs.core.utils.CSUtils.require;
+
+import java.nio.ByteBuffer;
+
 /**
  * Color pixels are pixels whose components describe a color. They are therefore distinct from {@link LookupPixel} because {@code LookupPixel}
  * components describe a location on a palette. A color pixel describes color values.
@@ -8,18 +12,25 @@ package cs.csss.engine;
  * 	does not have a value for the given component. In all other cases, the returned value should be {@code 0 <= comp <= 255}.
  * </p>
  */
-public interface ColorPixel extends Comparable<ColorPixel> {
+public interface ColorPixel extends Pixel {
 
 	/**
-	 * Returns a distinct color from the values of {@code source}. If {@code source} is a mutable pixel, changes to its values will <em>not</em> 
-	 * affect the resulting pixel.
+	 * Stores {@code pixel} in this buffer. the number of channel values put is {@code pixelSizeBytes}. 
 	 * 
-	 * @param source — a source pixel
-	 * @return A channel-wise deep copy of {@code source}.
+	 * @param buffer — buffer to write to 
+	 * @param pixel — a pixel to store in the buffer
+	 * @param pixelSizeBytes — number of bytes {@code pixel} contains
 	 */
-	public static ColorPixel copyOf(ColorPixel source) {
+	public static void buffer(ByteBuffer buffer , ColorPixel pixel , int pixelSizeBytes) {
 		
-		return new Color(source.r() , source.g() , source.b() , source.a());
+		require(buffer.remaining() >= pixelSizeBytes);
+		
+		for(int i = 0 ; i < pixelSizeBytes ; i ++) switch(i) {
+			case 0 -> buffer.put(pixel.r());
+			case 1 -> buffer.put(pixel.g());
+			case 2 -> buffer.put(pixel.b());
+			case 3 -> buffer.put(pixel.a());
+		}
 		
 	}
 	
@@ -130,11 +141,12 @@ public interface ColorPixel extends Comparable<ColorPixel> {
 				
 	}
 	
-	@Override public default int compareTo(ColorPixel other) {
+	@Override public default int compareTo(Pixel other) {
 		
-		if(other == null) return -1;						
-		return other.r() == r() && other.g() == g() && other.b() == b() && other.a() == a() ? 0 : -1;
+		if(other instanceof ColorPixel asColor) return asColor.r() == r() && asColor.g() == g() && asColor.b() == b() && asColor.a() == a() ? 0 : -1;
+		return -1;						
 		
 	}
 	
 }
+

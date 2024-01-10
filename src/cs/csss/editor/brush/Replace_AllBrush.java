@@ -4,6 +4,10 @@ import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
 import cs.csss.editor.event.CSSSEvent;
 import cs.csss.editor.event.ModifyPaletteEvent;
+import cs.csss.editor.event.NOPEvent;
+import cs.csss.engine.ColorPixel;
+import cs.csss.engine.LookupPixel;
+import cs.csss.engine.Pixel;
 import cs.csss.project.Artboard;
 import cs.csss.project.IndexPixel;
 
@@ -24,7 +28,9 @@ import cs.csss.project.IndexPixel;
 	@Override public CSSSEvent use(Artboard artboard, Editor editor, int xIndex, int yIndex) {
 
 		IndexPixel clickedPixel = artboard.getIndexPixelAtIndices(xIndex, yIndex);		
-		return new ModifyPaletteEvent(artboard , clickedPixel.xIndex , clickedPixel.yIndex , editor.selectedColors());
+		Pixel editorSelected = editor.selectedColorValues();
+		if(editorSelected instanceof LookupPixel) return new NOPEvent();
+		return new ModifyPaletteEvent(artboard , clickedPixel.xIndex , clickedPixel.yIndex , (ColorPixel)editorSelected);
 
 	}
 

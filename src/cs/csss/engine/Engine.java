@@ -163,7 +163,7 @@ public final class Engine implements ShutDown {
 	/**
 	 * Version of the current application distribution.
 	 */
-	public static final String VERSION_STRING = String.format("%s %d.%d%d" , "Beta" , 1 , 1 , 4);
+	public static final String VERSION_STRING = String.format("%s %d.%d%d" , "Beta" , 1 , 1 , 6);
 
 	/**
 	 * Containers for program files and assets.
@@ -320,7 +320,7 @@ public final class Engine implements ShutDown {
 	private Steamworks steam;	
 	
 	/**
-	 * Kept for the benefit of dragging the camera around. 
+	 * Kept for the benefit of dragging the camera around.  
 	 */
 	private float previousCursorX , previousCursorY;
 	
@@ -335,20 +335,14 @@ public final class Engine implements ShutDown {
 	 */
 	Engine() {
 		
-		if(useSteam) { 
+		if(useSteam && !initializeSteam()) { 
 			
-			boolean initialized = initializeSteam();
-		
 			//early exit because we need to restart for Steam
-			if(!initialized) {
-				
-				nanoVG = null;
-				display = null;
-				editor = null;
-				return;
-				
-			}
-			
+			nanoVG = null;
+			display = null;
+			editor = null;
+			return;
+						
 		}
 		
 		initializeDirectories();
@@ -447,18 +441,23 @@ public final class Engine implements ShutDown {
 					CSSSProject.currentShader().updatePassVariables(camera.projection() , camera.viewTranslation());				
 					currentProject.renderAllArtboards();
 					currentProject.renderAllVectorTextBoxes(frame);
-						
+
+					editor.renderSelectingBrushRender();				
+					editor.renderSelectingBrushBounder(frame);
+					editor.renderModifyingBrushBounder(frame);
+
 				}
-	
-				editor.renderSelectingBrushRender();				
-				editor.renderSelectingBrushBounder(frame);
-				editor.renderModifyingBrushBounder(frame);
+
+				//render UI
+				display.nuklear.render();
+				
+				//renders the current palette as long as state allows
+				editor.renderPalette();
+				
+				editor.renderPaletteBounder(frame);				
 				
 			}
-			
-			//render UI
-			display.nuklear.render();
-			
+
 			/*
 			 * Here is where we render the current frame of the active animation within the animation editor menu. To do this, I rerender
 			 * the artboard that is the current frame, applying a translation to it so it sits on top of the UI element, hence why this is
@@ -528,16 +527,16 @@ public final class Engine implements ShutDown {
 	 */
 	private void updatePreviousCursorPositions() {
 
+		float[] cursorCoords = getCursorWorldCoords();
+
 		if(Control.TWO_D_CURSOR_DRAG.pressed() && cursorDragState == CursorDragState.NOT_DRAGGING) {
 			
-			float[] cursorCoords = getCursorWorldCoords();
 			float xDistance = Math.abs(previousCursorX - cursorCoords[0]);
 			float yDistance = Math.abs(previousCursorY - cursorCoords[1]);
 			cursorDragState = xDistance > yDistance ? CursorDragState.DRAGGING_HORIZONTAL : CursorDragState.DRAGGING_VERTICAL;
 			
 		} else if(!Control.TWO_D_CURSOR_DRAG.pressed()) cursorDragState = CursorDragState.NOT_DRAGGING;
 		
-		float[] cursorCoords = getCursorWorldCoords();
 		//only update the previous coordiante if the drag state is not locked into the other axis.
 		if(cursorDragState != CursorDragState.DRAGGING_HORIZONTAL) previousCursorY = cursorCoords[1];		
 		if(cursorDragState != CursorDragState.DRAGGING_VERTICAL) previousCursorX = cursorCoords[0];
@@ -598,6 +597,15 @@ public final class Engine implements ShutDown {
 			if(Control.CAMERA_LEFT.struck()) editor.animationPanel().translate(-cameraMoveSpeed , 0);
 			if(Control.CAMERA_RIGHT.struck()) editor.animationPanel().translate(cameraMoveSpeed , 0);
 					
+		}
+		//try to move the palette UI
+		else if (numberOpenDialogues == 0 && currentProject != null && currentProject.currentPalette() != null) {
+
+			if(Control.CAMERA_UP.struck()) editor.artboardPaletteUI().translate(0 , cameraMoveSpeed); 		
+			if(Control.CAMERA_DOWN.struck()) editor.artboardPaletteUI().translate(0 , -cameraMoveSpeed);
+			if(Control.CAMERA_LEFT.struck()) editor.artboardPaletteUI().translate(-cameraMoveSpeed , 0);
+			if(Control.CAMERA_RIGHT.struck()) editor.artboardPaletteUI().translate(cameraMoveSpeed , 0);
+						
 		}
 		
 		if(Control.TOGGLE_FULLSCREEN_HOTKEY.struck()) toggleFullScreen();
@@ -800,12 +808,7 @@ public final class Engine implements ShutDown {
 			if(newProjectMenu.get() == null) return;
 			currentProject = display.renderer.make(() -> {
 				
-				CSSSProject project = new CSSSProject(
-					this ,
-					newProjectMenu.get() , 
-					newProjectMenu.channelsPerPixel()
-				);
-				
+				CSSSProject project = new CSSSProject(this , newProjectMenu.get() , newProjectMenu.channelsPerPixel());				
 				project.initialize();
 				return project;
 				
@@ -1472,12 +1475,9 @@ public final class Engine implements ShutDown {
 			if(!isCursorHoveringUI()) camera.zoom(yOffset < 0);
 			else if (editor.isAnimationPanelShowing() && currentProject.currentAnimation() != null) { 
 				
-				int[] cursorScreenCoords = getCursorScreenCoords();
-				int windowHeight = display.window.size()[1]; 
-				boolean hovering = editor.cursorHoveringAnimationFramePanel(cursorScreenCoords[0], cursorScreenCoords[1] , windowHeight);
-				if(hovering) editor.animationPanel().zoom(yOffset < 0);
-				
-			}
+				if(editor.cursorHoveringAnimationFramePanel()) editor.animationPanel().zoom(yOffset < 0);
+								
+			} else if (editor.cursorHoveringPaletteUI()) editor.artboardPaletteUI().zoom(yOffset < 0);
 			
 		});
 		

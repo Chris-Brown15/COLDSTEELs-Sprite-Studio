@@ -3,9 +3,7 @@ package cs.csss.editor.event;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.SelectionAreaRender;
 import cs.csss.project.Artboard;
-import cs.csss.project.Layer;
 import cs.csss.project.LayerPixel;
-import cs.csss.utils.ByteBufferUtils;
 
 /**
  * Event for moving a region of an artboard from one place to another.
@@ -17,12 +15,15 @@ import cs.csss.utils.ByteBufferUtils;
 	private final int 
 		startingX ,
 		startingY ,
-		endingX ,
-		endingY ,
+		startingXArtboardIndex ,
+		startingYArtboardIndex ,
+		endingXArtboardIndex ,
+		endingYArtboardIndex ,
 		width ,
 		height;
 	
-	private final LayerPixel[][] regionContents;
+	private final LayerPixel[][] regionContents , previousRegionContents;
+	
 	
 	/**
 	 * Creates an artboard region move event.
@@ -43,46 +44,36 @@ import cs.csss.utils.ByteBufferUtils;
 		this.startingX = render.startingLeftX;
 		this.startingY = render.startingBottomY;
 		
-		this.endingX = (int)render.positions.leftX();
-		this.endingY = (int)render.positions.bottomY();
+		int[] indices = current.worldToPixelIndices(startingX , startingY);
+		startingXArtboardIndex = indices[0];
+		startingYArtboardIndex = indices[1];
+		
+		int endingX = (int)render.positions.leftX();
+		int endingY = (int)render.positions.bottomY();
 		
 		this.regionContents = render.regionContents();
+
+		indices = current.worldToPixelIndices(endingX , endingY);
+		endingXArtboardIndex = indices[0];
+		endingYArtboardIndex = indices[1];		
+
+		previousRegionContents = current.getRegionOfLayerPixels(endingXArtboardIndex , endingYArtboardIndex , width , height);
 		
 	}
 
 	@Override public void _do() {
 		
 		render.removeSectionFromArtboard(current , startingX , startingY);
-
-		int[] indices = current.worldToPixelIndices(endingX , endingY);
-
-		ByteBufferUtils.putBufferInArtboard(
-			current , 
-			indices[0] , 
-			indices[1] , 
-			width , 
-			height , 
-			Layer.toByteBuffer(regionContents) , 
-			(byte1 , byte2) -> byte1 == 0 && byte2 == 0
-		);
-		
+		current.putColorsInImage(endingXArtboardIndex, endingYArtboardIndex, width, height, regionContents);
+						
 	}
 
 	@Override public void undo() {
 
-		render.removeSectionFromArtboard(current , endingX , endingY);
-		int[] indices = current.worldToPixelIndices(startingX , startingY);
-
-		ByteBufferUtils.putBufferInArtboard(
-			current , 
-			indices[0] , 
-			indices[1] , 
-			width , 
-			height , 
-			Layer.toByteBuffer(regionContents), 
-			(byte1 , byte2) -> byte1 == 0 && byte2 == 0
-		);
+		current.putColorsInImage(startingXArtboardIndex, startingYArtboardIndex, width, height, regionContents);
+		current.removePixels(endingXArtboardIndex, endingYArtboardIndex, width, height);
+		current.putColorsInImage(endingXArtboardIndex, endingYArtboardIndex, width, height, previousRegionContents);		
 		
 	}
-
+	
 }

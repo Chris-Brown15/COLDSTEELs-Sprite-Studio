@@ -6,22 +6,14 @@ package cs.csss.engine;
  * <p>
  * 	The main method is the only method of this class and it follows the structure of 
  * 		<ol>
- * 			<li>
- * 				preinitialization, 
- * 			</li>
- * 			<li>
- * 				initialization, 
- * 			</li>
- *  		<li>
- * 				runtime, and
- * 			</li>
- * 			<li>
- * 				shut down (and static shut down)
- * 			</li>
+ * 			<li> preinitialization, </li> 
+ * 			<li> initialization, </li>
+ *  		<li> runtime, and </li>
+ * 			<li> shut down (and static shut down) </li>
  * 		</ol>
  * 	Preinitialization consists of parsing the program arguments and executing any must-happen-first code. Initialization creates the engine
  * 	which creates and manages all resources of the application. and finally shut down, which frees resources the program is using and writes
- * 	data to files (the user settings file). And finally is static shut down, which frees static memory allocated by the COLDSTEEL Core 
+ * 	data to files (the user settings2 file). And finally is static shut down, which frees static memory allocated by the COLDSTEEL Core 
  * 	library.
  * </p>
  */

@@ -1,2 +1,2 @@
 Initialized Log Writer
-Version: Beta 1.14
+Version: Beta 1.16

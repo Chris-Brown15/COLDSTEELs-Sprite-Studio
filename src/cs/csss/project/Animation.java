@@ -370,22 +370,19 @@ public class Animation {
 		
 		if(frame == null) return;
 
-		final Matrix4f translationToUIPoint = renderOnto.moveToMatrix();
+		Matrix4f translationToUIPoint = renderOnto.moveToMatrix();
 		
 		/*
 		 * newZoom here is a camera zoom value applied to the camera when rendering the active frame in the UI element. It allows people to
 		 * zoom into the frame being rendered on the UI element. We also store the original zoom and reset it at the end of this method.
 		 */
-		final float 
-			newZoom = renderOnto.zoom() ,
-			originalZoom = camera.zoom();
+		float newZoom = renderOnto.zoom() , originalZoom = camera.zoom();
 		
 		camera.zoom(newZoom);
 		
-		int[] 
-			panelMidpoint = renderOnto.midpointToAnimationFrameSlot() ,
-			panelDims = renderOnto.dimensionsOfAnimationFrameSlot() ,
-			panelTopLeft = renderOnto.topLeftPointOfAnimationFrameSlot();
+		int[] panelMidpoint = renderOnto.midpointToAnimationFrameSlot();
+		int[] panelDims = renderOnto.dimensionsOfAnimationFrameSlot();
+		int[] panelTopLeft = renderOnto.topLeftPointOfAnimationFrameSlot();
 		
 		//here we compute the world coordinates of the point of the ui element we want to render the active frame in. We'll move the active
 		//frame to that point using these values
@@ -401,7 +398,6 @@ public class Animation {
 		
 		shader.updatePassVariables(camera.projection() , camera.viewTranslation() , translationToUIPoint);
 		
-		//resets the camera to the orignal zoom
 		camera.zoom(originalZoom);
 		
 		glEnable(GL_SCISSOR_TEST);

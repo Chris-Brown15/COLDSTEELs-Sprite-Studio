@@ -10,9 +10,7 @@ public final class ExportParameters {
 	/**
 	 * Integer between 0 and 100 notating the quality of the exported JPEG. 
 	 * <p>
-	 * 	<q>
-	 * 		Higher quality looks better but results in a bigger image.
-	 * 	</q>
+	 * 	<q>Higher quality looks better but results in a bigger image.</q>
 	 * </p>
 	 */
 	private static int JPEGQuality = 100;

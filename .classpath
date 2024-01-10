@@ -15,7 +15,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/LWJGLLZ4"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/LWJGLNuklear"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/LWJGLRendering"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/JOL"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/CSXCSNanoVG"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/LWJGLNanoVG"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/CSXSteamworks"/>

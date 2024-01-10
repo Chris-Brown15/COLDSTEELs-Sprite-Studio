@@ -24,6 +24,7 @@ import cs.core.graphics.utils.VertexBufferBuilder;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.engine.ColorPixel;
 import cs.csss.engine.LookupPixel;
+import cs.csss.engine.Pixel;
 import cs.csss.engine.VAOPosition;
 import cs.csss.project.ArtboardPalette.PalettePixel;
 import cs.csss.project.utils.Artboards;
@@ -33,6 +34,15 @@ import cs.csss.utils.ByteBufferUtils.CorrectedParameters;
 
 /**
  * Artboard contains the data needed to display and edit a graphic in CSSS and has methods to operate on pixels and layers.
+ * <p>
+ * 	One or many artboards may be created for a CSSS project. The {@link CSSSProject} is responsible for creating and managing artboards. One 
+ * 	artboard is active at a time and this is the one that is modified by brushes and scripts.
+ * </p>
+ * <p>
+ * 	Artboards are GPU textures. The textures are 2-channel, 1 byte per channel textures. Thus, the total number of bytes needed for an artboard is
+ * 	{@code 2 * width * height}. Each pixel is referred to as a {@link LookupPixel}. Lookup pixels store x and y coordinates. These coordinates are
+ * 	used to index into a palette of colors. Whichever color is located at the given coordinate is what is rendered in the place of the lookup pixel.
+ * </p>
  * 
  * @author Chris Brown
  *
@@ -224,7 +234,6 @@ public class Artboard {
 	
 	/**
 	 * Renders this artboard on the GPU.
-	 * 
 	 */
 	@RenderThreadOnly public void draw() {
 		
@@ -373,51 +382,28 @@ public class Artboard {
 	
 	/**
 	 * Puts a single color at a region of the image. This method does logic for layers as well, only writing to the artboard when logic to
-	 * do so permits. 
-	 * <br><br>
-	 * A pixel is only updated if 
-	 * <ol>
-	 * 	<li> 
-	 * 		the current layer is the layer of the highest priority, or 
-	 * 	</li>
-	 * 	<li> 
-	 * 		no layers of a higher priority than the current one also modify the given pixel. 
-	 * 	</li>
-	 * </ol>
+	 * do so permits.  
+	 * <p>
+	 * 	A pixel is only updated if 
+	 * 	<ol>
+	 * 		<li> the current layer is the layer of the highest priority, or </li>
+	 * 		<li> no layers of a higher priority than the current one also modify the given pixel. </li>
+	 * 	</ol>
+	 * </p>
 	 * 
-	 * @param xIndex — x index of the bottom left corner of the region to put the color
-	 * @param yIndex — y index of the bottom left corner of the region to put the color
-	 * @param width — number of pixels to extend rightward from {@code xIndex} to put the color in
-	 * @param height — number of pixels to extend upward from {@code yIndex} to put the color in
-	 * @param values — channel values to put in each pixel of the region.
+	 * @param x — x coordinate of the bottom left corner of the region
+	 * @param y — y coordinate of the bottom left corner of the region
+	 * @param width — the width of the region
+	 * @param height — the height of the region
+	 * @param value — pixel instance
 	 */
-	@RenderThreadOnly public void putColorInImage(int xIndex , int yIndex , int width , int height , final ColorPixel values) {
-
-		if(activeLayer().hiding() || activeLayer().locked()) return;
+	@RenderThreadOnly public void putColorInImage2(int x , int y , int width , int height , Pixel value) {
 		
-		LookupPixel indexPixel = putInPalette(values);
-
-		bulkPutInActiveLayer(indexPixel , xIndex , yIndex , width , height);
-
-		if(isActiveLayerVisual) {
-			
-			int activeLayerIndex = visualLayers.indexOf(activeLayer());
-			
-			//canBulkWrite will be true if there is no layer above the current one modifying any of the pixels of the region.
-			boolean canBulkWrite = !bulkIsUpperRankLayerModifying(activeLayerIndex , xIndex , yIndex , width , height);
-			
-			if(canBulkWrite) indexTexture.putSubImage(xIndex , yIndex , width , height , indexPixel);
-			else for(int row = 0 ; row < height ; row++) for(int col = 0 ; col < width ; col++) {
-				
-				boolean isUpperLayerModifying = isUpperRankLayerModifying(activeLayerIndex , xIndex + col , yIndex + row);
-				if(!isUpperLayerModifying) indexTexture.putSubImage(xIndex + col , yIndex + row , 1 , 1 , indexPixel);
-				
-			}
-			
-		} else indexTexture.putSubImage(xIndex , yIndex , width , height , indexPixel);
-				
+		if(value instanceof LookupPixel asLookup) putColorInImage(x , y , width , height , asLookup);
+		else if(value instanceof ColorPixel asColor) putColorInImage(x , y , width , height , asColor);
+		
 	}
-
+	
 	/**
 	 * Puts a single color at a region of the image. This method does logic for layers as well, only writing to the artboard when logic to
 	 * do so permits. 
@@ -436,12 +422,55 @@ public class Artboard {
 	 * @param yIndex — y index of the bottom left corner of the region to put the color
 	 * @param width — number of pixels to extend rightward from {@code xIndex} to put the color in
 	 * @param height — number of pixels to extend upward from {@code yIndex} to put the color in
+	 * @param values — channel values to put in each pixel of the region.
+	 */
+	@RenderThreadOnly public void putColorInImage(int xIndex , int yIndex , int width , int height , ColorPixel values) {
+
+		if(activeLayer().hiding() || activeLayer().locked()) return;		
+		
+		putColorInImage(xIndex, yIndex, width, height, putInPalette(values));
+
+	}
+
+	/**
+	 * Puts a single color at a region of the image. This method does logic for layers as well, only writing to the artboard when logic to
+	 * do so permits. 
+	 * <br><br>
+	 * A pixel is only updated if 
+	 * <ol>
+	 * 	<li> the current layer is the layer of the highest priority, or </li>
+	 * 	<li> no layers of a higher priority than the current one also modify the given pixel. </li>
+	 * </ol>
+	 * 
+	 * @param xIndex — x index of the bottom left corner of the region to put the color
+	 * @param yIndex — y index of the bottom left corner of the region to put the color
+	 * @param width — number of pixels to extend rightward from {@code xIndex} to put the color in
+	 * @param height — number of pixels to extend upward from {@code yIndex} to put the color in
 	 * @param values — index pixel whose values provide a lookup into the palette
 	 */
-	@RenderThreadOnly public void putColorInImage(int bottomX , int bottomY , int width , int height , LookupPixel values) {
+	@RenderThreadOnly public void putColorInImage(int xIndex , int yIndex , int width , int height , LookupPixel values) {
+
+		if(activeLayer().hiding() || activeLayer().locked()) return;
 		
-		putColorInImage(bottomX , bottomY , width , height , getColorPointedToBy(values));		
-		
+		bulkPutInActiveLayer(values , xIndex , yIndex , width , height);
+
+		if(isActiveLayerVisual) {
+			
+			int activeLayerIndex = visualLayers.indexOf(activeLayer());
+			
+			//canBulkWrite will be true if there is no layer above the current one modifying any of the pixels of the region.
+			boolean canBulkWrite = !bulkIsUpperRankLayerModifying(activeLayerIndex , xIndex , yIndex , width , height);
+			
+			if(canBulkWrite) indexTexture.putSubImage(xIndex , yIndex , width , height , values);
+			else for(int row = 0 ; row < height ; row++) for(int col = 0 ; col < width ; col++) {
+				
+				boolean isUpperLayerModifying = isUpperRankLayerModifying(activeLayerIndex , xIndex + col , yIndex + row);
+				if(!isUpperLayerModifying) indexTexture.putSubImage(xIndex + col , yIndex + row , 1 , 1 , values);
+				
+			}
+			
+		} else indexTexture.putSubImage(xIndex , yIndex , width , height , values);
+				
 	}
 	
 	/**
@@ -1007,8 +1036,8 @@ public class Artboard {
 	}
 	
 	/**
-	 * Retrieves a region of pixels of the current layer. The region starts at {@code (xIndex , yIndex)} and extends {@code width} upward
-	 * and {@code height} upward. 
+	 * Retrieves a region of pixels of the current layer. The region starts at {@code (xIndex , yIndex)} and extends {@code width} rightward and 
+	 * {@code height} upward. 
 	 * 
 	 * @param xIndex — x index of a pixel, left coordinate of the region
 	 * @param yIndex — y index of a pixle, bottom coordinate of the region
@@ -1064,9 +1093,25 @@ public class Artboard {
 	 */
 	public void bulkPutInActiveLayer(LookupPixel source , int xPosition , int yPosition , int width , int height) {
 		
-		for(int row = 0 ; row < height ; row++) for(int col = 0 ; col < width ; col++) {
+		for(int row = 0 ; row < height ; row++) for(int col = 0 ; col < width ; col++) putInActiveLayer(source , xPosition + col , yPosition + row);
+		
+	}
+	
+	/**
+	 * Puts the given region of lookup pixels in the layer, starting at the given bottom left corner and extending {@code width} and {@code height}
+	 * pixels outward.
+	 *   
+	 * @param source — region of pixels
+	 * @param leftX — left x coordinate to begin writing to the layer
+	 * @param topY — bottom y coordinate to begin writing to the layer
+	 * @param width — width of the region to write 
+	 * @param height — height of the region to write
+	 */
+	public void bulkPutInActiveLayer(LookupPixel[][] source , int leftX , int topY , int width , int height) {
+		
+		for(int row = 0 ; row < height ; row++) for(int col = 0 ; col < width ; col++) { 
 			
-			putInActiveLayer(source , xPosition + col , yPosition + row);
+			if(source[row][col] != null) putInActiveLayer(source[row][col] , leftX + col , topY + row);
 			
 		}
 		
@@ -1176,10 +1221,7 @@ public class Artboard {
 		
 		if(!isActiveLayerVisual) return null;
 		
-		if(inferiorToThis != visualLayers.size() - 1) specify(
-			stopAt > inferiorToThis , 
-			stopAt + " must be greater than " + inferiorToThis
-		);
+		if(inferiorToThis != visualLayers.size() - 1) specify(stopAt > inferiorToThis , stopAt + " must be greater than " + inferiorToThis);
 		
 		specify(inferiorToThis >= 0 , inferiorToThis + " is an invalid layer index.");
 		
@@ -1216,7 +1258,31 @@ public class Artboard {
 		return false;
 		
 	}
+	
+	/**
+	 * Returns whether the pixel at the given indices in the active layer is the same as {@code someColor}. 
+	 * 
+	 * @param someColor — any pixel implementation
+	 * @param xIndex — x coordinate of a pixel on this artboard
+	 * @param yIndex — y coordinate of a pixel on this artboard
+	 * @return <code>true</code> if someColor matches the color given at the indices. 
+	 */
+	public boolean doColorsMatch(Pixel someColor , int xIndex , int yIndex) {
 		
+		LayerPixel pixel = activeLayer.get(xIndex, yIndex);
+		if(pixel == null) return false;
+		if(someColor instanceof LookupPixel asLookup) return someColor.compareTo(asLookup) == 0;
+		else if(someColor instanceof ColorPixel asColor) {
+			
+			short[] indices = activeLayer.palette.getIndicesOfColor(asColor);
+			return pixel.unsignedLookupX() == indices[0] && pixel.unsignedLookupY() == indices[1];
+			
+		}
+	
+		return false;
+		
+	}
+	
 	/**
 	 * Moves the active layer to {@code newRank} rank.
 	 * 

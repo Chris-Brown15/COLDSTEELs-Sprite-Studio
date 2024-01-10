@@ -9,13 +9,9 @@ import cs.csss.project.Artboard;
  */
 @RenderThreadOnly public class ModifyPaletteEvent extends CSSSEvent {
 
-	private final int 
-		xIndex ,
-		yIndex;
+	private final int xIndex , yIndex;
 
-	private final ColorPixel 
-		newValue ,
-		oldValue;
+	private final ColorPixel newValue , oldValue;
 	
 	private final Artboard artboard;
 	

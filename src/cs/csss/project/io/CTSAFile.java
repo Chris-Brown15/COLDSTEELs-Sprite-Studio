@@ -32,11 +32,7 @@ class CTSAFile {
 	private String animationName;
 	
 	private int numberFrames;
-	private float 
-		leftU ,
-		bottomV ,
-		topV ,
-		widthU;
+	private float leftU , bottomV , topV , widthU;
 	
 	private FrameChunk[] frames;
 	

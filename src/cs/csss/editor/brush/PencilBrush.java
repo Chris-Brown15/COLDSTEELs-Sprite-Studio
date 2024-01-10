@@ -4,11 +4,8 @@ import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
 import cs.csss.editor.event.CSSSEvent;
 import cs.csss.editor.event.ModifyArtboardImageEvent;
-import cs.csss.engine.ColorPixel;
-import cs.csss.engine.LookupPixel;
+import cs.csss.engine.Pixel;
 import cs.csss.project.Artboard;
-import cs.csss.project.Layer;
-import cs.csss.project.LayerPixel;
 
 /**
  * Creates events that modify singular regions of the artboard.
@@ -23,11 +20,11 @@ import cs.csss.project.LayerPixel;
 
 	@Override public CSSSEvent use(Artboard artboard, Editor editor, int xIndex, int yIndex) {
 		
-		if(radius == 0) return new ModifyArtboardImageEvent(artboard, xIndex, yIndex, 1, 1 , editor.selectedColors());
+		if(radius == 0) return new ModifyArtboardImageEvent(artboard, xIndex, yIndex, 1, 1 , editor.currentColor());
 
 		int[] region = centerAroundRadius(xIndex, yIndex , artboard.width() , artboard.height());
 		
-		return new ModifyArtboardImageEvent(artboard , region[0] , region[1] , region[2] , region[3] , editor.selectedColors());
+		return new ModifyArtboardImageEvent(artboard , region[0] , region[1] , region[2] , region[3] , editor.currentColor());
 		
 	}
 
@@ -43,11 +40,8 @@ import cs.csss.project.LayerPixel;
 		//modification.
 		int[] region = centerAroundRadius(xIndex, yIndex , artboard.width() , artboard.height());
 		
-		ColorPixel editorActive = editor.selectedColors();
-		LookupPixel indices = artboard.putInPalette(editorActive);
-		
-		Layer activeLayer = artboard.activeLayer();
-		
+		Pixel editorActive = editor.currentColor();
+						
 		boolean areRegionsEqual = true;
 		int x , y;
 		
@@ -57,11 +51,9 @@ import cs.csss.project.LayerPixel;
 			
 			x = region[0] + col ; y = region[1] + row;
 			
-			LayerPixel at = activeLayer.get(x , y); 
-			
 			//the condition inside the parentheses will be true when the pixel does match the current iteration's pixel
-			if(!(activeLayer.containsModificationTo(x , y) && at.compareTo(indices) == 0)) {
-				
+			if(!(artboard.doColorsMatch(editorActive, x, y))) {
+								
 				areRegionsEqual = false;
 				break;
 				

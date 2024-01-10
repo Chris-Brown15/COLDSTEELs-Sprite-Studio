@@ -29,10 +29,7 @@ public class BMP implements CSGraphic {
 	}
 	
 	private ByteBuffer image;
-	public final int
-		width ,
-		height;
-	
+	public final int width , height;	
 	public final byte bytesPerPixel;
 	
 	/**

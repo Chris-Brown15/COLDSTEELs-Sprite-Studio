@@ -31,21 +31,11 @@ import cs.csss.project.VisualLayer;
  * <p>
  * 	A CTSP file is a file containing all needed information to save and load a project's state. The following data are saved:
  *	<ul>
- *		<li>
- *			Project Data
- *		</li>
- *		<li>
- *			Palettes
- *		</li>
- *		<li>
- *			Layers
- *		</li>
- *		<li>
- *			Artboards
- *		</li>
- *		<li>
- *			Animations
- *		</li>
+ *		<li>Project Data</li>
+ *		<li>Palettes</li>
+ *		<li>Layers</li>
+ *		<li>Artboards</li>
+ *		<li>Animations</li>
  *	</ul>
  * </p>
  * 
@@ -88,11 +78,7 @@ public class CTSPFile {
 	
 	private String projectName;
 	private byte channels;
-	private int
-		numberSourceArtboards ,
-		numberVisualLayers ,
-		numberNonVisualLayers ,
-		numberAnimations;
+	private int numberSourceArtboards , numberVisualLayers , numberNonVisualLayers , numberAnimations;
 	
 	private PaletteChunk[] palettes;
 	private String[] visualLayerNames;

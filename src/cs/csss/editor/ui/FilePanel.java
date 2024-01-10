@@ -34,8 +34,9 @@ import cs.core.ui.CSNuklear.CSUserInterface;
  * File panel is the top bar panel. It contains some buttons and menus for doing things in Sprite Studio.
  */
 public class FilePanel {
-
+	
 	private boolean showingCheckeredBackground = true;
+
 	
 	/**
 	 * Creates a file panel.
@@ -102,19 +103,23 @@ public class FilePanel {
 			addAnimationRow = projectMenu.new CSDynamicRow() ,
 			addVisualLayerRow = projectMenu.new CSDynamicRow() ,
 			addNonVisualLayerRow = projectMenu.new CSDynamicRow() ,
-			toggleAnimationPanelRow = projectMenu.new CSDynamicRow();
+			toggleAnimationPanelRow = projectMenu.new CSDynamicRow(),
+			togglePaletteUIRow = projectMenu.new CSDynamicRow()
+			;
 		
 		addArtboardRow.new CSButton("Add Artboard" , editor::startNewArtboard);
 		addAnimationRow.new CSButton("Add Animation" , editor::startNewAnimation);
 		addVisualLayerRow.new CSButton("Add Visual Layer" , editor::startNewVisualLayer);
 		addNonVisualLayerRow.new CSButton("Add Nonvisual Layer" , editor::startNewNonVisualLayer);
 		toggleAnimationPanelRow.new CSCheckBox("Animation Panel" , false , editor::toggleAnimationPanel);
+		togglePaletteUIRow.new CSCheckBox("Palette Panel" , false , editor::togglePaletteReferenceMode);
 		
 		addAnimationRow.doLayout = doLayoutProjectButtons;
 		addVisualLayerRow.doLayout = doLayoutProjectButtons;
 		addNonVisualLayerRow.doLayout = doLayoutProjectButtons;
 		addArtboardRow.doLayout = doLayoutProjectButtons;
-		toggleAnimationPanelRow.doLayout = doLayoutProjectButtons; 
+		toggleAnimationPanelRow.doLayout = doLayoutProjectButtons;
+		togglePaletteUIRow.doLayout = doLayoutProjectButtons; 
 		
 		optionsMenu.new CSDynamicRow().new CSButton("Toggle Fullscreen" , editor::toggleFullscreen);
 		
@@ -125,15 +130,7 @@ public class FilePanel {
 		CSTextEditor sizeInput = undoRedoSizeConfig.new CSTextEditor(4 , CSNuklear.DECIMAL_FILTER);
 		undoRedoSizeConfig.new CSButton("Set" , () -> editor.setUndoAndRedoCapacity(Integer.parseInt(sizeInput.toString())));
 		
-		optionsMenu.new CSDynamicRow().new CSIntProperty(
-			"Camera Move Rate" , 
-			1 , 
-			1 ,
-			1 ,
-			999 ,  
-			editor.setCameraMoveRate , 
-			editor.getCameraMoveRate
-		);
+		optionsMenu.new CSDynamicRow().new CSIntProperty("Camera Move Rate" , 1 , 1 , 1 , 999 , editor.setCameraMoveRate , editor.getCameraMoveRate);
 		
 		CSDynamicRow optionsRow1 = optionsMenu.new CSDynamicRow();
 		optionsRow1.new CSButton("Controls" , editor::startEditingControls);
@@ -237,7 +234,7 @@ public class FilePanel {
 				throw new CSSSException(new RuntimeException());
 				
 			});
-						
+			
 		}
 		
 	}

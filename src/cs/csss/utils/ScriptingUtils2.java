@@ -11,6 +11,9 @@ import org.python.core.PyObject;
 
 import cs.csss.engine.ChannelBuffer;
 import cs.csss.engine.Color;
+import cs.csss.engine.ColorPixel;
+import cs.csss.engine.LookupPixel;
+import cs.csss.engine.Pixel;
 
 /**
  * Contains utilities for scripts.
@@ -32,6 +35,30 @@ public final class ScriptingUtils2 {
 			code.run();
 			
 		}
+		
+	}
+	
+	/**
+	 * Returns whether the given object is a lookup pixel.
+	 * 
+	 * @param object — an object who is being checked for being a lookup pixel
+	 * @return Whether the given object is a lookup pixel.
+	 */
+	public static boolean isLookupPixel(Object object) {
+		
+		return object instanceof Pixel asPixel && asPixel instanceof LookupPixel;
+		
+	}
+
+	/**
+	 * Returns whether the given object is a color pixel.
+	 * 
+	 * @param object — an object who is being checked for being a color pixel
+	 * @return Whether the given object is a color pixel.
+	 */
+	public static boolean isColorPixel(Object object) {
+		
+		return object instanceof Pixel asPixel && asPixel instanceof ColorPixel;
 		
 	}
 	

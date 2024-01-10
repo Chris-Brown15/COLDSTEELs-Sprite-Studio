@@ -195,7 +195,7 @@ public class LHSPanel {
 				
 				nk_layout_row_dynamic(context , 30 , 2);
 				nk_text(context , "Selected Color: " , TEXT_CENTERED|TEXT_LEFT);
-				ColorPixel currentColor = editor.selectedColors();
+				ColorPixel currentColor = (ColorPixel)editor.selectedColorValues();
 				nk_button_color(context , colorForCurrentChannels(currentColor , stack));	
 				
 			});
@@ -421,6 +421,72 @@ public class LHSPanel {
 			if(channels() == 2) twoDColor.alpha = (short) Byte.toUnsignedInt(g);
 			
 		} else rgbPicker().color(r , g, b, a);
+		
+	}
+
+	/**
+	 * Returns the left X coordinate of the LHS.
+	 * 
+	 * @return Left x coordinate of the LHS.
+	 */
+	public int leftX() {
+		
+		return ui.xPosition();
+		
+	}
+	
+	/**
+	 * Returns the top Y coordinate of the LHS.
+	 * 
+	 * @return Top y coordinate of the LHS.
+	 */
+	public int topY() {
+		
+		return ui.yPosition();
+		
+	}
+	
+	/**
+	 * Returns the width of the LHS.
+	 * 
+	 * @return Width of the LHS.
+	 */
+	public int width() {
+		
+		return ui.interfaceWidth();
+		
+	}
+	
+	/**
+	 * Returns the height of the LHS.
+	 * 
+	 * @return Height of the LHS.
+	 */
+	public int height() {
+		
+		return ui.interfaceHeight();
+		
+	}
+	
+	/**
+	 * Returns the right x coordinate of the LHS.
+	 * 
+	 * @return Right X coordinate.
+	 */
+	public int rightX() {
+		
+		return leftX() + width();
+		
+	}
+	
+	/**
+	 * Returns the bottom y coordinate of the LHS.
+	 * 
+	 * @return Bottom Y coordinate.
+	 */
+	public int bottomY() {
+		
+		return topY() - height();
 		
 	}
 	

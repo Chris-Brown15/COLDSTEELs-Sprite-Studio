@@ -190,7 +190,11 @@ public class ChannelBuffer implements ColorPixel {
 	@Override public String toString() {
 		return "ChannelBuffer [r = " + ur() + ", g = " + ug() + ", b = " + ub() + ", a = " + ua() + "]";
 	}
-	
-	
+
+	@Override public Pixel copyOf() {
+
+		return new ChannelBuffer(r , g , b , a);
+		
+	}	
 
 }

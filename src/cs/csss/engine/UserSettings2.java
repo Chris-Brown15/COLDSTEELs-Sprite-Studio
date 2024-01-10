@@ -129,7 +129,7 @@ class UserSettings2 {
 
 						int x = Integer.parseInt(stats.get(windowX));
 						int y = Integer.parseInt(stats.get(windowY));
-						engine.setWindowPosition(x , y);
+						engine.setWindowPosition(Math.max(x, 0) , Math.max(y , 0));
 						
 					}					
 

@@ -1,6 +1,5 @@
 package cs.csss.project;
 
-import static cs.core.utils.CSUtils.require;
 import static cs.csss.engine.Logging.*;
 import static org.lwjgl.opengl.GL11C.GL_RED;
 import static org.lwjgl.opengl.GL11C.GL_RGB;
@@ -8,21 +7,37 @@ import static org.lwjgl.opengl.GL11C.GL_RGBA;
 import static org.lwjgl.opengl.GL11C.GL_UNSIGNED_BYTE;
 import static org.lwjgl.opengl.GL30C.GL_RG;
 import static org.lwjgl.opengl.GL30C.GL_TEXTURE_2D;
+import static org.lwjgl.opengl.GL30C.GL_BLEND;
 import static org.lwjgl.opengl.GL30C.glTexSubImage2D;
 import static org.lwjgl.opengl.GL30C.glTexImage2D;
+import static org.lwjgl.opengl.GL30C.glDisable;
+import static org.lwjgl.opengl.GL30C.glEnable;
 
 import static org.lwjgl.system.MemoryUtil.memCopy;
+
+import static cs.core.graphics.StandardRendererConstants.POSITION_2D;
+import static cs.core.graphics.StandardRendererConstants.UV;
+import static cs.core.graphics.StandardRendererConstants.STREAM_VAO;
+import static cs.core.graphics.StandardRendererConstants.UINT;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryStack;
 
+import cs.core.graphics.CSRender;
 import cs.core.graphics.CSTexture;
+import cs.core.graphics.CSVAO;
+import cs.core.graphics.utils.VertexBufferBuilder;
 import cs.csss.annotation.RenderThreadOnly;
+import cs.csss.engine.CSSSCamera;
 import cs.csss.engine.ChannelBuffer;
 import cs.csss.engine.ColorPixel;
+import cs.csss.engine.Pixel;
+import cs.csss.engine.TransformPosition;
 import cs.csss.misc.utils.FlexableGraphic;
 
 /**
@@ -38,10 +53,12 @@ import cs.csss.misc.utils.FlexableGraphic;
 	/**
 	 * OpenGL constant for the channel type for GL functions.
 	 */
-	public static final int glChannelType = GL_UNSIGNED_BYTE;	
+	public static final int glChannelType = GL_UNSIGNED_BYTE;
+	
+	public static final int MAX_WIDTH = 256 , MAX_HEIGHT = 256;
 	
 	short currentRow = 0 , currentCol = 0;	
-	
+
 	final int channelsPerPixel;	
 	
 	private int	glDataFormat , pixelSizeBytes , paletteWidth = 256 , paletteHeight = 256;
@@ -54,6 +71,10 @@ import cs.csss.misc.utils.FlexableGraphic;
 	 */
 	final byte[] darkerCheckeredBackground , lighterCheckeredBackground;
 	
+	private CSRender render = null;
+	private CSVAO vao;
+	private TransformPosition transform;
+	
 	/**
 	 * Creates an artboard palette.
 	 * 
@@ -61,6 +82,21 @@ import cs.csss.misc.utils.FlexableGraphic;
 	 */
 	public ArtboardPalette(int channelsPerPixel) {
 		
+		this(channelsPerPixel , MAX_WIDTH , MAX_HEIGHT);
+
+	}
+	
+	/**
+	 * Creates an artboard palette.
+	 * 
+	 * @param channelsPerPixel — number of channels per pixel for this palette
+	 * @param width — initial width of this palette
+	 * @param height — initial height of this palette
+	 */
+	public ArtboardPalette(int channelsPerPixel , int width , int height) {
+		
+		this.paletteWidth = width;
+		this.paletteHeight = height;
 		this.channelsPerPixel = channelsPerPixel;
 		darkerCheckeredBackground = new byte[channelsPerPixel];
 		lighterCheckeredBackground = new byte[channelsPerPixel];
@@ -71,7 +107,7 @@ import cs.csss.misc.utils.FlexableGraphic;
 	/**
 	 * Initializes this artboard palette.
 	 */
-	public void initialize() {
+	@RenderThreadOnly public void initialize() {
 
 		FlexableGraphic graphic = new FlexableGraphic(paletteWidth , paletteHeight , 1 , channelsPerPixel , 0xff);
 		
@@ -92,10 +128,18 @@ import cs.csss.misc.utils.FlexableGraphic;
 		
 		put(new PalettePixel(darkerCheckeredBackground));
 		put(new PalettePixel(lighterCheckeredBackground));
-		
+
+	 	VertexBufferBuilder vertices = new VertexBufferBuilder(POSITION_2D|UV);
+	 	vertices.size(paletteWidth, paletteHeight);
+	 	vertices.midpoint(0 , 0);
+	 	transform = new TransformPosition(vertices.attribute(POSITION_2D));
+	 	vao = new CSVAO(vertices.attributes , STREAM_VAO , vertices.get()); 	 		 		
+	 	vao.drawAsElements(6, UINT);
+	 	render = new CSRender(vao , CSSSProject.theTextureShader() , this); 	 		
+	 		
 	}
 	
-	void put(PalettePixel pixelData) {
+	void put(ColorPixel pixelData) {
 		
 		put(currentCol , currentRow , pixelData);
 		
@@ -145,17 +189,7 @@ import cs.csss.misc.utils.FlexableGraphic;
 		memCopy(paletteMemory , newPaletteMemory);
 		
 		activate();			
-		glTexImage2D(
-			GL_TEXTURE_2D , 
-			0 , 
-			glDataFormat , 
-			paletteWidth , 
-			paletteHeight , 
-			0 , 
-			glDataFormat , 
-			glChannelType , 
-			newPaletteMemory
-		);
+		glTexImage2D(GL_TEXTURE_2D , 0 , glDataFormat , paletteWidth , paletteHeight , 0 , glDataFormat , glChannelType , newPaletteMemory);
 		
 		newPaletteMemory.position(palettePosition);
 		paletteMemory = newPaletteMemory;
@@ -171,17 +205,17 @@ import cs.csss.misc.utils.FlexableGraphic;
 	 * @param yIndex — y index to write to
 	 * @param writeThis — color to write in this palette 
 	 */
-	public void put(int xIndex , int yIndex , PalettePixel writeThis) {
+	public void put(int xIndex , int yIndex , ColorPixel writeThis) {
 
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 
 			ByteBuffer imageDataAsPtr = stack.malloc(pixelSizeBytes);
-			writeThis.buffer(imageDataAsPtr);
-			
+			ColorPixel.buffer(imageDataAsPtr, writeThis, pixelSizeBytes);
+						
 			//buffer this into the CPU buffer
 			int position = paletteMemory.position();
 			paletteMemory.position(yIndex * paletteWidth * pixelSizeBytes + xIndex * pixelSizeBytes);
-			writeThis.buffer(paletteMemory);
+			ColorPixel.buffer(paletteMemory , writeThis , pixelSizeBytes);
 			paletteMemory.position(position);
 			
 			imageDataAsPtr.flip();
@@ -215,7 +249,35 @@ import cs.csss.misc.utils.FlexableGraphic;
 	 * @param colors
 	 * @return {@code short[]} containing the x and y coordinates of {@code colors}.
 	 */
-	public short[] putOrGetColors(PalettePixel colors) {
+	public short[] putOrGetColors(ColorPixel colors) {
+	
+		short[] indices = getIndicesOfColor(colors);
+		if(indices == null) { 
+			
+			indices = new short[2];
+			indices[0] = currentCol;
+			indices[1] = currentRow;
+			put(colors);
+			
+		}
+		
+		return indices;
+		
+	}
+			
+	/**
+	 * Returns the indices of the given color in this palette, or <code>null</code> if it is not found. 
+	 * <p>
+	 * 	<b>Note:</b> this method does not check for {@code color} in the entire palette. It only checks the rows and columns that have been modified
+	 * 	by {@link ArtboardPalette#putOrGetColors(ColorPixel) putOrGetColors}, which places colors in the palette sequentially next to each other 
+	 * 	along rows of the palette from left to right. Therefore, if you modify the palette directly and you place your colors elsewhere, they likeky
+	 *  won't be found by this method. 
+	 * </p>
+	 * 
+	 * @param color — the color to find
+	 * @return The indices of {@code color} in this palette if found, or <code>null</code> otherwise.
+	 */
+	public short[] getIndicesOfColor(ColorPixel color) {
 		
 		boolean foundMatch = false;
 		short row = 0 , col = 0;
@@ -224,25 +286,13 @@ import cs.csss.misc.utils.FlexableGraphic;
 		FindMatch: for(; row <= currentRow ; row++) for(; col < currentCol ; col++) {
 			
 			PalettePixel currentPixel = new PalettePixel(paletteMemory , col , row);
-			if(foundMatch = colors.compareTo(currentPixel) == 0) break FindMatch;
+			if(foundMatch = color.compareTo(currentPixel) == 0) break FindMatch;
 			
 		}
 				  	
-		short[] result;
-		
-		if(!foundMatch) {
-			
-			put(colors);
-			//bump down the currentCol as it is modified in the putColor method so it now points to the next empty space to write to
-			col = (short) (currentCol - 1); 
-			if(col == -1) col = 0;
-			row = currentRow;
-					
-		}
-		
-		result = new short[] {col , row};
+		if(!foundMatch) return null;
 
-		return result;
+		return new short[] {col , row};
 		
 	}
 	
@@ -367,6 +417,86 @@ import cs.csss.misc.utils.FlexableGraphic;
 		
 	}
 	
+	/**
+	 * Renders this palette at the given position using the given camera.
+	 * 
+	 * @param camera — camera to render with
+	 * @param midX — the x coordinate in world space to render this palette at
+	 * @param midY — the y coordinate in world space to render this palette at
+	 */
+ 	@RenderThreadOnly public void render(CSSSCamera camera , float midX , float midY) {
+		
+ 		CSSSShader textureShader = CSSSProject.theTextureShader();
+
+ 		transform.moveTo(midX , midY);
+ 		textureShader.updatePassVariables(camera.projection() , camera.viewTranslation() , transform.translation);
+ 		
+ 		glDisable(GL_BLEND);
+ 		render.draw(); 		
+ 		glEnable(GL_BLEND);
+ 		
+ 		//undo changed active shader
+ 		CSSSProject.setTheCurrentShader(CSSSProject.thePaletteShader());
+ 		this.deactivate();
+ 		
+	}
+ 	
+ 	/**
+ 	 * Converts the given world coordinates to pixel indices, which are stored in {@code destination}.
+ 	 * 
+ 	 * @param worldCoordinates — array containing a world x and y coordinate
+ 	 * @param destination — array to store pixel indices of the given coordinates
+ 	 */
+ 	public void worldCoordinateToPixelIndices(float[] worldCoordinates , int[] destination) { 
+ 		
+ 		Objects.requireNonNull(worldCoordinates);
+ 		Objects.requireNonNull(destination);
+ 		
+ 		destination[0] = (int)(worldCoordinates[0] - transform.leftX());
+ 		destination[1] = (int)(worldCoordinates[1] - transform.bottomY());
+ 		
+ 	}
+ 	
+ 	/**
+ 	 * Converts the given worlc coordinates into pixel indices, returning the result as an array.
+ 	 * 
+ 	 * @param worldCoordinates — array containing a world x and y coordinate
+ 	 * @return Array containing pixel indices of the given coordinates.
+ 	 */
+ 	public int[]  worldCoordinateToPixelIndices(float[] worldCoordinates) {
+ 		
+ 		Objects.requireNonNull(worldCoordinates);
+ 		int[] destination = new int[2];
+ 		worldCoordinateToPixelIndices(worldCoordinates, destination);
+ 		return destination;
+ 		
+ 	
+ 	}
+ 	
+ 	/**
+ 	 * Returns the position of this palette.
+ 	 * 
+ 	 * @return The position of this palette.
+ 	 */
+ 	public TransformPosition position() {
+ 		
+ 		return transform;
+ 		
+ 	}
+	
+ 	/**
+ 	 * Returns the palette pixel at the given indices.
+ 	 * 
+ 	 * @param x — x index of the palette pixel to get
+ 	 * @param y — y index of the palette pixel to get
+ 	 * @return {@link ColorPixel} containing the color values in the palette at the given indices.
+ 	 */
+ 	public ColorPixel get(int x , int y) {
+ 		
+ 		return new PalettePixel(paletteMemory , x , y);
+ 		
+ 	}
+ 	
 	private void initializeCheckeredBackgroundColors() {
 	
 		if(channelsPerPixel == 2 || channelsPerPixel == 4) {
@@ -390,6 +520,13 @@ import cs.csss.misc.utils.FlexableGraphic;
 		
 	}
 	
+	@Override public void shutDown() {
+		
+		super.shutDown();
+		if(render != null) render.shutDown();
+		
+	}
+	
 	/**
 	 * This class exists mainly because java does not have unsigned primitives. This means that code that wants a java {@code byte} to be 
 	 * unsigned, as it is in the GPU, may have errors which this class tries to fix. As well, there are basically different kinds of pixels 
@@ -399,13 +536,9 @@ import cs.csss.misc.utils.FlexableGraphic;
 	 * @author Chris Brown
 	 *
 	 */
-	public class PalettePixel implements ColorPixel , Comparable<ColorPixel> {
+	public class PalettePixel implements ColorPixel {
 
-		private byte
-			red ,
-			green ,
-			blue ,
-			alpha;
+		private byte red , green , blue , alpha;
 		
 		PalettePixel(ByteBuffer paletteBuffer , int pixelXIndex , int pixelYIndex) {
 						
@@ -424,13 +557,27 @@ import cs.csss.misc.utils.FlexableGraphic;
 			
 		}
 		
-		PalettePixel(byte[] channelValues) {
+		/**
+		 * Creates a new palette pixel from the given array. The values in the array are copied into this pixel from 
+		 * {@code [0 , channelsPerPixel - 1]}, so the given array must have enough spaces to satisfy this.
+		 * 
+		 * @param channelValues — array of channel values
+		 */
+		public PalettePixel(byte[] channelValues) {
 		
 			for(int i = 0 ; i < channelsPerPixel ; i++) setByIndex(channelValues[i] , i);
 									
 		}
 		
-		PalettePixel(byte red , byte green , byte blue , byte alpha) {
+		/**
+		 * Creates a new palette pixel from the given byte values.
+		 * 
+		 * @param red — red channel value
+		 * @param green — green channel value
+		 * @param blue — blue channel value
+		 * @param alpha — alpha channel value
+		 */
+		public PalettePixel(byte red , byte green , byte blue , byte alpha) {
 			
 			setByIndex(red , 0);
 			setByIndex(green , 1);
@@ -439,22 +586,14 @@ import cs.csss.misc.utils.FlexableGraphic;
 			
 		}
 		
-		PalettePixel(ColorPixel other) {
+		/**
+		 * Creates a new palette pixel frm the channel values of {@code other}.
+		 * 
+		 * @param other — another palette pixel
+		 */
+		public PalettePixel(ColorPixel other) {
 			
 			this(other.r() , other.g() , other.b() , other.a());
-			
-		}
-		
-		/**
-		 * Stores this pixel in {@code buffer}. 
-		 * 
-		 * @param buffer — buffer to write to
-		 */
-		public void buffer(ByteBuffer buffer) {
-			
-			require(buffer.remaining() >= pixelSizeBytes);
-			
-			for(int i = 0 ; i < channelsPerPixel ; i ++) buffer.put((byte) index(i));
 			
 		}
 		
@@ -554,6 +693,12 @@ import cs.csss.misc.utils.FlexableGraphic;
 		@Override public short ua() {
 
 			return (short)Byte.toUnsignedInt(alpha);
+			
+		}
+
+		@Override public Pixel copyOf() {
+
+			return new PalettePixel(red , green , blue , alpha);
 			
 		}
 

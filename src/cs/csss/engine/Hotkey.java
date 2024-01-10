@@ -30,7 +30,9 @@ public class Hotkey extends Control {
 		COPY_REGION_HOTKEY = new Hotkey("Copy Region" , GLFW_KEY_C , () -> Editor.theCopyBrush) ,
 		SIMPLE_SCRIPT_BRUSH_HOTKEY = new Hotkey("Script Brush" , GLFW_KEY_J , Editor::theScriptBrush2),
 		MODIFYING_SCRIPT_BRUSH_HOTKEY = new Hotkey("Modifing Script Brush" , GLFW_KEY_K , Editor::theModifyingScriptBrush2) ,
-		SELECTING_REGION_SCRIPT_HOTKEY = new Hotkey("Selecting Script Brush" , GLFW_KEY_L , Editor::theSelectingScriptBrush2);
+		SELECTING_REGION_SCRIPT_HOTKEY = new Hotkey("Selecting Script Brush" , GLFW_KEY_L , Editor::theSelectingScriptBrush2) ,
+		SELECT_ARTBOARD_HOTKEY = new Hotkey("Select Artboard" , GLFW_KEY_1 , () -> Editor.theArtboardSelector);
+	
 	
 	/**
 	 * Updates the hotkeys, setting controls based on whether the hotkey was pressed.

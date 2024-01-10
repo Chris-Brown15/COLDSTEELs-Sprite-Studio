@@ -11,6 +11,8 @@ import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
+import org.joml.Vector2f;
+
 import cs.core.CSDisplay;
 import cs.core.graphics.CSRender;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
@@ -18,6 +20,7 @@ import cs.core.utils.Lambda;
 import cs.core.utils.ShutDown;
 import cs.core.utils.threads.Await;
 import cs.core.utils.threads.ConstructingAwait;
+import cs.coreext.nanovg.NanoVG;
 import cs.coreext.nanovg.NanoVGFrame;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.brush.CSSSBrush;
@@ -33,13 +36,17 @@ import cs.csss.editor.brush.Move_RegionBrush;
 import cs.csss.editor.brush.Replace_AllBrush;
 import cs.csss.editor.brush.RotateBrush;
 import cs.csss.editor.brush.Scale_RegionBrush;
+import cs.csss.editor.brush.Select_ArtboardBrush;
 import cs.csss.editor.event.AnonymousEvent;
 import cs.csss.editor.event.CSSSEvent;
+import cs.csss.editor.event.ModifyPaletteDirectEvent;
 import cs.csss.editor.event.NOPEvent;
+import cs.csss.editor.event.TogglePaletteReferenceModeEvent;
 import cs.csss.editor.palette.AnalogousPalette;
 import cs.csss.editor.palette.ComplementaryPalette;
 import cs.csss.editor.palette.MonochromaticPalette;
 import cs.csss.editor.ui.AnimationPanel;
+import cs.csss.editor.ui.ArtboardPaletteUI;
 import cs.csss.editor.ui.FilePanel;
 import cs.csss.editor.ui.LHSPanel;
 import cs.csss.editor.ui.RHSPanel;
@@ -49,10 +56,14 @@ import cs.csss.engine.ColorPixel;
 import cs.csss.engine.Control;
 import cs.csss.engine.Engine;
 import cs.csss.engine.Logging;
+import cs.csss.engine.LookupPixel;
+import cs.csss.engine.Pixel;
+import cs.csss.engine.TransformPosition;
 import cs.csss.project.Animation;
 import cs.csss.project.Artboard;
 import cs.csss.project.ArtboardPalette;
 import cs.csss.project.CSSSProject;
+import cs.csss.project.IndexPixel;
 import cs.csss.project.VisualLayer;
 import cs.csss.ui.utils.UIUtils;
 
@@ -68,6 +79,7 @@ public class Editor implements ShutDown {
 	static final int DEFAULT_UNDO_REDO_STACK_SIZE = 1024;
 		
 	//create the brushes used by all editors
+	public static final Select_ArtboardBrush theArtboardSelector = new Select_ArtboardBrush();
 	public static final PencilBrush thePencilBrush = new PencilBrush();
 	public static final EraserBrush theEraserBrush = new EraserBrush();
 	public static final Eye_DropperBrush theEyeDropper = new Eye_DropperBrush();
@@ -128,12 +140,29 @@ public class Editor implements ShutDown {
 	
 	private final AnimationPanel animationPanel;
 	private final LHSPanel leftSidePanel;
+	private final ArtboardPaletteUI paletteUI;
 	
 	private ChannelBuffer currentColor = new ChannelBuffer();
 	
 	private boolean colorInputsAreHex = false;
 	
-	private final SelectionAreaBounder brushBounder = new SelectionAreaBounder();
+	//NanoVG rectangle used to approximately show where the user will modify with their next action if they are using a modification brush of some 
+	//kind.
+	private final SelectionAreaBounder modifyingBounder = new SelectionAreaBounder();
+	
+	private final SelectionAreaBounder paletteBounder = new SelectionAreaBounder();
+	//Separate indices than the ones stored in artboard palettes. These are used by the editor for its modifications to the palette.
+	private int paletteXIndex = 0 , paletteYIndex = 0;
+	
+	/*
+	 * modifying palette directly refers to whether we are currently able to modify the palette image.
+	 * 
+	 * referencing palette directly refers to whether we are currently using paletteXIndex and paletteYIndex to choose what color's indices to put
+	 * in the palette.
+	 */
+	private boolean referencingPaletteDirectly = false , modifyingPaletteDirectly = false;
+	
+	private LookupPixel currentColorIndices;
 	
 	/**
 	 * Creates an editor object. 
@@ -149,6 +178,7 @@ public class Editor implements ShutDown {
 		getCameraMoveRate = engine::cameraMoveRate;
 
 		leftSidePanel = new LHSPanel(this , display.nuklear);
+		paletteUI = new ArtboardPaletteUI(display.nuklear , this , leftSidePanel);
 		new FilePanel(this , display.nuklear);
 		new RHSPanel(this , display.nuklear , engine);
 		animationPanel = new AnimationPanel(this , display.nuklear);
@@ -156,6 +186,8 @@ public class Editor implements ShutDown {
 		new MonochromaticPalette(15);
 		new AnalogousPalette(15);
 		new ComplementaryPalette(6);
+		
+		display.window.onWindowResize((newWidth , newHeight) -> paletteUI.camera.resetProjection(newWidth, newHeight));
 		
 	}
 
@@ -167,12 +199,15 @@ public class Editor implements ShutDown {
 		updateCurrentBrush();
 		//add new events
 		editArtboardOnControls();
+		
 		updateEditorControls();
+		//updates the small rectangle that identifies which pixel in the palette panel we are currently modifying
+		updatePaletteEdits();		
 		//handle them
 		handleEvents();	
 		//update the current project's animation if running
 		playAnimation();
-				
+	
 	}
 	
 	/**
@@ -253,10 +288,9 @@ public class Editor implements ShutDown {
 		
 			int[] pixelIndex = current.worldToPixelIndices(cursor);
 			
-			//TODO: make these only go to the renderer if needed
-			
 			Artboard finalCurrent = current;
 			
+			//TODO: make these only go to the renderer if needed
 			engine.renderer().post(() -> {
 
 				if(Engine.isDebug()) try {
@@ -299,13 +333,24 @@ public class Editor implements ShutDown {
 		
 		}
 		
-		if(Control.TRANSLATE_CAMERA.pressed() && !engine.isCursorHoveringUI()) {
+		if(Control.TRANSLATE_CAMERA.pressed()) {
 
 			float previousX = engine.previousCursorX();
 			float previousY = engine.previousCursorY();
 			float[] current = engine.getCursorWorldCoords();
 			
-			engine.camera().translate(current[0] - previousX, current[1] - previousY);
+			float xTranslation = current[0] - previousX;
+			float yTranslation = current[1] - previousY;
+			
+			engine.camera().translate(xTranslation, yTranslation);
+			//this code can be used to translate the views of the animation panel and palette panel, but its janky
+//			if(!engine.isCursorHoveringUI()) 
+//			else {
+//			
+//				if(cursorHoveringAnimationFramePanel()) animationPanel.translate(xTranslation, yTranslation);
+//				else if (cursorHoveringPaletteUI()) paletteUI.translate(xTranslation, yTranslation);
+//				
+//			}
 						
 		}
 		
@@ -316,7 +361,7 @@ public class Editor implements ShutDown {
 			if(Control.INCREASE_BRUSH_SIZE.struck() && radius > 0) asModifying.radius(radius - 1);
 			
 		}
-		
+				
 	}
 
 	/**
@@ -324,45 +369,108 @@ public class Editor implements ShutDown {
 	 */
 	private void updateCurrentBrush() {
 		
-		if(currentBrush != null) {
+		if(currentBrush == null) return;
+		
+		if(currentBrush.stateful) {
 			
-			if(currentBrush.stateful) {
+			CSSSProject project = project();
+			rendererPost(() -> {
 				
-				CSSSProject project = project();
-				rendererPost(() -> {
-				
-					if(Engine.isDebug()) {
+				if(Engine.isDebug()) {
+					
+					try {
 						
-						try {
-							
-							currentBrush.update(project == null ? null : project.currentArtboard() , this);
+						currentBrush.update(project == null ? null : project.currentArtboard() , this);
+					
+					} catch(Exception e) {
 						
-						} catch(Exception e) {
-							
-							Logging.syserr("Brush update failed for brush " + currentBrush);
-							e.printStackTrace();
-														
-						}
-						
-					} else currentBrush.update(project == null ? null : project.currentArtboard() , this);
-				
-				}).await();
+						Logging.syserr("Brush update failed for brush " + currentBrush);
+						e.printStackTrace();
+													
+					}
+					
+				} else currentBrush.update(project == null ? null : project.currentArtboard() , this);
 			
-			}
+			}).await();
+		
+		}
+		
+		Artboard current = currentArtboard();
+		if(currentBrush instanceof CSSSModifyingBrush modifingBrush && current != null) {
 			
-			Artboard current = currentArtboard();
-			if(currentBrush instanceof CSSSModifyingBrush modifingBrush && current != null) {
-				
-				//update the bounder
-				float[] cursorPosition = engine.getCursorWorldCoords();
-				int radius = modifingBrush.radius();
+			//update the bounder
+			float[] cursorPosition = engine.getCursorWorldCoords();
+			int radius = modifingBrush.radius();
 
-				brushBounder.LX(cursorPosition[0] - radius -.5f);
-				brushBounder.RX(cursorPosition[0] + radius +.5f);
-				brushBounder.BY(cursorPosition[1] - radius -.5f);
-				brushBounder.TY(cursorPosition[1] + radius +.5f);
-				
-			}
+			modifyingBounder.LX(cursorPosition[0] - radius -.5f);
+			modifyingBounder.RX(cursorPosition[0] + radius +.5f);
+			modifyingBounder.BY(cursorPosition[1] - radius -.5f);
+			modifyingBounder.TY(cursorPosition[1] + radius +.5f);
+			
+		}
+			
+	}
+	
+	private void updatePaletteEdits() {
+		
+		ArtboardPalette current = currentPalette();
+		
+		if(!paletteUI.showing() || current == null) return;
+		
+		//sets the position of the bounder that highlights the current pixel
+		
+		float untranslatedX = current.position().leftX() + paletteXIndex;
+		float untranslatedY = current.position().bottomY() + paletteYIndex;
+		
+		paletteBounder.LX(untranslatedX);
+		paletteBounder.RX(untranslatedX + 1);
+		paletteBounder.BY(untranslatedY);
+		paletteBounder.TY(untranslatedY + 1);
+			
+		if(!Control.ARTBOARD_INTERACT.pressed()) return;
+		
+		CSSSCamera camera = paletteUI.camera;
+		
+		//select a position on the palette.
+		
+		int[] cursorScreenCoordinates = engine.getCursorScreenCoords();
+		
+		if(!paletteUI.inBounds((float)cursorScreenCoordinates[0] , (float)cursorScreenCoordinates[1])) return;
+		
+		float[] asWorld = {
+			camera.XscreenCoordinateToWorldCoordinate(cursorScreenCoordinates[0]) , 
+			camera.YscreenCoordinateToWorldCoordinate(cursorScreenCoordinates[1])
+		};
+		
+		int[] indices = current.worldCoordinateToPixelIndices(asWorld);
+		//if the cursor is within the palette texture itself
+		if(indices[0] >= 0 && indices[1] >= 0 && indices[0] < current.width() && indices[1] <= current.height()) {
+			
+			paletteXIndex = indices[0];
+			paletteYIndex = indices[1];			
+			
+		}
+		
+		if(referencingPaletteDirectly) {
+			
+		 	if(modifyingPaletteDirectly) { 
+		 		
+		 		//logic is similar to using a brush, we check if we "can use" this event by seeing if the event will do anything else, then we 
+		 		//propperly do the event.
+		 		rendererPost(() -> {
+		 		
+		 			ColorPixel inPalette = current.get(paletteXIndex, paletteYIndex);
+		 			if(inPalette.compareTo(currentColor) != 0) { 
+		 				
+		 				eventPush(new ModifyPaletteDirectEvent(current , paletteXIndex , paletteYIndex , currentColor));
+		 				
+		 			}
+
+		 		});
+		 		
+		 	}
+		 	
+			currentColorIndices = new IndexPixel(paletteXIndex , paletteYIndex);
 			
 		}
 		
@@ -428,8 +536,46 @@ public class Editor implements ShutDown {
 	 */
 	@RenderThreadOnly public void renderModifyingBrushBounder(NanoVGFrame frame) {
 		
-		if(currentBrush instanceof CSSSModifyingBrush && currentArtboard() != null) brushBounder.render(frame);
+		if(!engine.isCursorHoveringUI() && currentBrush instanceof CSSSModifyingBrush && currentArtboard() != null) modifyingBounder.render(frame);
 		
+	}
+	
+	/**
+	 * Renders the palette bounder, the square that identifies the currently active palette pixel for when palette modification is current.
+	 * 
+	 * @param frame — the NanoVG frame
+	 */
+	@RenderThreadOnly public void renderPaletteBounder(NanoVGFrame frame) {
+		
+		ArtboardPalette currentPalette = currentPalette();
+		if(!paletteUI.showing() || currentPalette == null) return;
+
+		/*
+		 * Here we render the small square that identifies what the current pixel is when we are rendering the palette/modifying it directly.
+		 * We first apply the zoom of the UI element. 
+		 * Then we find out whether the square is out of bounds of the UI element
+		 * If it is, we undo the zoom and return, otherwise we render it and undo the zoom.
+		 * 
+		 * glScissor doesn't work at culling the box if it is out of bounds. I don't know why.
+		 */
+		
+		TransformPosition palettePosition = currentPalette.position();
+		
+		NanoVG nano = engine.nanoVG();
+		nano.converter().camera(paletteUI.camera);
+
+		Vector2f bounderInScreenSpace = nano.worldToScreen(palettePosition.leftX() + paletteXIndex , palettePosition.bottomY() + paletteYIndex);
+		
+		if(!paletteUI.inBounds(bounderInScreenSpace.x, bounderInScreenSpace.y)) {
+					
+			nano.converter().camera(camera());
+			return;
+			
+		}
+		
+		paletteBounder.render(frame);
+		nano.converter().camera(camera());
+				
 	}
 	
 	/**
@@ -468,17 +614,40 @@ public class Editor implements ShutDown {
 	}
 	
 	/**
+	 * Returns a {@code Pixel} which contains <em>either</em> channel values or lookup values depending upon the current state of the editor. If you
+	 * invoke this method, you need to use {@code instanceof} to check whether the received pixel is a lookup pixel or a color pixel.
+	 *  
+	 * @return Abstract {@code Pixe} containing values for the active color.
+	 */
+	public Pixel currentColor() {
+		
+		return referencingPaletteDirectly() ? selectedColorIndices() : selectedColorValues();
+		
+	}
+	
+	/**
 	 * Returns a {@link cs.csss.project.ArtboardPalette.PalettePixel PalettePixel} containing the colors of the currently selected color in
 	 * the color picker in the left hand side panel or the color chosen from.
 	 * 
 	 * @return A created palette pixel.
 	 */
-	public ColorPixel selectedColors() {
+	public Pixel selectedColorValues() {
 		
 		return currentColor; 
 		
 	}
 
+	/**
+	 * Returns the lookup pixel containing the indices for the active color. 
+	 * 
+	 * @return A lookup pixel containing the indices of the active color.
+	 */
+	public Pixel selectedColorIndices() {
+		
+		return currentColorIndices;
+		
+	}
+	
 	/**
 	 * Returns the undo stack's capacity.
 	 * 
@@ -555,6 +724,29 @@ public class Editor implements ShutDown {
 				
 	}
 	
+	public void setSelectedColor2(Pixel pixel) {
+		
+		if(pixel instanceof ColorPixel asColor) {
+			
+			setSelectedColor(asColor.r() , asColor.g() , asColor.b() , asColor.a());
+			leftSidePanel.setColor(asColor.r() , asColor.g() , asColor.b() , asColor.a());
+			
+		} else if (pixel instanceof LookupPixel asLookup) {
+			
+			ArtboardPalette current = currentPalette();
+			if(current == null) return;
+			
+			ColorPixel color = current.get(asLookup.lookupX() , asLookup.lookupY());
+
+			setSelectedColor(color.r() , color.g() , color.b() , color.a());
+			leftSidePanel.setColor(color.r() , color.g() , color.b() , color.a());
+		
+			paletteXIndex = asLookup.lookupX() ; paletteYIndex = asLookup.lookupY();
+			
+		}
+		
+	}
+	
 	/**
 	 * Sets the color the editor considers to be the current color value.
 	 * 
@@ -563,10 +755,12 @@ public class Editor implements ShutDown {
 	 * @param b — blue channel for the new selected color
 	 * @param a — alpha channel for the new selected color
 	 */
-	public void setSelectedColor(byte r , byte g , byte b , byte a) { 
+	public void setSelectedColor(byte r , byte g , byte b , byte a) {
 		
+		ArtboardPalette current = currentPalette();
+		if(current == null) return;
 		currentColor.set(r, g, b, a);
-		
+				
 	}
 	
 	/**
@@ -819,23 +1013,41 @@ public class Editor implements ShutDown {
 	/**
 	 * Returns whether the cursor's coordinates are within the animation frame panel.
 	 * 
-	 * @param cursorScreenX — x coordinate of the cursor in screen space 
-	 * @param cursorScreenY — y coordinate of the cursor in screen space
-	 * @param windowHeight — height of the window, needed for some calculations
 	 * @return {@code true} if the cursor given by the coordinates is within the animation panel's frame slot.
 	 */
-	public boolean cursorHoveringAnimationFramePanel(int cursorScreenX , int cursorScreenY , int windowHeight) {
+	public boolean cursorHoveringAnimationFramePanel() {
 
 		int[] frameCorner = animationPanel.topLeftPointOfAnimationFrameSlot();
 		int[] frameDimensions = animationPanel.dimensionsOfAnimationFrameSlot();
 		
+		return isCursorInBounds(frameCorner[0] , frameCorner[1] , frameDimensions[0] , frameDimensions[1]);
+		
+	}
+	
+	/**
+	 * Returns whether the cursor is hovering the palette UI.
+	 * 
+	 * @return Whether the cursor is hovering the palette UI.
+	 */
+	public boolean cursorHoveringPaletteUI() {
+		
+		float[] frameCorner = paletteUI.positions();
+		float[] frameDimensions = paletteUI.dimensions();
+		
+		return isCursorInBounds((int)frameCorner[0] , (int)frameCorner[1] , (int) frameDimensions[0] , (int) frameDimensions[1]);
+		
+	}
+	
+	private boolean isCursorInBounds(int boundLeftX , int boundTopY , int boundWidth , int boundHeight) {
+		
+		int[] cursor = engine.getCursorScreenCoords();
+		int windowHeight = engine.windowSize()[1];
 		//these two steps transform the cursor Y and the frame corner Y so that 0 would be the bottom of the window rather than the top. 
-		frameCorner[1] = windowHeight - frameCorner[1] - frameDimensions[1];
-		cursorScreenY = windowHeight - cursorScreenY;
-		
-		return frameCorner[0] <= cursorScreenX && frameCorner[0] + frameDimensions[0] > cursorScreenX &&
-			   frameCorner[1] <= cursorScreenY && frameCorner[1] + frameDimensions[1] > cursorScreenY;
-		
+		boundTopY = windowHeight - boundTopY - boundHeight;
+		cursor[1] = windowHeight - cursor[1];
+				
+		return boundLeftX <= cursor[0] && boundLeftX + boundWidth > cursor[0] && boundTopY <= cursor[1] && boundTopY + boundHeight > cursor[1];
+				
 	}
 	
 	/**
@@ -1163,6 +1375,18 @@ public class Editor implements ShutDown {
 		engine.startCreateNewScript();
 		
 	}
+	
+	/**
+	 * Renders the artboard palette in the UI element if possible.
+	 */
+	public void renderPalette() {
+		
+		if(!paletteUI.showing()) return;
+		ArtboardPalette currentPalette = currentPalette();
+		if(currentPalette == null) return;
+		paletteUI.renderPaletteInUI(currentPalette, engine.windowSize()[1]);
+		
+	}
 		
 	void startScriptArgumentInput(String scriptName, Optional<String> dialogueText , Consumer<String> onFinish) {
 		
@@ -1223,6 +1447,11 @@ public class Editor implements ShutDown {
 		
 	}
 	
+	/**
+	 * Gets the current pallete and returns its contents as a list. However, if no palette is active for any reason, <code>null</code> is returned.
+	 * 
+	 * @return A {@link List} containing the colors stored in the current palette, or <code>null</code> if none is active.
+	 */
 	public List<ColorPixel> currentPaletteColorsAsList() {
 		
 		CSSSProject project = engine.currentProject();
@@ -1237,6 +1466,107 @@ public class Editor implements ShutDown {
 		
 	}
 
+	/**
+	 * Returns the artboard palette UI.
+	 * 
+	 * @return The artboard palette UI.
+	 */
+	public ArtboardPaletteUI artboardPaletteUI() {
+		
+		return paletteUI;
+		
+	}
+	
+	/**
+	 * Toggles whether the palette is being referenced directly.
+	 */
+	public void togglePaletteReferenceMode() {
+		
+		eventPush(new TogglePaletteReferenceModeEvent(this));
+		
+		
+	}
+	
+	/**
+	 * Returns whether direct palette access is enabled.
+	 * 
+	 * @return Whether direct palette access is enabled.
+	 */
+	public boolean referencingPaletteDirectly() {
+		
+		return referencingPaletteDirectly;
+		
+	}
+	
+	/**
+	 * Returns whether the palette is being modified directly.
+	 *  
+	 * @return {@code true} if the palette modification mode is currently enabled.
+	 */
+	public boolean modifyingPaletteDirectly() {
+		
+		return modifyingPaletteDirectly;
+		
+	}
+	
+	/**
+	 * Toggles the state of whether direct access to the palette is enabled.
+	 */
+	public void toggleDirectPaletteAccess() {
+		
+		setReferencingPaletteDirectly(!referencingPaletteDirectly);
+		
+	}
+	
+	/**
+	 * Toggles the state of the direct palette access mode.
+	 */
+	public void toggleDirectPaletteModification() {
+		
+		setModifyingPaletteDirectly(!modifyingPaletteDirectly);
+		
+	}
+
+	/**
+	 * Sets whether the editor is in direct palette access mode.
+	 * 
+	 * @param nowReferencing — whether the UI is now being modified
+	 */
+	public void setReferencingPaletteDirectly(boolean nowReferencing) {
+		
+		this.referencingPaletteDirectly = nowReferencing;
+		ArtboardPalette current = currentPalette();
+		if(current != null && nowReferencing) {
+			
+			paletteXIndex = current.currentCol();
+			paletteYIndex = current.currentRow();
+			
+		}
+		
+	}
+	
+	/**
+	 * Sets the state of whether the palette is being modified directly.
+	 * 
+	 * @param state — whether the palette is being modified directly
+	 */
+	public void setModifyingPaletteDirectly(boolean state) {
+		
+		modifyingPaletteDirectly = state;
+				
+	}
+	
+	/**
+	 * Returns the dimensions of the window.
+	 *  
+	 * @return Dimensions of the window.
+	 */
+	public int[] windowDimensions() {
+		
+		return engine.windowSize();
+		
+	}
+	
 	/**
 	 * Uses reflection to detect whether a shutdown method is present on the given event. This is for the advantage of Jython implementations of 
 	 * {@code CSSSEvent}. 
@@ -1268,6 +1598,7 @@ public class Editor implements ShutDown {
 	
 	@Override public void shutDown() {
 
+		paletteUI.shutDown();
 		animationPanel.shutDown();
 		undos.shutDown(engine.renderer());
 		redos.shutDown(engine.renderer());

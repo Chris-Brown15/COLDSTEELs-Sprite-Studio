@@ -1,6 +1,7 @@
 package cs.csss.project;
 
 import cs.csss.engine.LookupPixel;
+import cs.csss.engine.Pixel;
 import cs.csss.engine.TexturePixel;
 
 /**
@@ -12,16 +13,12 @@ public class LayerPixel implements TexturePixel , LookupPixel {
 	/**
 	 * Indices into the texture this pixel corresponds to.
 	 */
-	public final int 
-		textureX ,
-		textureY;
+	public final int textureX , textureY;
 	
 	/**
 	 * Indices into the palette this pixel corresponds to.
 	 */
-	public final short
-		lookupX ,
-		lookupY;
+	public final short lookupX , lookupY;
 	
 	/**
 	 * Creates a new layer pixel from the given indices.
@@ -107,6 +104,12 @@ public class LayerPixel implements TexturePixel , LookupPixel {
 	@Override public short unsignedLookupY() {
 
 		return lookupY;
+		
+	}
+
+	@Override public Pixel copyOf() {
+
+		return new LayerPixel(textureX , textureY , lookupX , lookupY);
 		
 	}
 	

@@ -1,6 +1,0 @@
-args: [-ns]
-Resizing, new palette is 256 x 256
-Resizing, new palette is 256 x 256
-Resizing, new palette is 256 x 256
-Resizing, new palette is 256 x 256
-Resizing, new palette is 256 x 256

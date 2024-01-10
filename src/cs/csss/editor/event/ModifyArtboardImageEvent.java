@@ -1,7 +1,7 @@
 package cs.csss.editor.event;
 
 import cs.csss.annotation.RenderThreadOnly;
-import cs.csss.engine.ColorPixel;
+import cs.csss.engine.Pixel;
 import cs.csss.project.Artboard;
 
 /**
@@ -14,14 +14,8 @@ import cs.csss.project.Artboard;
 @RenderThreadOnly public class ModifyArtboardImageEvent extends CSSSEvent {
 
 	private final Artboard artboard;
-	private final int
-		xIndex ,
-		yIndex ,
-		width ,
-		height
-	;
-	
-	private final ColorPixel color;
+	private final int xIndex , yIndex , width , height;	
+	private final Pixel color;
 
 	/**
 	 * Creates a modify artboard image event.
@@ -33,7 +27,7 @@ import cs.csss.project.Artboard;
 	 * @param height — height of a region
 	 * @param color — color to put in the region
 	 */
-	public ModifyArtboardImageEvent(Artboard artboard , int xIndex , int yIndex , int width , int height , ColorPixel color) {
+	public ModifyArtboardImageEvent(Artboard artboard , int xIndex , int yIndex , int width , int height , Pixel color) {
 
 		super(true , false);
 
@@ -50,7 +44,7 @@ import cs.csss.project.Artboard;
 			height +=  yIndex;
 			yIndex = 0;
 			
-		}
+		} 
 
 		if(xIndex + width > artboard.width()) width = xIndex + width - artboard.width() + 1;		
 		if(yIndex + height > artboard.height()) height = yIndex + height - artboard.height() + 1;
@@ -61,13 +55,13 @@ import cs.csss.project.Artboard;
 		this.width = width;
 		this.height = height;
 
-		this.color = ColorPixel.copyOf(color);
+		this.color = color.copyOf();
 
 	}
 
 	@Override public void _do() {
 
-		artboard.putColorInImage(xIndex, yIndex, width, height, color);
+		artboard.putColorInImage2(xIndex, yIndex, width, height, color);
 
 	}
 

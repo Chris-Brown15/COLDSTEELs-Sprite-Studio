@@ -52,9 +52,7 @@ import cs.csss.ui.utils.UIUtils;
  */
 public class AnimationPanel implements ShutDown {
 
-	private static final int 
-		textOptions = TEXT_LEFT|TEXT_CENTERED ,
-		toolTipShow = HOVERING|MOUSE_PRESSED;
+	private static final int textOptions = TEXT_LEFT|TEXT_CENTERED , toolTipShow = HOVERING|MOUSE_PRESSED;
 	
 	private final CSNuklear nuklear;	
 	private CSUserInterface ui;
@@ -64,25 +62,16 @@ public class AnimationPanel implements ShutDown {
 	private boolean show = false;
 	
 	private CSRow topPartSections;	
-	private CSDynamicRow 
-		frameTimeRow ,
-		frameUpdatesRow;
+	private CSDynamicRow frameTimeRow , frameUpdatesRow;
 
 	private AnimationSwapType[] swapTypes = AnimationSwapType.values();
 	
 	private CSDynamicRow[] swapTypeRows = new CSDynamicRow[swapTypes.length];
 	
-	private int 
-		framePanelX ,
-		framePanelY ,
-		framePanelWidth ,
-		framePanelHeight;
+	private int framePanelX , framePanelY , framePanelWidth , framePanelHeight;
 
 	//controls the zoom and translations of the object within the ui panel
-	private float 
-		zoom = 0.3f ,
-		xTranslation = 0, 
-		yTranslation = 0;
+	private float zoom = 0.3f , xTranslation = 0, yTranslation = 0;
 	
 	private final Matrix4f moveToPoint = new Matrix4f().identity();
 	
@@ -387,9 +376,9 @@ public class AnimationPanel implements ShutDown {
 	}
 	
 	/**
-	 * Returns an array containing the top left point of the frame panel
+	 * Returns an array containing the top left point of the frame panel.
 	 * 
-	 * @return
+	 * @return Array containing the top left coordinates of the animation frame panel.
 	 */
 	public int[] topLeftPointOfAnimationFrameSlot() {
 		

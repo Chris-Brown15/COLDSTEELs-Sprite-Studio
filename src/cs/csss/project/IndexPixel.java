@@ -6,6 +6,7 @@ import static cs.core.utils.CSUtils.specify;
 import java.nio.ByteBuffer;
 
 import cs.csss.engine.LookupPixel;
+import cs.csss.engine.Pixel;
 
 /**
  * Representation of a lookup pixel. A lookup pixel is a pixel containing primitives as channels which are used as lookups into a palette 
@@ -15,9 +16,7 @@ import cs.csss.engine.LookupPixel;
  */
 public class IndexPixel implements LookupPixel {
 
-	public final short 
-		xIndex ,
-		yIndex;
+	public final short xIndex , yIndex;
 	
 	/**
 	 * Creates an index pixel with the given values.
@@ -103,6 +102,12 @@ public class IndexPixel implements LookupPixel {
 	@Override public short unsignedLookupY() {
 
 		return yIndex;
+		
+	}
+
+	@Override public Pixel copyOf() {
+
+		return new IndexPixel(xIndex , yIndex);
 		
 	}
 	

@@ -78,5 +78,11 @@ public class Color implements ColorPixel {
 		return String.format("R: %d , G: %d , B: %d , A: %d", r() , g() , b() , a());
 		
 	}
+
+	@Override public Pixel copyOf() {
+
+		return new Color(r , g , b , a);		
+		
+	}
 	
 }

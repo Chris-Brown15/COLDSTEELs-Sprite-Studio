@@ -21,16 +21,11 @@ public class SplayTree<T> extends LinkedBST<T> {
 		SPLAY_WHEN_REMOVING = 0b1 << 9 ,
 		SPLAY_WHEN_FINDING = 0b1 << 10 ,
 		SPLAY_WHEN_ADDING = 0b1 << 11 ,
-		SPLAY_ON_COLD_READ = 0b1 << 12 
-	;
+		SPLAY_ON_COLD_READ = 0b1 << 12 ;
 
 	private static void verifySplayCaseLiteral(short splayCases) {
 		
-		final int 
-			all = SPLAY_WHEN_REMOVING|SPLAY_WHEN_ADDING|SPLAY_WHEN_FINDING|SPLAY_ON_COLD_READ ,
-			AND = splayCases & all
-		;
-		
+		final int all = SPLAY_WHEN_REMOVING|SPLAY_WHEN_ADDING|SPLAY_WHEN_FINDING|SPLAY_ON_COLD_READ , AND = splayCases & all;		
 		specify(AND >= SPLAY_WHEN_REMOVING && AND <= all , splayCases + " is not a valid splay case.");		
 		
 	}
