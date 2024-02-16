@@ -79,7 +79,7 @@ public class Color implements ColorPixel {
 		
 	}
 
-	@Override public Pixel copyOf() {
+	@Override public Pixel clone() {
 
 		return new Color(r , g , b , a);		
 		

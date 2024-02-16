@@ -39,7 +39,8 @@ class UserSettings2 {
 		windowY 		= "WindowY",
 		cameraX 		= "CameraX",
 		cameraY 		= "CameraY" ,
-		cameraZoom		= "CameraZoom";
+		cameraZoom		= "CameraZoom" ,
+		currentTheme	= "Theme";
 	
 	
 	UserSettings2() {}
@@ -58,6 +59,11 @@ class UserSettings2 {
 			int[] windowSize = engine.windowSize();
 			int[] windowPosition = engine.getWindowPosition();
 			float[] cameraTranslation = engine.getCameraTranslation();
+			UITheme theme = engine.currentTheme();
+			String themeName;
+			if(theme != null) themeName = theme.name();
+			else themeName = "null";
+				
 			var values = Map.ofEntries(
 				Map.entry(targetFPS, engine.realtimeTargetFPS()),
 				Map.entry(BGWidth , IndexTexture.backgroundWidth),
@@ -71,7 +77,8 @@ class UserSettings2 {
 				Map.entry(windowY, windowPosition[1]) ,
 				Map.entry(cameraX, cameraTranslation[0]) ,
 				Map.entry(cameraY, cameraTranslation[1]) ,
-				Map.entry(cameraZoom , engine.camera().zoom())
+				Map.entry(cameraZoom , engine.camera().zoom()) ,
+				Map.entry(currentTheme, themeName)
 			);
 				
 			writer.putMap("Stats", values, String::toString, String::valueOf);
@@ -157,6 +164,13 @@ class UserSettings2 {
 				engine.camera().translate(x, y);
 				engine.camera().zoom(zoom);
 				
+			}
+			
+			if(stats.containsKey(currentTheme)) {
+				
+				String theme = stats.get(currentTheme);
+				if(!theme.equals("null")) engine.setTheme(theme);
+								
 			}
 			
 			Set<Entry<String , String>> entries = controls.entrySet();

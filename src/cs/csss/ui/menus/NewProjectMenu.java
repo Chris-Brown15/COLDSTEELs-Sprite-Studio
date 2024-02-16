@@ -62,20 +62,22 @@ public class NewProjectMenu extends Dialogue {
 	 * 
 	 * @param nuklear — the Nuklear factory
 	 */
-	public NewProjectMenu(final CSNuklear nuklear) {
+	public NewProjectMenu(CSNuklear nuklear) {
 
-		this.ui = nuklear.new CSUserInterface("New Project" , 0.5f - (0.33f / 2) , 0.5f - (0.245f / 2) , 0.33f , 0.245f);
+		this.ui = nuklear.new CSUserInterface("New Project" , 0.5f - (0.33f / 2) , 0.5f - (0.33f / 2) , 0.33f , 0.33f);
 		ui.options = UI_TITLED|UI_BORDERED;
 
-		CSDynamicRow nameRow = ui.new CSDynamicRow(30);
-		nameRow.new CSText("Project Name:" , TEXT_CENTERED|TEXT_LEFT);
+		CSRow nameRow = ui.new CSRow(30).pushWidth(.15f).pushWidth(.8f);
+		nameRow.new CSText("Name:" , TEXT_CENTERED|TEXT_LEFT);
 		nameInput = nameRow.new CSTextEditor(100);
 		
-		ui.new CSDynamicRow(20).new CSText("Select Number of Channels:" , TEXT_CENTERED|TEXT_LEFT);		
-		CSRadio oneChannel = ui.new CSDynamicRow(25).new CSRadio("Grayscale" , () -> channelsPerPixel == 1 , () -> channelsPerPixel = 1);
-		CSRadio twoChannels = ui.new CSDynamicRow(25).new CSRadio("Grayscale + Alpha" , () -> channelsPerPixel == 2 , () -> channelsPerPixel = 2);
-		CSRadio threeChannels = ui.new CSDynamicRow(25).new CSRadio("RGB" , () -> channelsPerPixel == 3 , () -> channelsPerPixel = 3);
-		CSRadio fourChannels = ui.new CSDynamicRow(25).new CSRadio("RGB + Alpha" , () -> channelsPerPixel == 4, () -> channelsPerPixel = 4);
+		ui.new CSDynamicRow(20).new CSText("Pixel Format:" , TEXT_CENTERED|TEXT_LEFT);		
+		CSDynamicRow row1 =  ui.new CSDynamicRow(25);
+		CSRadio oneChannel = row1.new CSRadio("Grayscale" , () -> channelsPerPixel == 1 , () -> channelsPerPixel = 1);
+		CSRadio threeChannels = row1.new CSRadio("RGB" , () -> channelsPerPixel == 3 , () -> channelsPerPixel = 3);
+		CSDynamicRow row2 =  ui.new CSDynamicRow(25);
+		CSRadio twoChannels = row2.new CSRadio("Grayscale + Alpha" , () -> channelsPerPixel == 2 , () -> channelsPerPixel = 2);
+		CSRadio fourChannels = row2.new CSRadio("RGB + Alpha" , () -> channelsPerPixel == 4, () -> channelsPerPixel = 4);
 		
 		channelsPerPixel = 4;
 		
@@ -95,21 +97,20 @@ public class NewProjectMenu extends Dialogue {
 	 	});
 	 	
 	 	CSDynamicRow paletteSizeInputTextRow = ui.new CSDynamicRow(20);
-	 	paletteSizeInputTextRow.new CSText("Input dimensions for palettes for this project, or leave blank for defaults.");
+	 	paletteSizeInputTextRow.new CSText("Palette size for this project, leave blank for defaults.");
 	 	
 	 	CSRow paletteSizeWidthInputRow = ui.new CSRow(30);
 	 	paletteSizeWidthInputRow.pushWidth(0.15f).pushWidth(0.80f);
-	 	paletteSizeWidthInputRow.new CSText("Width");
+	 	paletteSizeWidthInputRow.new CSText("Width:" , TEXT_CENTERED|TEXT_LEFT);
 	 	widthEditor = paletteSizeWidthInputRow.new CSTextEditor(4 , CSNuklear.DECIMAL_FILTER);
 	 		 	
 	 	CSRow paletteSizeHeightInputRow = ui.new CSRow(30);
 	 	paletteSizeHeightInputRow.pushWidth(0.15f).pushWidth(0.80f);
-	 	paletteSizeHeightInputRow.new CSText("Height");
+	 	paletteSizeHeightInputRow.new CSText("Height:" , TEXT_CENTERED|TEXT_LEFT);
 	 	heightEditor = paletteSizeHeightInputRow.new CSTextEditor(4 , CSNuklear.DECIMAL_FILTER);
 	 	
-	 	paletteSizeHeightInputRow.doLayout = () -> false;
-	 	paletteSizeWidthInputRow.doLayout = () -> false;
-	 	paletteSizeHeightInputRow.doLayout = () -> false;
+	 	CSDynamicRow totalPaletteSizeRow = ui.new CSDynamicRow(20);
+	 	totalPaletteSizeRow.new CSText(() -> "Total Palette Space (Pixels): " + getTotalPixelsFromInputs() , TEXT_LEFT|TEXT_MIDDLE);
 	 	
 	 	CSDynamicRow finishAndCancelRow = ui.new CSDynamicRow();
 	 	finishAndCancelRow.new CSButton("Finish" , this::finish);
@@ -137,14 +138,15 @@ public class NewProjectMenu extends Dialogue {
 			removeUIOnFinish.invoke();
 			canFinish = true;
 			existingProjects.add(input);
+			
 			String widthString = widthEditor.toString();
 			if(!widthString.equals("")) paletteWidth = Integer.parseInt(widthString);
-			if(paletteWidth <= 0) paletteWidth = ArtboardPalette.MAX_WIDTH;
-			String heightString = heightEditor.toString();
+			if(paletteWidth <= 0 || paletteWidth > ArtboardPalette.MAX_WIDTH) paletteWidth = ArtboardPalette.MAX_WIDTH;
+			
+			String heightString = heightEditor.toString();			
 			if(!heightString.equals("")) paletteHeight = Integer.parseInt(heightString);
-			if(paletteHeight <= 0) paletteHeight = ArtboardPalette.MAX_HEIGHT;
-			
-			
+			if(paletteHeight <= 0 || paletteHeight > ArtboardPalette.MAX_HEIGHT) paletteHeight = ArtboardPalette.MAX_HEIGHT;
+						
 		}
 		
 	}
@@ -211,4 +213,63 @@ public class NewProjectMenu extends Dialogue {
 		
 	}
 
+	private int getTotalPixelsFromInputs() {
+
+		String widthString = widthEditor.toString();
+		if(widthString.equals("")) return ArtboardPalette.MAX_WIDTH * ArtboardPalette.MAX_HEIGHT;
+		
+		int width;
+		
+		try {
+			
+			width = Integer.parseInt(widthString);
+			
+		} catch(NumberFormatException e) {
+			
+			return ArtboardPalette.MAX_WIDTH * ArtboardPalette.MAX_HEIGHT;
+			
+		}
+		
+		if(width > ArtboardPalette.MAX_WIDTH) {
+			
+			width = ArtboardPalette.MAX_WIDTH;
+			widthEditor.setStringBuffer(Integer.toString(ArtboardPalette.MAX_WIDTH));
+			
+		} else if (width <= 0) {
+			
+			width = 1;
+			widthEditor.setStringBuffer("1");
+			
+		}
+		
+		String heightString = heightEditor.toString();			
+		if(heightString.equals("")) return width * ArtboardPalette.MAX_HEIGHT;
+		int height;
+		
+		try {
+			
+			height = Integer.parseInt(heightString);
+			 
+		} catch(NumberFormatException e) {
+			
+			return width * ArtboardPalette.MAX_HEIGHT;
+			
+		}
+		
+		if(height > ArtboardPalette.MAX_HEIGHT) {
+			
+			height = ArtboardPalette.MAX_HEIGHT;
+			heightEditor.setStringBuffer(Integer.toString(ArtboardPalette.MAX_HEIGHT));
+			
+		} else if (height <= 0) {
+			
+			height = 1;
+			heightEditor.setStringBuffer("1");
+			
+		}
+		
+		return width * height;
+		
+	}
+	
 }

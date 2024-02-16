@@ -191,7 +191,7 @@ public class ChannelBuffer implements ColorPixel {
 		return "ChannelBuffer [r = " + ur() + ", g = " + ug() + ", b = " + ub() + ", a = " + ua() + "]";
 	}
 
-	@Override public Pixel copyOf() {
+	@Override public Pixel clone() {
 
 		return new ChannelBuffer(r , g , b , a);
 		

@@ -64,7 +64,14 @@ import cs.csss.project.Artboard;
 		
 		boolean scaling = Control.ARTBOARD_INTERACT.pressed();
 		
-		if(scaling && !wasScalingLastUpdate) editor.rendererPost(() -> newRender(current, editor)).await();
+		if(scaling && !wasScalingLastUpdate) editor.rendererPost(() -> {
+			
+			newRender(current, editor);
+			int[] bottomLeft = current.worldToPixelIndices(selectionBounder.LX(), selectionBounder.BY());
+			current.hidePixels(bottomLeft[0], bottomLeft[1] , selectionBounder.width() , selectionBounder.height());
+						
+		}).await();
+		
 		else if (scaling && wasScalingLastUpdate) {
 			
 			if(currentYPosition > previousYPosition) scale(true);

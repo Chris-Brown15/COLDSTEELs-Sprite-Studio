@@ -25,11 +25,11 @@ public interface ColorPixel extends Pixel {
 		
 		require(buffer.remaining() >= pixelSizeBytes);
 		
-		for(int i = 0 ; i < pixelSizeBytes ; i ++) switch(i) {
-			case 0 -> buffer.put(pixel.r());
-			case 1 -> buffer.put(pixel.g());
-			case 2 -> buffer.put(pixel.b());
-			case 3 -> buffer.put(pixel.a());
+		switch(pixelSizeBytes) {
+			case 1 -> buffer.put(pixel.r());			
+			case 2 -> buffer.put(pixel.r()).put(pixel.g());
+			case 3 -> buffer.put(pixel.r()).put(pixel.g()).put(pixel.b());
+			case 4 -> buffer.put(pixel.r()).put(pixel.g()).put(pixel.b()).put(pixel.a());
 		}
 		
 	}

@@ -22,12 +22,20 @@ public class FlexableGraphic implements CSGraphic , ShutDown {
 	
 	private final ByteBuffer imageData;
 	
+	/**
+	 * 
+	 * @param width
+	 * @param height
+	 * @param bytesPerChannel
+	 * @param channelsPerPixel
+	 * @param defaultChannelValues
+	 */
 	public FlexableGraphic(
-		final int width , 
-		final int height , 
-		final int bytesPerChannel , 
-		final int channelsPerPixel ,
-		final Number...defaultChannelValues 
+		int width , 
+		int height , 
+		int bytesPerChannel , 
+		int channelsPerPixel ,
+		Number...defaultChannelValues 
 	) {
 
 		specify(

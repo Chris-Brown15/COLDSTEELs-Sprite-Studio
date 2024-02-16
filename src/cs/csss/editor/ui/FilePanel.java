@@ -104,8 +104,7 @@ public class FilePanel {
 			addVisualLayerRow = projectMenu.new CSDynamicRow() ,
 			addNonVisualLayerRow = projectMenu.new CSDynamicRow() ,
 			toggleAnimationPanelRow = projectMenu.new CSDynamicRow(),
-			togglePaletteUIRow = projectMenu.new CSDynamicRow()
-			;
+			togglePaletteUIRow = projectMenu.new CSDynamicRow();
 		
 		addArtboardRow.new CSButton("Add Artboard" , editor::startNewArtboard);
 		addAnimationRow.new CSButton("Add Animation" , editor::startNewAnimation);
@@ -137,6 +136,8 @@ public class FilePanel {
 		optionsRow1.new CSButton("Background" , editor::startCheckeredBackgroundSettings);
 		
 		optionsMenu.new CSDynamicRow().new CSButton("Simulation Framerate" , editor::startSetSimulationFrameRate);
+		
+		optionsMenu.new CSDynamicRow().new CSButton("Select UI Theme" , editor::startSelectUITheme);
 		
 		/*
 		 * Steam workshop Menu
@@ -235,6 +236,16 @@ public class FilePanel {
 				
 			});
 			
+			debugMenu.new CSDynamicRow().new CSButton("Open Styler" , () -> {
+				
+				editor.startUICustomizer();
+				
+			});
+		
+			debugMenu.new CSDynamicRow().new CSButton(
+				"Dump Current Palette" , 
+				() -> editor.rendererPost(() -> editor.project().currentPalette().dumpToFile())
+			);
 		}
 		
 	}

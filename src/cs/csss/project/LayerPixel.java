@@ -107,7 +107,7 @@ public class LayerPixel implements TexturePixel , LookupPixel {
 		
 	}
 
-	@Override public Pixel copyOf() {
+	@Override public Pixel clone() {
 
 		return new LayerPixel(textureX , textureY , lookupX , lookupY);
 		

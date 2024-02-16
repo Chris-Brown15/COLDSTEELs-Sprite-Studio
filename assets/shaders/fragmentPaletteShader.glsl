@@ -11,11 +11,13 @@ uniform sampler2D paletteTexture;
 uniform sampler2D imageTexture;
 uniform int channels;
 
+const int MAX_PALETTE_SIZE = 256;
+
 void main() {
 
 	vec4 imageSample = texture(imageTexture , fragUV);
-	float adjustedU = (imageSample.r * paletteWidth) ;
-	float adjustedV = (imageSample.g * paletteHeight) ;
+	float adjustedU = (imageSample.r * MAX_PALETTE_SIZE);
+	float adjustedV = (imageSample.g * MAX_PALETTE_SIZE);
 	
 	vec4 paletteRead = texture(paletteTexture , vec2(adjustedU / (paletteWidth) , adjustedV / (paletteHeight)));
 	

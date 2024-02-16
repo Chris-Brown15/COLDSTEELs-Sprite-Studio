@@ -107,7 +107,11 @@ public class CSFile {
 
 	public void write() {
 		
-		try(FileOutputStream writer = new FileOutputStream(location.getVirtualPath() + CSFolder.separator + name)) {
+		File f = asFile();
+		
+		if(composition == null) return;
+		
+		try(FileOutputStream writer = new FileOutputStream(f)) {
 			
 			composition.write(writer);
 			
@@ -120,8 +124,12 @@ public class CSFile {
 	}
 	
 	public void read() {
+
+		File f = asFile();
 		
-		try(FileInputStream reader = new FileInputStream(location.getVirtualPath() + CSFolder.separator + name)) {
+		if(composition == null) return;
+		
+		try(FileInputStream reader = new FileInputStream(f)) {
 			
 			composition.read(reader);
 			

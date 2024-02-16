@@ -3,7 +3,7 @@ package cs.csss.utils;
 import cs.csss.engine.Position;
 
 /**
- * Container for methods for checking collisions between {@link cs.csss.VAOPosition.PositionMonitor PositionMonitor}s.
+ * Container for methods for checking collisions between instances of {@link Position}.
  */
 public final class CollisionUtils {
 

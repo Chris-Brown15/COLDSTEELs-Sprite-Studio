@@ -105,7 +105,7 @@ public class IndexPixel implements LookupPixel {
 		
 	}
 
-	@Override public Pixel copyOf() {
+	@Override public Pixel clone() {
 
 		return new IndexPixel(xIndex , yIndex);
 		

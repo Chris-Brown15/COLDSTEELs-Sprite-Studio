@@ -27,15 +27,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import org.joml.Vector3f;
+import org.lwjgl.nuklear.NkColor;
 import org.lwjgl.nuklear.NkPluginFilter;
+import org.lwjgl.nuklear.NkStyle;
 import org.lwjgl.system.Configuration;
-
 import com.codedisaster.steamworks.SteamAPI;
 import com.codedisaster.steamworks.SteamException;
 import com.codedisaster.steamworks.SteamFriends.OverlayToWebPageMode;
@@ -73,6 +75,8 @@ import cs.csss.editor.event.ShutDownProjectEvent;
 import cs.csss.misc.files.CSFile;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.misc.graphcs.memory.GPUMemoryViewer;
+import cs.csss.misc.ui.CTSS;
+import cs.csss.misc.ui.UICustomizer;
 import cs.csss.project.Animation;
 import cs.csss.project.AnimationFrame;
 import cs.csss.project.AnimationSwapType;
@@ -104,6 +108,7 @@ import cs.csss.ui.menus.SelectScriptMenu;
 import cs.csss.ui.menus.SetAnimationFrameSwapTypeMenu;
 import cs.csss.ui.menus.SteamWorkshopItemUpdateMenu;
 import cs.csss.ui.menus.SteamWorkshopItemUploadMenu;
+import cs.csss.ui.menus.ThemeSelector;
 import cs.csss.ui.menus.VectorTextMenu;
 import cs.csss.ui.utils.UIUtils;
 import cs.csss.utils.FloatReference;
@@ -163,7 +168,7 @@ public final class Engine implements ShutDown {
 	/**
 	 * Version of the current application distribution.
 	 */
-	public static final String VERSION_STRING = String.format("%s %d.%d%d" , "Beta" , 1 , 1 , 6);
+	public static final String VERSION_STRING = String.format("%s %d.%d%d" , "Beta" , 1 , 1 , 7);
 
 	/**
 	 * Containers for program files and assets.
@@ -304,7 +309,7 @@ public final class Engine implements ShutDown {
 		/**
 		 * Used to track whether we should be in real time mode or event driven mode.
 		 */
-		realtimeMode = false ;
+		realtimeMode = false;
 
 	private int realtimeTargetFPS = 60;
 	private double realtimeFrameTime = 1000 / realtimeTargetFPS;
@@ -319,12 +324,11 @@ public final class Engine implements ShutDown {
 
 	private Steamworks steam;	
 	
-	/**
-	 * Kept for the benefit of dragging the camera around.  
-	 */
-	private float previousCursorX , previousCursorY;
+	private final CursorDragManager cursorDragManager;
 	
-	private CursorDragState cursorDragState = CursorDragState.NOT_DRAGGING;
+	private NkStyle defaultStyle = NkStyle.malloc();
+	
+	private UITheme currentTheme;
 	
 	/**
 	 * Constructs the engine and initializes its members.
@@ -341,17 +345,19 @@ public final class Engine implements ShutDown {
 			nanoVG = null;
 			display = null;
 			editor = null;
+			cursorDragManager = null;
 			return;
 						
 		}
 		
 		initializeDirectories();
 		
-		display = new CSDisplay(true , "COLDSTEEL Sprite Studio" , 18 , "assets/fonts/FiraSansBold.ttf");
+		display = new CSDisplay(true , "COLDSTEEL Sprite Studio" , 18 , "assets/fonts/current.ttf");
 				
 		CSNuklearRender.BUFFER_INITIAL_SIZE(12 * 1024);
 		UIUtils.setFontWidthGetter(display.nuklear.font().width());
-				
+		defaultStyle.set(display.nuklear.context().style());
+		
 		initializeCamera();
 
 		nanoVG = display.renderer.make(() -> new NanoVG(display.window , camera , true)).get();
@@ -374,11 +380,13 @@ public final class Engine implements ShutDown {
 		
 		enqueueRender();	
 		
+		cursorDragManager = new CursorDragManager(this);
+		
 		CSSSException.registerTheEngine(this);
 		
 		CSUtils.onRequirementFailed = message -> new CSSSException(message , new RequirementFailedException(message));
 		CSUtils.onSpecificationBroken = message -> new CSSSException(message , new SpecificationBrokenException(message));
-	
+		
 	}
 	
 	/**
@@ -408,7 +416,7 @@ public final class Engine implements ShutDown {
 			
 			renderScene();
 			
-			updatePreviousCursorPositions();
+			cursorDragManager.update();
 			
 			if(isSteamInitialized()) SteamAPI.runCallbacks();
 
@@ -523,27 +531,6 @@ public final class Engine implements ShutDown {
 	}
 
 	/**
-	 * Sets the previous cursor coordinates.
-	 */
-	private void updatePreviousCursorPositions() {
-
-		float[] cursorCoords = getCursorWorldCoords();
-
-		if(Control.TWO_D_CURSOR_DRAG.pressed() && cursorDragState == CursorDragState.NOT_DRAGGING) {
-			
-			float xDistance = Math.abs(previousCursorX - cursorCoords[0]);
-			float yDistance = Math.abs(previousCursorY - cursorCoords[1]);
-			cursorDragState = xDistance > yDistance ? CursorDragState.DRAGGING_HORIZONTAL : CursorDragState.DRAGGING_VERTICAL;
-			
-		} else if(!Control.TWO_D_CURSOR_DRAG.pressed()) cursorDragState = CursorDragState.NOT_DRAGGING;
-		
-		//only update the previous coordiante if the drag state is not locked into the other axis.
-		if(cursorDragState != CursorDragState.DRAGGING_HORIZONTAL) previousCursorY = cursorCoords[1];		
-		if(cursorDragState != CursorDragState.DRAGGING_VERTICAL) previousCursorX = cursorCoords[0];
-		
-	}
-	
-	/**
 	 * Allows the user to move artboards and animations around freely.
 	 */
 	private void runProjectFreemove() {
@@ -636,9 +623,7 @@ public final class Engine implements ShutDown {
 		
 		double[] coords = display.window.cursorPosition();
 		float[] worldCoords = getCursorWorldCoords(new float[] {(float) coords[0] , (float) coords[1]});
-		//set the direction we are not dragging to the previous cursor's position for that axis.
-		if(cursorDragState == CursorDragState.DRAGGING_HORIZONTAL) worldCoords[1] = previousCursorY;
-		else if(cursorDragState == CursorDragState.DRAGGING_VERTICAL) worldCoords[0] = previousCursorX;
+		cursorDragManager.updateCurrentDragCoords(worldCoords);
 		
 		return worldCoords;
 		
@@ -779,7 +764,7 @@ public final class Engine implements ShutDown {
 	 */
 	public float previousCursorX() {
 		
-		return previousCursorX;
+		return cursorDragManager.previousCursorX;
 		
 	}
 
@@ -790,7 +775,7 @@ public final class Engine implements ShutDown {
 	 */
 	public float previousCursorY() {
 		
-		return previousCursorY;
+		return cursorDragManager.previousCursorY;
 		
 	}
 	
@@ -808,7 +793,14 @@ public final class Engine implements ShutDown {
 			if(newProjectMenu.get() == null) return;
 			currentProject = display.renderer.make(() -> {
 				
-				CSSSProject project = new CSSSProject(this , newProjectMenu.get() , newProjectMenu.channelsPerPixel());				
+				CSSSProject project = new CSSSProject(
+					this , 
+					newProjectMenu.get() , 
+					newProjectMenu.channelsPerPixel() , 
+					newProjectMenu.paletteWidth() , 
+					newProjectMenu.paletteHeight()
+				);
+				
 				project.initialize();
 				return project;
 				
@@ -1000,7 +992,8 @@ public final class Engine implements ShutDown {
 					
 				}
 								
-			}
+			},
+			() -> {}
 			
 		);
 		
@@ -1035,7 +1028,8 @@ public final class Engine implements ShutDown {
 					
 				}
 								
-			}
+			} ,
+			() -> {}
 			
 		);	
 		
@@ -1193,7 +1187,8 @@ public final class Engine implements ShutDown {
 			.22f ,
 			CSNuklear.NO_FILTER ,
 			999 ,
-			onFinish
+			onFinish , 
+			() -> {}
 		);
 		
 	}
@@ -1283,6 +1278,121 @@ public final class Engine implements ShutDown {
 	}
 
 	/**
+	 * Creates a UI for customizing the UI of Sprite Studio.
+	 */
+	public void startUICustomizer() {
+		
+		UICustomizer customizer;
+		
+		if(currentTheme != null) customizer = new UICustomizer(display.nuklear , editor , currentTheme.palette() , currentTheme.windowColor());
+		else customizer = new UICustomizer(display.nuklear , editor , null , null);
+		
+		THE_TEMPORAL.onTrue(customizer::finished, () -> {
+			
+			UITheme theme = customizer.resultingTheme();
+			if(theme == null) return;
+			customizer.shutDown();
+			
+			new DetailedInputBox(
+				display.nuklear ,
+				"Input Theme Name" , "Input the name of this theme." ,
+				0.4f , 0.4f , 0.2f , 0.15f ,
+				CSNuklear.NO_FILTER , 1024 ,
+				result -> {
+					
+					try {
+						
+						new CTSS(result , theme.style() , theme.palette() , theme.windowColor()).write();
+						
+					} catch (IOException e) {
+
+						e.printStackTrace();
+												
+					} finally {
+						
+						theme.shutDown();
+						
+					}
+					
+				} ,
+				theme::shutDown
+				
+			);
+			
+		});
+		
+	}
+	
+	/**
+	 * Creates a UI for selecting the current theme.
+	 */
+	public void startSelectUITheme() {
+		
+		ThemeSelector selector = new ThemeSelector(this , display.nuklear);
+		THE_TEMPORAL.onTrue(selector::finished, () -> {
+			
+			CSFile selected = selector.selected();
+			if(selected == null) return;
+			setTheme(selected.name());
+			
+		});
+		
+	} 
+	
+	/**
+	 * Resets the theme to the default theme.
+	 */
+	public void resetThemeToDefault() {
+		
+		display.nuklear.context().style().set(defaultStyle);
+		if(currentTheme != null) currentTheme.shutDown();
+		display.renderer.post(() -> glClearColor(.15f , .15f , .15f , 1.0f));		
+		currentTheme = null;
+		
+	}
+	
+	/**
+	 * Sets the current theme of the application from the file with the given name. {@code fileName} must be the name of a file in the 
+	 * {@code assets/themes/} folder.
+	 * 
+	 * @param fileName — name of a theme
+	 */
+	public void setTheme(String fileName) {
+		
+		Objects.requireNonNull(fileName);
+		if(!fileName.endsWith(CTSS.ending)) fileName += CTSS.ending;
+
+		NkStyle style = display.nuklear.context().style();
+		try {
+
+			CTSS reader = new CTSS(fileName , style);
+			reader.read();
+			NkColor windowColor = reader.windowColor();
+			display.renderer.post(() -> glClearColor(
+				(float)Byte.toUnsignedInt(windowColor.r()) / 255f ,
+				(float)Byte.toUnsignedInt(windowColor.g()) / 255f ,
+				(float)Byte.toUnsignedInt(windowColor.b()) / 255f ,
+				(float)Byte.toUnsignedInt(windowColor.a()) / 255f
+			));
+
+			if(currentTheme != null) currentTheme.shutDown();
+			currentTheme = new UITheme(fileName , null , reader.colorPalette() , windowColor);
+			
+		} catch (FileNotFoundException e) {
+
+			e.printStackTrace();
+			style.set(defaultStyle);
+			
+		} catch (IOException e) {
+			
+			e.printStackTrace();
+			style.set(defaultStyle);
+			
+		}
+		
+	}
+	
+	/**
 	 * Creates an UI element for saving projects.
 	 */
 	public void saveProject() { 
@@ -1358,7 +1468,7 @@ public final class Engine implements ShutDown {
 	/**
 	 * Toggles on or off fullscreen mode.
 	 */
-	public void toggleFullScreen() { 
+	public void toggleFullScreen() {
 		
 		isFullScreen = !isFullScreen;
 		if(isFullScreen) display.window.goBorderlessFullScreen();
@@ -1770,6 +1880,17 @@ public final class Engine implements ShutDown {
 	}
 	
 	/**
+	 * Returns the current theme loaded by the application, which can be <code>null</code>.
+	 * 
+	 * @return Current theme of the application.
+	 */
+	public UITheme currentTheme() {
+		
+		return currentTheme;
+		
+	}
+	
+	/**
 	 * Returns the translation of the camera. 
 	 * 
 	 * @return Translation of the camera.
@@ -1846,9 +1967,14 @@ public final class Engine implements ShutDown {
 		if(isSteamInitialized()) THE_THREADS.submit(SteamAPI::shutdown);		
 		settings2.write(this, editor);
 		
+		UICustomizer.finalShutDown();
+		
 		debugLoggedShutDown(nanoVG::shutDown, "NanoVG");
 		debugLoggedShutDown(editor::shutDown, "Editor");
-				
+		
+		defaultStyle.free();
+		if(currentTheme != null) currentTheme.shutDown();
+		
 		display.window.detachContext();
 		sysDebug("Detached render context.");
 		display.window.attachContext();
@@ -1880,14 +2006,6 @@ public final class Engine implements ShutDown {
 		sysDebug("Shutting down " + shutDownName + "...");
 		code.invoke();
 		sysDebug(shutDownName + " shut down.");
-		
-	}
-	
-	private enum CursorDragState {
-		
-		NOT_DRAGGING ,
-		DRAGGING_HORIZONTAL ,
-		DRAGGING_VERTICAL;
 		
 	}
 	

@@ -45,8 +45,6 @@ import cs.csss.utils.FloatReference;
  * 	width in pixels is the highest row. If an artboard is in two or more animations, it is rerendered for each animation it's in.
  * </p>
  * 
- * @author Chris Brown
- *
  */
 public class CSSSProject implements ShutDown {
 
@@ -55,7 +53,7 @@ public class CSSSProject implements ShutDown {
 	private static CSSSShader currentShader = thePaletteShader;
 
 	/**
-	 * The shader for artboards stays the same over any artboard, so only one is created and used everywhere.
+	 * Initializes all shaders
 	 */
 	@RenderThreadOnly public static void initializeArtboardShaders() {
 		
@@ -116,20 +114,14 @@ public class CSSSProject implements ShutDown {
 	
 	private int channelsPerPixel = -1;
 	
-	private boolean 
-		freemoveMode = false ,
-		freemoveCheckCollisions = true ,
-		freemoveText = false;
+	private boolean freemoveMode = false , freemoveCheckCollisions = true , freemoveText = false;
 	
 	private ArtboardPalette visualPalette;
 	private ArrayList<ArtboardPalette> nonVisualPalettes = new ArrayList<>(NonVisualLayerPrototype.MAX_SIZE_BYTES);
 
 	private ArtboardCopier copier = new ArtboardCopier();
 	
-	private final List<Artboard> 
-		allArtboards = new ArrayList<>() ,
-		looseArtboards = new ArrayList<>();
-
+	private final List<Artboard> allArtboards = new ArrayList<>() , looseArtboards = new ArrayList<>();
 	private final List<Animation> animations = new ArrayList<>();
 	private final List<VisualLayerPrototype> visualLayerPrototypes = new ArrayList<>();
 	private final List<NonVisualLayerPrototype> nonVisualLayerPrototypes = new ArrayList<>();

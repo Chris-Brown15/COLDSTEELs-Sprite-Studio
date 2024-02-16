@@ -17,10 +17,15 @@ import static org.lwjgl.system.MemoryUtil.memCopy;
 
 import static cs.core.graphics.StandardRendererConstants.POSITION_2D;
 import static cs.core.graphics.StandardRendererConstants.UV;
-import static cs.core.graphics.StandardRendererConstants.STREAM_VAO;
+import static cs.core.graphics.StandardRendererConstants.STATIC_VAO;
 import static cs.core.graphics.StandardRendererConstants.UINT;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -32,12 +37,15 @@ import cs.core.graphics.CSRender;
 import cs.core.graphics.CSTexture;
 import cs.core.graphics.CSVAO;
 import cs.core.graphics.utils.VertexBufferBuilder;
+import cs.core.utils.data.exceptions.StackUnderflowException;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.engine.CSSSCamera;
 import cs.csss.engine.ChannelBuffer;
 import cs.csss.engine.ColorPixel;
+import cs.csss.engine.Engine;
 import cs.csss.engine.Pixel;
 import cs.csss.engine.TransformPosition;
+import cs.csss.misc.files.CSFolder;
 import cs.csss.misc.utils.FlexableGraphic;
 
 /**
@@ -61,7 +69,7 @@ import cs.csss.misc.utils.FlexableGraphic;
 
 	final int channelsPerPixel;	
 	
-	private int	glDataFormat , pixelSizeBytes , paletteWidth = 256 , paletteHeight = 256;
+	private int	glDataFormat , pixelSizeBytes , paletteWidth = MAX_WIDTH , paletteHeight = MAX_HEIGHT;
 	
 	private volatile ByteBuffer paletteMemory;
 	
@@ -133,9 +141,9 @@ import cs.csss.misc.utils.FlexableGraphic;
 	 	vertices.size(paletteWidth, paletteHeight);
 	 	vertices.midpoint(0 , 0);
 	 	transform = new TransformPosition(vertices.attribute(POSITION_2D));
-	 	vao = new CSVAO(vertices.attributes , STREAM_VAO , vertices.get()); 	 		 		
+	 	vao = new CSVAO(vertices.attributes , STATIC_VAO , vertices.get()); 	 		 		
 	 	vao.drawAsElements(6, UINT);
-	 	render = new CSRender(vao , CSSSProject.theTextureShader() , this); 	 		
+	 	render = new CSRender(vao , CSSSProject.theTextureShader() , this);
 	 		
 	}
 	
@@ -208,16 +216,15 @@ import cs.csss.misc.utils.FlexableGraphic;
 	public void put(int xIndex , int yIndex , ColorPixel writeThis) {
 
 		try(MemoryStack stack = MemoryStack.stackPush()) {
-
-			ByteBuffer imageDataAsPtr = stack.malloc(pixelSizeBytes);
-			ColorPixel.buffer(imageDataAsPtr, writeThis, pixelSizeBytes);
-						
+			
 			//buffer this into the CPU buffer
 			int position = paletteMemory.position();
 			paletteMemory.position(yIndex * paletteWidth * pixelSizeBytes + xIndex * pixelSizeBytes);
 			ColorPixel.buffer(paletteMemory , writeThis , pixelSizeBytes);
 			paletteMemory.position(position);
-			
+
+			ByteBuffer imageDataAsPtr = stack.malloc(pixelSizeBytes);
+			ColorPixel.buffer(imageDataAsPtr, writeThis, pixelSizeBytes);			
 			imageDataAsPtr.flip();
 			
 			activate();
@@ -418,6 +425,28 @@ import cs.csss.misc.utils.FlexableGraphic;
 	}
 	
 	/**
+	 * Removes the most recently added color from this palette.
+	 * 
+	 * @throws StackUnderflowException if there is no color to remove from this palette.
+	 */
+	@RenderThreadOnly public void popRecentColor() {
+		
+		byte tff = (byte) 0xff;
+		PalettePixel defaultColor = new PalettePixel(tff , tff , tff , tff);
+		put(currentCol , currentRow , defaultColor);
+		
+		currentCol--;
+		if(currentCol < 0) {
+			
+			currentCol = (short)(paletteWidth - 1);
+			currentRow--;
+			if(currentRow < 0) throw new StackUnderflowException("This palette is completely empty.");
+			
+		}		
+		
+	}
+	
+	/**
 	 * Renders this palette at the given position using the given camera.
 	 * 
 	 * @param camera — camera to render with
@@ -469,8 +498,7 @@ import cs.csss.misc.utils.FlexableGraphic;
  		int[] destination = new int[2];
  		worldCoordinateToPixelIndices(worldCoordinates, destination);
  		return destination;
- 		
- 	
+ 		 	
  	}
  	
  	/**
@@ -520,6 +548,54 @@ import cs.csss.misc.utils.FlexableGraphic;
 		
 	}
 	
+	/**
+	 * Dumps the palette to a file.
+	 */
+	@RenderThreadOnly public void dumpToFile() {
+		
+		if(!Engine.isDebug()) throw new IllegalStateException("This method can only be invoked in debug mode.");
+		
+ 		File file = CSFolder.getRoot("debug").createFile(
+ 			"Palette Dump at " + LocalTime.now().toString().replaceAll(":", "_") , 
+ 			null
+ 		).asFile();
+		
+ 		try(FileOutputStream writer = new FileOutputStream(file)) {
+
+// 			writer.getChannel().write(paletteMemory);
+ 			
+ 			ByteBuffer texels = org.lwjgl.system.MemoryUtil.memCalloc(paletteWidth * paletteHeight * channelsPerPixel);
+ 			
+ 			activate();
+
+ 			int graphicChannels = switch(channelsPerPixel) { 			
+ 				case 1 -> GL_RED;
+ 				case 2 -> GL_RG;
+ 				case 3 -> GL_RGB;
+ 				case 4 -> GL_RGBA;
+ 				default -> throw new IllegalArgumentException(); 			
+ 			};
+ 			 			
+ 			org.lwjgl.opengl.GL30C.glGetTexImage(GL_TEXTURE_2D , 0 , graphicChannels , GL_UNSIGNED_BYTE , texels);
+ 			
+ 			writer.getChannel().write(texels);
+ 			deactivate();
+ 			writer.flush();
+ 			
+ 			org.lwjgl.system.MemoryUtil.memFree(texels);
+ 			
+ 		} catch (FileNotFoundException e) {
+
+ 			e.printStackTrace();
+
+		} catch (IOException e) {
+
+			e.printStackTrace();
+		}
+ 		 
+		
+	}
+	
 	@Override public void shutDown() {
 		
 		super.shutDown();
@@ -528,13 +604,8 @@ import cs.csss.misc.utils.FlexableGraphic;
 	}
 	
 	/**
-	 * This class exists mainly because java does not have unsigned primitives. This means that code that wants a java {@code byte} to be 
-	 * unsigned, as it is in the GPU, may have errors which this class tries to fix. As well, there are basically different kinds of pixels 
-	 * in this application, image pixels and palette pixels. Palette pixels are more complicated because their number of bytes per channel 
-	 * and number of channels per pixel vary. 
-	 * 
-	 * @author Chris Brown
-	 *
+	 * Class representing palette texture pixels. Instances are created by a palette and will be filled out according to the palette's state, such
+	 * as channels per pixel.
 	 */
 	public class PalettePixel implements ColorPixel {
 
@@ -696,7 +767,7 @@ import cs.csss.misc.utils.FlexableGraphic;
 			
 		}
 
-		@Override public Pixel copyOf() {
+		@Override public Pixel clone() {
 
 			return new PalettePixel(red , green , blue , alpha);
 			

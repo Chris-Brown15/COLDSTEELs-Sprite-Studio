@@ -10,6 +10,7 @@ import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
 import cs.core.ui.CSNuklear.CSUserInterface;
+import cs.core.utils.Lambda;
 import cs.csss.ui.utils.UIUtils;
 
 /**
@@ -43,7 +44,8 @@ public class DetailedInputBox extends Dialogue {
 		float heightRatio ,
 		NkPluginFilter filter ,
 		int maxCharacters ,
-		Consumer<String> onAccept
+		Consumer<String> onAccept ,
+		Lambda onCancel
 	) {
 
 		ui = nuklear.new CSUserInterface(title , xPositionRatio , yPositionRatio , widthRatio , heightRatio);
@@ -68,7 +70,12 @@ public class DetailedInputBox extends Dialogue {
 			
 		});
 		
-		finishRow.new CSButton("Cancel" , () -> shutDown(nuklear , ui));
+		finishRow.new CSButton("Cancel" , () -> {
+			
+			onCancel.invoke();
+			shutDown(nuklear , ui);
+			
+		});
 		
 	}
 

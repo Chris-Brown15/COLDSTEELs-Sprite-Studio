@@ -27,7 +27,7 @@ public abstract class Dialogue {
 	public Dialogue() {
 		
 		openDialogues++;
-		
+				
 	}
 
 	/**

@@ -371,9 +371,10 @@ public class Artboard {
 			return new IndexPixel(indices[0] , indices[1]);
 			
 		} else {
-			
+
 			PalettePixel asPalette = activeLayer().palette.new PalettePixel(pixel.r() , pixel.g() , pixel.b() , pixel.a());
 			short[] indices = activeLayer().palette.putOrGetColors(asPalette);
+			
 			return new IndexPixel(indices[0] , indices[1]);
 			
 		}
@@ -1118,6 +1119,20 @@ public class Artboard {
 	}
 	
 	/**
+	 * Returns the highest ranked layer that modifies the pixel at the given indices. If no layer does so, <code>null</code> is returned.
+	 * 
+	 * @param xIndex — x index of a pixel
+	 * @param yIndex — y index of a pixel
+	 * @return The {@link VisualLayer} that modifies the pixel at {@code (xIndex , yIndex)}, or <code>null</code> if none exists.
+	 */
+	public VisualLayer getHighestRankLayerModifying(int xIndex , int yIndex) {
+		
+		for(VisualLayer x : visualLayers) if(x.containsModificationTo(xIndex, yIndex)) return x;
+		return null;
+		
+	}
+	
+	/**
 	 * Returns whether a layer of a greater rank than that of {@code index} modifies the given pixel position.
 	 * 
 	 * @param superiorToThis — index in the visual layer list of the layer whose superior layers are being queried
@@ -1275,7 +1290,7 @@ public class Artboard {
 		else if(someColor instanceof ColorPixel asColor) {
 			
 			short[] indices = activeLayer.palette.getIndicesOfColor(asColor);
-			return pixel.unsignedLookupX() == indices[0] && pixel.unsignedLookupY() == indices[1];
+			return indices != null && pixel.unsignedLookupX() == indices[0] && pixel.unsignedLookupY() == indices[1];
 			
 		}
 	
@@ -1288,7 +1303,7 @@ public class Artboard {
 	 * 
 	 * @param newRank — new rank for the active layer
 	 */
-	public void moveVisualLayerRank(final int newRank) {
+	public void moveVisualLayerRank(int newRank) {
 		
 		if(!isActiveLayerVisual) return;
 		
@@ -1302,7 +1317,7 @@ public class Artboard {
 	 * @param moveThisRank — rank of a layer to move
 	 * @param toThisRank — new rank for the layer at {@code moveThisRank} 
 	 */ 
-	public void moveVisualLayerRank(final int moveThisRank , final int toThisRank) {
+	public void moveVisualLayerRank(int moveThisRank , int toThisRank) {
 		 
 		specify(moveThisRank >= 0 && moveThisRank < visualLayers.size() , moveThisRank + " is invalid as a layer rank.");
 		specify(toThisRank >= 0 && toThisRank < visualLayers.size() , toThisRank + " is invalid as a layer rank.");
@@ -1362,7 +1377,7 @@ public class Artboard {
 	 * @param rank — rank of a layer
 	 * @return Visual layer at that rank.
 	 */
-	public VisualLayer getVisualLayer(final int rank) {
+	public VisualLayer getVisualLayer(int rank) {
 		
 		return visualLayers.get(rank);
 		
@@ -1386,7 +1401,7 @@ public class Artboard {
 	 * @param prototype — prototype of a visual layer from which an instance is derived and contained within this artboard 
 	 * @return Instance of visual layer derived from {@code prototype}.
 	 */
-	public VisualLayer getVisualLayer(final VisualLayerPrototype prototype) {
+	public VisualLayer getVisualLayer(VisualLayerPrototype prototype) {
 
 		for(int i = 0 ; i < visualLayers.size() ; i++) if(visualLayers.get(i).isInstanceOfPrototype(prototype)) return visualLayers.get(i);
 		throw new IllegalStateException("Layer not found!");
@@ -1469,7 +1484,7 @@ public class Artboard {
 
 		/*
 		 * Determine what quadrant of the checkered background the pixel at the given indices is in.
-		 * Divide the indices by 8 to get their region 
+		 * Divide the indices by the corresponding dimension to get their region 
 		 * The regions' oddness or evenness tells us whether to pick the darker or lighter color to put in the image. 
 		 * However, if the region of the y index is even, we need to choose the opposite of what the color was. 
 		 *
@@ -1477,18 +1492,15 @@ public class Artboard {
 		 * look. To do this, switch the starting color at the start of every row.
 		 */ 
 
-		int 
-			xRegion = xIndex / IndexTexture.backgroundWidth ,
-			yRegion = yIndex / IndexTexture.backgroundHeight;
+		int xRegion = xIndex / IndexTexture.backgroundWidth;
+		int yRegion = yIndex / IndexTexture.backgroundHeight;
 		
 		//odd exponent, use the darker background otherwise use the lighter one
 		boolean darker = (xRegion & 1) == 1;
 		//flip darker if the y region is even
 		if((yRegion & 1) == 0) darker = !darker;
 				
-		return getColorPointedToBy(
-			darker ? indexTexture.darkerTransparentBackground : indexTexture.lighterTransparentBackground
-		);
+		return getColorPointedToBy(darker ? indexTexture.darkerTransparentBackground : indexTexture.lighterTransparentBackground);
 		
 	}
 
@@ -1835,6 +1847,53 @@ public class Artboard {
 	@RenderThreadOnly public void removePixels(CorrectedParameters region) {
 		
 		removePixels(region.leftX() , region.bottomY() , region.width() , region.height());
+		
+	}
+	
+	/**
+	 * Hides visibility of the pixel at the given indices. Whatever pixel is currently present will be removed from the image, but not from any 
+	 * layer. If a layer lower than the highest layer modifying the given position also modifies that position, its pixel is shown instead.
+	 * 
+	 * @param xIndex — x index of the pixel to hide
+	 * @param yIndex — y index of the pixel to hide
+	 */
+	public void hidePixel(int xIndex , int yIndex) {
+		
+		if(isActiveLayerVisual) {
+			
+			VisualLayer highest = getHighestRankLayerModifying(xIndex, yIndex);
+			if(highest != null) {
+				
+				VisualLayer lower = getHighestLowerRankLayerModifying(getLayerRank(highest), xIndex, yIndex);
+				if(lower != null) writeToIndexTexture(xIndex, yIndex, 1, 1, lower.get(xIndex, yIndex));
+				else writeToIndexTexture(xIndex , yIndex , 1 , 1 , getBackgroundColor(xIndex, yIndex));
+				
+			} else writeToIndexTexture(xIndex , yIndex , 1 , 1 , getBackgroundColor(xIndex, yIndex));
+			
+		} else writeToIndexTexture(xIndex , yIndex , 1 , 1 , getBackgroundColor(xIndex , yIndex));
+		
+	}
+	
+	/**
+	 * Hides visibility of the pixels in the given region. Whatever pixel is currently present at each position in the region will be removed from 
+	 * the image but not its layer. If a layer lower than the highest layer modifying any given position also modifies that position, its pixel is 
+	 * shown instead.
+	 * 
+	 * @param leftX — left x coordinate of the region to modify
+	 * @param bottomY — bottom y coordinate of the region to modify
+	 * @param width — width of the region to modify
+	 * @param height — height of the region to modify
+	 */
+	public void hidePixels(int leftX , int bottomY , int width , int height) {
+
+		RegionIterator iter = Artboards.region(leftX, bottomY, width, height);
+		int[] x;
+		while(iter.hasNext()) {
+			
+			x = iter.next();
+			hidePixel(x[0] , x[1]);
+			
+		}
 		
 	}
 	

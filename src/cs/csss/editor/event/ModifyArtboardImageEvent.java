@@ -3,6 +3,7 @@ package cs.csss.editor.event;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.engine.Pixel;
 import cs.csss.project.Artboard;
+import cs.csss.project.ArtboardPalette;
 
 /**
  * Generic event for modifying an artboard index texture layers. This event will write to the index texture conditionally based on layer 
@@ -16,6 +17,8 @@ import cs.csss.project.Artboard;
 	private final Artboard artboard;
 	private final int xIndex , yIndex , width , height;	
 	private final Pixel color;
+	//used to track if a new color was added to the palette. If it was, and this event is undone, we want to remove the added color from the palette.
+	private boolean addedToPalette = false , didYet = false;
 
 	/**
 	 * Creates a modify artboard image event.
@@ -55,20 +58,40 @@ import cs.csss.project.Artboard;
 		this.width = width;
 		this.height = height;
 
-		this.color = color.copyOf();
-
+		this.color = color.clone();
+				
 	}
 
 	@Override public void _do() {
 
-		artboard.putColorInImage2(xIndex, yIndex, width, height, color);
+		//in the first time we do this event, we check whether we added a color to the palette as a result of this event.
+		if(!didYet) {
+			
+			didYet = true;
+ 			ArtboardPalette palette = artboard.activeLayer().palette();
+ 			int currentPaletteX = palette.currentCol();
+ 			
+ 			artboard.putColorInImage2(xIndex, yIndex, width, height, color);
+ 			
+ 			int newPaletteX = palette.currentCol();
+ 			
+ 							 //if this is true, we have added a new color
+ 			addedToPalette = newPaletteX != currentPaletteX;
+ 			
+		} else artboard.putColorInImage2(xIndex, yIndex, width, height, color);		
 
 	}
 
 	@Override public void undo() {
 
 		artboard.removePixels(xIndex, yIndex, width, height);
-
+		if(addedToPalette) {
+			
+			ArtboardPalette palette = artboard.activeLayer().palette();
+			palette.popRecentColor();
+			
+		}
+		
 	}
 
 }

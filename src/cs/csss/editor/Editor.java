@@ -31,8 +31,8 @@ import cs.csss.editor.brush.Delete_RegionBrush;
 import cs.csss.editor.brush.EraserBrush;
 import cs.csss.editor.brush.Eye_DropperBrush;
 import cs.csss.editor.brush.Flood_FillBrush;
-import cs.csss.editor.brush.PencilBrush;
 import cs.csss.editor.brush.Move_RegionBrush;
+import cs.csss.editor.brush.PencilBrush;
 import cs.csss.editor.brush.Replace_AllBrush;
 import cs.csss.editor.brush.RotateBrush;
 import cs.csss.editor.brush.Scale_RegionBrush;
@@ -718,7 +718,7 @@ public class Editor implements ShutDown {
 		switch(engine.currentProject().getChannelsPerPixelOfCurrentLayer()) {
 			case 1 -> setSelectedColor(other.r() , zero , zero , zero);
 			case 2 -> setSelectedColor(other.r() , other.g() , zero , zero);
-			case 3 -> setSelectedColor(other.r() , other.g() , other.b() , (byte)0xff);
+			case 3 -> setSelectedColor(other.r() , other.g() , other.b() , zero);
 			case 4 -> setSelectedColor(other.r() , other.g() , other.b() , other.a());
 		}
 				
@@ -997,6 +997,24 @@ public class Editor implements ShutDown {
 		
 		engine.startAddText();
 		
+	}
+	
+	/**
+	 * Creates a UI for customizing the style of the UI.
+	 */
+	public void startUICustomizer() {
+		
+		engine.startUICustomizer();
+		
+	}
+	
+	/**
+	 * Creates a UI for selecting a theme to set for the UI.
+	 */
+	public void startSelectUITheme() {
+	
+		engine.startSelectUITheme();
+	
 	}
 	
 	/**
@@ -1566,7 +1584,7 @@ public class Editor implements ShutDown {
 		return engine.windowSize();
 		
 	}
-	
+		
 	/**
 	 * Uses reflection to detect whether a shutdown method is present on the given event. This is for the advantage of Jython implementations of 
 	 * {@code CSSSEvent}. 

@@ -77,9 +77,11 @@ public class LHSPanel {
 
 			CSDynamicRow rgbaColorRow = ui.new CSDynamicRow(200);
 			CSDynamicRow rgbColorRow = ui.new CSDynamicRow(200);
+			
 			rgbaChooser = rgbaColorRow.new CSColorPicker(RGBA);
 			rgbChooser = rgbColorRow.new CSColorPicker(RGB);
 			twoDColor = new TwoChannelColorPicker(nuklear.context());
+			
 			rgbaColorRow.doLayout = () -> channels() == 4;
 			rgbColorRow.doLayout = () -> channels() == 3;
 			twoDColor.doLayout = () -> channels() <= 2;
@@ -115,7 +117,8 @@ public class LHSPanel {
 			colorInput("Blue" , 2 , rgbRow);
 			colorInput("Alpha" , 3 , alphaRow1);
 			
-			ui.new CSDynamicRow(30).new CSButton("Input Whole Color" , this::startWholeColorInput);
+			CSDynamicRow wholeColorButtonRow = ui.new CSDynamicRow(30) ; wholeColorButtonRow.doLayout = () -> channels() > 1;
+			wholeColorButtonRow.new CSButton("Input Whole Color" , this::startWholeColorInput);
 			
 			/*
 			 * Auto Palette
@@ -169,7 +172,7 @@ public class LHSPanel {
 					);
 					
 					ColorPixel[] pixels;
-					if(!previousColorEqualsCurrent) { 
+					if(!previousColorEqualsCurrent) {
 						
 						if(Engine.isDebug()) try {
 							
@@ -380,6 +383,7 @@ public class LHSPanel {
 			
 			colors[0] = (byte) twoDColor.gray;
 			if(channels() == 2) colors[1] = (byte) twoDColor.alpha;
+			else colors[1] = 0;
 			return colors;
 			
 		}
