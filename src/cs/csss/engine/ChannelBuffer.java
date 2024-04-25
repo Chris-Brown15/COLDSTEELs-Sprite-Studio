@@ -18,7 +18,7 @@ public class ChannelBuffer implements ColorPixel {
 	 * @param pixel — source pixel
 	 * @return {@code ChannelStore} view of {@code pixel}.
 	 */
-	public static ChannelBuffer asChannelStore(ColorPixel pixel) {
+	public static ChannelBuffer asChannelBuffer(ColorPixel pixel) {
 		
 		if(pixel instanceof ChannelBuffer asChannelStore) return asChannelStore;
 		return new ChannelBuffer(pixel.r() , pixel.g() , pixel.b() , pixel.a());

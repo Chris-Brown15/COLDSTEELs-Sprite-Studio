@@ -47,7 +47,6 @@ import com.codedisaster.steamworks.SteamUGC.UserUGCList;
 import com.codedisaster.steamworks.SteamUGC.UserUGCListSortOrder;
 
 import cs.core.CSDisplay;
-import cs.core.graphics.CSRender;
 import cs.core.graphics.CSStandardRenderer;
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSNuklearRender;
@@ -70,8 +69,11 @@ import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
 import cs.csss.editor.ScriptType;
 import cs.csss.editor.brush.CSSSSelectingBrush;
+import cs.csss.editor.event.CreateArtboardEvent;
 import cs.csss.editor.event.MoveLayerRankEvent;
+import cs.csss.editor.event.ReorderControlPointEvent;
 import cs.csss.editor.event.ShutDownProjectEvent;
+import cs.csss.editor.line.BezierLine;
 import cs.csss.misc.files.CSFile;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.misc.graphcs.memory.GPUMemoryViewer;
@@ -83,6 +85,7 @@ import cs.csss.project.AnimationSwapType;
 import cs.csss.project.Artboard;
 import cs.csss.project.CSSSProject;
 import cs.csss.project.VisualLayer;
+import cs.csss.project.io.CTSP2File;
 import cs.csss.project.io.CTSPFile;
 import cs.csss.project.io.ImageImporter;
 import cs.csss.project.io.ProjectExporterUI;
@@ -95,7 +98,9 @@ import cs.csss.ui.menus.ArtboardMenu;
 import cs.csss.ui.menus.CheckeredBackgroundSettingsMenu;
 import cs.csss.ui.menus.DetailedInputBox;
 import cs.csss.ui.menus.Dialogue;
+import cs.csss.ui.menus.DialogueInputBox;
 import cs.csss.ui.menus.DroppedFileAcceptingDialogue;
+import cs.csss.ui.menus.LineByLineNotificationBox;
 import cs.csss.ui.menus.LoadProjectMenu;
 import cs.csss.ui.menus.ModifyControlsMenu;
 import cs.csss.ui.menus.NewAnimationMenu;
@@ -168,7 +173,7 @@ public final class Engine implements ShutDown {
 	/**
 	 * Version of the current application distribution.
 	 */
-	public static final String VERSION_STRING = String.format("%s %d.%d%d" , "Beta" , 1 , 1 , 7);
+	public static final String VERSION_STRING = String.format("%s %d.%d%d" , "Beta" , 1 , 1 , 8);
 
 	/**
 	 * Containers for program files and assets.
@@ -211,13 +216,13 @@ public final class Engine implements ShutDown {
 		} catch(IOException e) {
 			
 			e.printStackTrace();
-			System.exit(-1);
+			throw new IllegalStateException("Failed to start Logging.");
 			
 		}
 		
 		//parse arguments
 		List<String> args = List.of(programArgs);
-		if(!args.isEmpty()) syserr("args: " + args);
+		if(!args.isEmpty()) sysDebugln("args: " + args);
 		if(args.contains("-d")) preinitializeDebug();
 		if(args.contains("-ns")) useSteam = false;
 
@@ -235,7 +240,7 @@ public final class Engine implements ShutDown {
 	private static void preinitializeDebug() { 
 		
 		isDebug = true;		
-		sysDebug("[COLDSTEEL SPRITE STUDIO DEBUG ENABLED]");		
+		sysDebugln("[COLDSTEEL SPRITE STUDIO DEBUG ENABLED]");		
 		Configuration.DEBUG_MEMORY_ALLOCATOR.set(true);
 		
 	}
@@ -284,14 +289,13 @@ public final class Engine implements ShutDown {
 		THE_THREADS.shutdown();
 		CSDisplay.finalShutDown();
 		
-		
 	}
 	
 	/**
 	 * Contains the renderer, window, and CSNuklear, a UI factory object. If this is assigned to null, the program will immediately close. 
 	 * If this is null, its because Steam is going to restart the application.
 	 */
-	private final CSDisplay display;
+	private final CSSSDisplay display;
 	private final Editor editor;
 	private CSSSCamera camera;
 	private Await renderScene;
@@ -339,9 +343,9 @@ public final class Engine implements ShutDown {
 	 */
 	Engine() {
 		
+		//early exit because we need to restart for Steam
 		if(useSteam && !initializeSteam()) { 
 			
-			//early exit because we need to restart for Steam
 			nanoVG = null;
 			display = null;
 			editor = null;
@@ -352,7 +356,7 @@ public final class Engine implements ShutDown {
 		
 		initializeDirectories();
 		
-		display = new CSDisplay(true , "COLDSTEEL Sprite Studio" , 18 , "assets/fonts/current.ttf");
+		display = new CSSSDisplay(true , "COLDSTEEL Sprite Studio" , 18 , "assets/fonts/current.ttf");
 				
 		CSNuklearRender.BUFFER_INITIAL_SIZE(12 * 1024);
 		UIUtils.setFontWidthGetter(display.nuklear.font().width());
@@ -370,19 +374,19 @@ public final class Engine implements ShutDown {
 		openGLStateInitialize();
 		
 		editor = new Editor(this , display);
-
+		
 		settings2.read(this , editor);
 
 		setOnScroll();	
 		setOnMouseInput();		
 		setOnFileDrop();
 		setOnIconify();
-		
+
+		cursorDragManager = new CursorDragManager();
+
 		enqueueRender();	
 		
-		cursorDragManager = new CursorDragManager(this);
-		
-		CSSSException.registerTheEngine(this);
+		CSSSException.registerTheEngine(this); 
 		
 		CSUtils.onRequirementFailed = message -> new CSSSException(message , new RequirementFailedException(message));
 		CSUtils.onSpecificationBroken = message -> new CSSSException(message , new SpecificationBrokenException(message));
@@ -393,16 +397,16 @@ public final class Engine implements ShutDown {
 	 * Contains the main loop of the application.
 	 * 
 	 * <p>
-	 * 	Typically, Sprite Studio runs on a largely event driven architecture and will 'wait' for inputs to be sent from peripherals before
-	 * 	running a main loop frame. It is also possible however to run in a more realtime mode, in which a fixed number of loop iterations
-	 * 	occur every second.
+	 * 	Typically, Sprite Studio runs on a largely event driven architecture and will 'wait' for inputs to be sent from peripherals before running a 
+	 * 	main loop iteration. It is also possible however to run in a more realtime mode, in which a fixed number of loop iterations occur every second.
 	 * </p>
 	 */
 	void run() {
 
+		//early out for steam
 		if(display == null) return;
 
-		while(display.persist()) {
+		while(display.window.persist()) {
 			
 			getInputs();
 			
@@ -416,14 +420,14 @@ public final class Engine implements ShutDown {
 			
 			renderScene();
 			
-			cursorDragManager.update();
+			cursorDragManager.update(getCursorWorldCoords());
 			
 			if(isSteamInitialized()) SteamAPI.runCallbacks();
 
 			realtimeFrameLockup();
 			
 		}
-
+		
 	}
 	
 	private void renderScene() {
@@ -434,7 +438,7 @@ public final class Engine implements ShutDown {
 	
 	private void enqueueRender() {
 
-		display.layoutAllUserInterfaces();
+		display.nuklear.layoutAllInterfaces();
 		
 		renderScene = display.renderer.post(() -> {
 			
@@ -447,8 +451,7 @@ public final class Engine implements ShutDown {
 				if(currentProject != null) {
 	
 					CSSSProject.currentShader().updatePassVariables(camera.projection() , camera.viewTranslation());				
-					currentProject.renderAllArtboards();
-					currentProject.renderAllVectorTextBoxes(frame);
+					currentProject.renderEverything(CSSSProject.currentShader(), frame);
 
 					editor.renderSelectingBrushRender();				
 					editor.renderSelectingBrushBounder(frame);
@@ -456,6 +459,8 @@ public final class Engine implements ShutDown {
 
 				}
 
+				editor.renderNanoVGCallbacks(frame);
+				
 				//render UI
 				display.nuklear.render();
 				
@@ -511,8 +516,8 @@ public final class Engine implements ShutDown {
 		if(realtimeMode) {
 			
 			long waitFor = (long) (realtimeFrameTime - frameTimer.getElapsedTimeMillis());
-			//this will be true if the frame took longer than the ideal frame time, REALTIME_FRAME_TIME, which is no big deal, just dont
-			//make the thread wait.
+			//this will be true if the frame took longer than the ideal frame time, REALTIME_FRAME_TIME, in which case do not use waitFor to stop
+			//the frame
 			if(waitFor <= 0) return;
 			
 			Thread current = Thread.currentThread();
@@ -741,7 +746,7 @@ public final class Engine implements ShutDown {
 	 */
 	public void currentProject(CSSSProject project) {
 		
-	 	if(currentProject != null) editor.eventPush(new ShutDownProjectEvent(currentProject));		
+	 	if(currentProject != null) editor.eventPush(new ShutDownProjectEvent(editor , currentProject));		
 		currentProject = project;
 		
 	}
@@ -791,6 +796,15 @@ public final class Engine implements ShutDown {
 		Engine.THE_TEMPORAL.onTrue(newProjectMenu::canFinish , () -> {
 			
 			if(newProjectMenu.get() == null) return;
+			
+			//clear out old events and shut down the previous project when making a new one
+			if(currentProject != null) {
+				
+				editor.eventPush(new ShutDownProjectEvent(editor , currentProject));
+				editor.clearEventStructures();
+			
+			}
+			
 			currentProject = display.renderer.make(() -> {
 				
 				CSSSProject project = new CSSSProject(
@@ -864,18 +878,9 @@ public final class Engine implements ShutDown {
 		ArtboardMenu artboardMenu = new ArtboardMenu(display.nuklear , "New Artboard");
 		THE_TEMPORAL.onTrue(artboardMenu::finished , () -> {
 			
-			if(!artboardMenu.finishedValidly()) return;
-			
-			Artboard artboard = display.renderer.make(() -> {
-				
-				return currentProject.createArtboard(artboardMenu.width() , artboardMenu.height());
-				
-			}).get();
-			
-			
-			display.renderer.addRender(artboard.render());			
-			if(currentProject.currentArtboard() == null) currentProject.currentArtboard(artboard);
-			
+			if(!artboardMenu.finishedValidly()) return;			
+			editor.eventPush(new CreateArtboardEvent(currentProject , artboardMenu.width() , artboardMenu.height()));
+
 		});
 		
 	}
@@ -988,7 +993,7 @@ public final class Engine implements ShutDown {
 
 				} catch(NumberFormatException e) {
 					
-					sysDebug(e);
+					sysDebugln(e);
 					
 				}
 								
@@ -1024,7 +1029,7 @@ public final class Engine implements ShutDown {
 
 				} catch(NumberFormatException e) {
 					
-					sysDebug(e);
+					sysDebugln(e);
 					
 				}
 								
@@ -1203,7 +1208,7 @@ public final class Engine implements ShutDown {
 		THE_TEMPORAL.onTrue(menu::readyToFinish, () -> {
 			
 			if(menu.get() == null || menu.get().equals("")) return;
-			loadProject(menu.get());
+			loadProject(menu.get() , menu.extension());
 			
 		});
 		
@@ -1213,15 +1218,33 @@ public final class Engine implements ShutDown {
 	 * Attempts to load the {@code CTSP} file named {@code projectFileName}.
 	 * 
 	 * @param projectFileName — name of the project to load
+	 * @param extension the extension of the file to load
 	 */
-	public void loadProject(String projectFileName) {
-
-		CTSPFile file = new CTSPFile(projectFileName);
+	public void loadProject(String projectFileName , String extension) {
 		
 		try {
 			
-			file.read();
-			display.renderer.post(() -> currentProject(new CSSSProject(this , file)));
+			switch(extension) {
+			
+				case CTSPFile.DEFAULT_FILE_EXTENSION -> {
+					
+					CTSPFile file = new CTSPFile(projectFileName);
+					file.read();
+					display.renderer.post(() -> currentProject(new CSSSProject(this , file)));
+										
+				}
+				
+				case CTSP2File.FILE_EXTENSION -> {
+					
+					CTSP2File file = new CTSP2File(projectFileName);
+					file.read();
+					display.renderer.post(() -> currentProject(new CSSSProject(this , file)));
+										
+				}
+				
+				default -> throw new IllegalArgumentException(extension + " is not a known project file extension.");
+				
+			}; 
 			
 		} catch (FileNotFoundException e) {
 			
@@ -1232,6 +1255,7 @@ public final class Engine implements ShutDown {
 			e.printStackTrace();
 			
 		}
+
 	}
 	
 	/**
@@ -1268,7 +1292,7 @@ public final class Engine implements ShutDown {
 	 */
 	public void startProjectSaveAs() {
 
-		new InputBox(display.nuklear , "Save As" , .4f , .4f , 999 , CSNuklear.NO_FILTER , result -> {
+		new DialogueInputBox(display.nuklear , "Save As" , .4f , .4f , 999 , CSNuklear.NO_FILTER , result -> {
 			
 			if(result.equals("")) return;
 			saveProject(result);
@@ -1338,6 +1362,91 @@ public final class Engine implements ShutDown {
 		});
 		
 	} 
+	
+	public void startReorderControlPoint(Artboard artboard , BezierLine line , int controlPointOriginalIndex) {
+		
+		Objects.requireNonNull(artboard);
+		Objects.requireNonNull(line);
+		
+		new DetailedInputBox(
+			display.nuklear, 
+			"Control Point Reorder", 
+			"Set the new position of control point " + controlPointOriginalIndex ,
+			.5f - (.3f / 2f) ,
+			.5f - (.25f / 2f) ,
+			0.25f, 
+			0.20f, 
+			CSNuklear.DECIMAL_FILTER, 
+			20, 
+			input -> {
+			
+				try {
+					
+					int parse = Integer.parseInt(input);
+					if(parse < 0) parse = 0;
+					int numberControlPoints = line.numberControlPoints();
+					if(parse >= numberControlPoints) parse = numberControlPoints - 1; 
+					if(parse == controlPointOriginalIndex) return;
+					editor.eventPush(new ReorderControlPointEvent(artboard , line , controlPointOriginalIndex , parse));
+					
+				} catch(NumberFormatException e) {}
+			
+			} ,
+			() -> {}
+		);
+		
+	}
+	
+	/**
+	 * Creates a generic input box in which the caller can accept the input text when finished.
+	 * 
+	 * @param title title of the input box
+	 * @param description description text within the input box
+	 * @param filter filter for what type of characters can be input in the input box 
+	 * @param maxCharacters max number of characters that can be input in the box
+	 * @param onAccept code invoked when accepted 
+	 * @param onCancel code invoked when cancelled
+	 */
+	public void startDetailedInputBox(
+		String title , 
+		String description , 
+		NkPluginFilter filter , 
+		int maxCharacters , 
+		Consumer<String> onAccept , 
+		Lambda onCancel
+	) {
+		
+		float widthRatio = 0.35f;
+		float heightRatio = 0.3f;
+				
+		new DetailedInputBox(
+			display.nuklear , 
+			title,  
+			description , 
+			1f - widthRatio / 2f  , 
+			1f - heightRatio / 2f , 
+			widthRatio , 
+			heightRatio , 
+			filter , 
+			maxCharacters ,
+			onAccept , 
+			onCancel
+		);
+		
+	}
+	
+	/**
+	 * Creates a new notification box which displays text to the user.
+	 * 
+	 * @param title title on the notification box
+	 * @param message text to display to the user
+	 * @param onOK code to invoke when the user presses OK
+	 */
+	public void startNotification(String title , String message , Lambda onOK) {
+	
+		new LineByLineNotificationBox(display.nuklear , title , message ,onOK);
+		
+	}	
 	
 	/**
 	 * Resets the theme to the default theme.
@@ -1413,7 +1522,12 @@ public final class Engine implements ShutDown {
 
 		try {
 			
-			new CTSPFile(currentProject, name).write();
+			display.renderer.post(() -> currentProject.forEachNonShallowCopiedArtboard(Artboard::undoAllLines)).await();
+			
+//			new CTSPFile(currentProject, name).write();
+			new CTSP2File(currentProject , name).write();
+
+			display.renderer.post(() -> currentProject.forEachNonShallowCopiedArtboard(Artboard::showAllLines)).await();
 			
 		} catch (FileNotFoundException e) {
 			
@@ -1670,23 +1784,6 @@ public final class Engine implements ShutDown {
 	}
 	
 	/**
-	 * Removes a render object from the renderer.
-	 * 
-	 * @param render — render to remove
-	 * @return {@code Await} object that will return finished once the object is freed.
-	 */
-	public Await removeRender(CSRender render) {
-		
-		return display.renderer.post(() -> {
-			
-			display.renderer.removeRender(render);
-			render.shutDown();
-			
-		});
-		
-	}
-	
-	/**
 	 * Swaps buffers.
 	 */
 	@RenderThreadOnly public void windowSwapBuffers() {
@@ -1702,7 +1799,20 @@ public final class Engine implements ShutDown {
 		
 		int[] framebufferSize = display.window.framebufferSize();
 		glViewport(0 , 0 , framebufferSize[0] , framebufferSize[1]);
-		glClearColor(0.15f , 0.15f , 0.15f , 1.0f);
+		float r = .15f , g = .15f , b = .15f , a = 1.0f;
+		if(currentTheme != null) { 
+			
+			NkColor windowColor = currentTheme.windowColor();
+			r = windowColor.r() / 255f;
+			g = windowColor.g() / 255f;
+			b = windowColor.b() / 255f;
+			a = windowColor.a() / 255f;
+			
+			sysoutln(r , g , b , a);
+			
+		}
+		
+		glClearColor(r , g , b , a);
 		
 	}
 	
@@ -1929,7 +2039,7 @@ public final class Engine implements ShutDown {
 			
 			ugcCallbacks.setUGC(steam.UGCAPI());
 		
-			sysDebug("Number Subscribed Items" , steam.UGCAPI().getNumSubscribedItems());
+			sysDebugln("Number Subscribed Items" , steam.UGCAPI().getNumSubscribedItems());
 			
 			THE_THREADS.submit(() -> WorkshopDownloadHelper.initializeDownloads(steam.UGCAPI()));
 				
@@ -1949,7 +2059,7 @@ public final class Engine implements ShutDown {
 			String filepath = file.getRealPath();
 			THE_THREADS.submit(() -> {
 				
-				TTF font = new TTF(14 , filepath);
+				TTF font = new TTF(14 , filepath);				
 				NanoVGTypeface nanoFont = nanoVG.createFont(font);
 				loadedFonts.add(new NamedNanoVGTypeface(file.name() , nanoFont));
 				font.shutDown();
@@ -1960,11 +2070,13 @@ public final class Engine implements ShutDown {
 		
 	}
 		
+	
+	
 	@Override public void shutDown() {
 		
 		if(display == null) return;
 		
-		if(isSteamInitialized()) THE_THREADS.submit(SteamAPI::shutdown);		
+		if(isSteamInitialized()) THE_THREADS.submit(SteamAPI::shutdown);
 		settings2.write(this, editor);
 		
 		UICustomizer.finalShutDown();
@@ -1976,17 +2088,23 @@ public final class Engine implements ShutDown {
 		if(currentTheme != null) currentTheme.shutDown();
 		
 		display.window.detachContext();
-		sysDebug("Detached render context.");
+		sysDebugln("Detached render context.");
 		display.window.attachContext();
-		sysDebug("Attached render context.");
-
+		sysDebugln("Attached render context.");
+		
 		if(CSSSSelectingBrush.render != null) debugLoggedShutDown(() -> CSSSSelectingBrush.render.shutDown(), "Selecting Brush Render");
-		if(currentProject != null) debugLoggedShutDown(currentProject::shutDown, "Project");
+		
+		if(currentProject != null) { 
+			
+			display.renderer.post(() -> debugLoggedShutDown(currentProject::shutDown, "Project")).await();
+			display.renderer.persist(false);
+			
+		} else display.renderer.persist(false);
 		
 		if(!display.isFreed()) { 
 
 			display.window.detachContext();
-			sysDebug("Detached context.");
+			sysDebugln("Detached context.");
 			debugLoggedShutDown(display::shutDown, "Display");
 						
 		}
@@ -2003,9 +2121,9 @@ public final class Engine implements ShutDown {
 	
 	private void debugLoggedShutDown(Lambda code , String shutDownName) {
 		
-		sysDebug("Shutting down " + shutDownName + "...");
+		sysDebugln("Shutting down " + shutDownName + "...");
 		code.invoke();
-		sysDebug(shutDownName + " shut down.");
+		sysDebugln(shutDownName + " shut down.");
 		
 	}
 	

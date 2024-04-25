@@ -2,76 +2,57 @@ package cs.csss.editor.ui;
 
 import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
 import static org.lwjgl.nuklear.Nuklear.nk_button_color;
-import static org.lwjgl.nuklear.Nuklear.nk_property_int;
-
-import java.nio.IntBuffer;
-import java.util.function.BooleanSupplier;
+import static org.lwjgl.nuklear.Nuklear.nk_propertyi;
 
 import org.lwjgl.nuklear.NkColor;
 import org.lwjgl.nuklear.NkContext;
 import org.lwjgl.system.MemoryStack;
 
+import cs.core.ui.CSNuklear.CSUI.CSLayout;
+import cs.core.ui.CSNuklear.CSUI.CSLayout.CSElement;
+
 /**
  * Color picker used for two channel color pickers.
  */
-class TwoChannelColorPicker {
+public class TwoChannelColorPicker extends CSElement {
 
-	private final NkContext context;
+	public short gray = 0, alpha = 255;
 	
-	BooleanSupplier doLayout = () -> true;
-	
-	short gray = 0, alpha = 255;
-	
-	boolean hasAlpha = false;
+	public boolean hasAlpha = false;
 	
 	/**
 	 * Creates a two channel color picker.
 	 * 
-	 * @param context — the nuklear context
+	 * @param context the nuklear context
+	 * @param source the owning layout
 	 */
-	TwoChannelColorPicker(NkContext context) {
+	public TwoChannelColorPicker(NkContext context , CSLayout source) {
 		
-		this.context = context;
+		source.super();
 		
-	}
-	
-	void set(short gray , short alpha) {
-		
-		this.gray = gray;
-		this.alpha = alpha;
-		
-	}
-	
-	void layout() {
-		
-		if(!doLayout.getAsBoolean()) return;
-		
-		nk_layout_row_dynamic(context , 160 , 1);
-		try(MemoryStack stack = MemoryStack.stackPush()) {
+		setCode(() -> {
 			
-			NkColor color = NkColor.malloc(stack).set((byte)gray , (byte)gray , (byte)gray , (byte)alpha);
-			nk_button_color(context , color);
-			
-			IntBuffer gray = stack.mallocInt(1).put(this.gray).rewind();
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			nk_property_int(context, "Gray", 0, gray , 255, 1, 1);
-			
-			this.gray = (short) gray.get();
-			
-			if(hasAlpha) {
-
-				IntBuffer alpha = stack.mallocInt(1).put(this.alpha).rewind();
+			try(MemoryStack stack = MemoryStack.stackPush()) {
+				
+				NkColor color = NkColor.malloc(stack).set((byte)gray , (byte)gray , (byte)gray , (byte)alpha);
+				nk_button_color(context , color);
 				
 				nk_layout_row_dynamic(context , 30 , 1);
-				nk_property_int(context, "Alpha", 0, alpha , 255, 1, 1);
+				gray = (short) nk_propertyi(context, "Gray", 0, gray , 255, 1, 1);
 				
-				this.alpha = (short) alpha.get();
+				if(hasAlpha) {
+
+					nk_layout_row_dynamic(context , 30 , 1);
+					alpha = (short) nk_propertyi(context, "Alpha", 0, alpha , 255, 1, 1);
+					
+				} else alpha = 0xff;
 				
 			}
 			
-		}
+		});
 		
 	}
+	
+	@Override protected void onResize() {}
 
 }

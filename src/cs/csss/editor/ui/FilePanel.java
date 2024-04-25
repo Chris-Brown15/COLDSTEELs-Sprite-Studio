@@ -19,6 +19,7 @@ import cs.core.ui.CSNuklear.CSUI.CSLayout.CSMenuBar;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSMenuBar.CSMenu;
 import cs.csss.editor.DebugDisabledException;
 import cs.csss.editor.Editor;
+import cs.csss.editor.event.RasterizeAllShapesEvent;
 import cs.csss.editor.palette.ColorPalette;
 import cs.csss.engine.CSSSException;
 import cs.csss.engine.Engine;
@@ -74,7 +75,12 @@ public class FilePanel {
 //		editMenu.new CSDynamicRow().new CSButton("Add Text" , editor::startAddText);
 		editMenu.new CSDynamicRow().new CSButton("Run Artboard Script" , editor::startRunArtboardScript2);
 		editMenu.new CSDynamicRow().new CSButton("Run Project Script" , editor::startRunProjectScript2);
-		editMenu.new CSDynamicRow().new CSButton("Run Palette Script" , editor::startRunPaletteScript2);		
+		editMenu.new CSDynamicRow().new CSButton("Run Palette Script" , editor::startRunPaletteScript2);
+		
+		CSDynamicRow rasterizeAllShapesRow = editMenu.new CSDynamicRow();
+		rasterizeAllShapesRow.new CSButton("Rasterize All Shapes" , () -> editor.eventPush(new RasterizeAllShapesEvent(editor.project())));
+		rasterizeAllShapesRow.doLayout = () -> editor.project() != null;
+		
 		CSCheckBox colorInputTypeCheck = editMenu.new CSDynamicRow(20).new CSCheckBox(
 			"Color Inputs Are Hex" , 
 			editor::colorInputsAreHex , 
@@ -188,6 +194,10 @@ public class FilePanel {
 					editor.project().visualPalette().currentRow();
 			});
 			
+			CSDynamicRow undoRedoStatsRow = debugMenu.new CSDynamicRow(20);
+			undoRedoStatsRow.new CSText(() -> "Undo Size: " + editor.undoSize());
+			undoRedoStatsRow.new CSText(() -> "Redo Size: " + editor.redoSize());
+			
 			int conversion = 1024 * 1024;
 			CSDynamicRow memoryRow1 = debugMenu.new CSDynamicRow(20);
 			memoryRow1.new CSText(() -> String.format(
@@ -246,6 +256,9 @@ public class FilePanel {
 				"Dump Current Palette" , 
 				() -> editor.rendererPost(() -> editor.project().currentPalette().dumpToFile())
 			);
+		
+			debugMenu.new CSDynamicRow().new CSButton("Hide lines" , () -> editor.rendererPost(() -> editor.project().currentArtboard().undoAllLines()));
+			
 		}
 		
 	}

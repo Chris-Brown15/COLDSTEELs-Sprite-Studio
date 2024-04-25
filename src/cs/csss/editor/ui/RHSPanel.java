@@ -22,12 +22,18 @@ import static org.lwjgl.nuklear.Nuklear.nk_edit_string;
 import static org.lwjgl.nuklear.Nuklear.nk_propertyi;
 import static org.lwjgl.nuklear.Nuklear.nk_color_pick;
 import static org.lwjgl.nuklear.Nuklear.nk_text_colored;
+import static org.lwjgl.nuklear.Nuklear.nk_property_int;
+import static org.lwjgl.nuklear.Nuklear.nk_propertyf;
 
 import static org.lwjgl.system.MemoryUtil.memUTF8;
 
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
+import org.joml.Matrix4f;
+import org.joml.Vector2f;
+import org.joml.Vector3f;
 import org.lwjgl.nuklear.NkColor;
 import org.lwjgl.nuklear.NkColorf;
 import org.lwjgl.nuklear.NkContext;
@@ -35,15 +41,35 @@ import org.lwjgl.system.MemoryStack;
 
 import cs.core.ui.CSNuklear;
 import cs.core.ui.CSNuklear.CSUserInterface;
+import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
+import cs.core.ui.CSNuklear.CSUI.CSLayout.CSButton;
+import cs.core.ui.CSNuklear.CSUI.CSRow;
 import cs.core.utils.Lambda;
 import cs.coreext.nanovg.NanoVGTypeface;
 import cs.csss.editor.Editor;
+import cs.csss.editor.SelectionAreaBounder;
+import cs.csss.editor.SelectionAreaBounder2;
+import cs.csss.editor.event.DeepCopyArtboardEvent;
+import cs.csss.editor.event.DeleteControlPointEvent;
+import cs.csss.editor.event.DeleteLineEvent;
+import cs.csss.editor.event.DeleteShapeEvent;
 import cs.csss.editor.event.HideLayerEvent;
+import cs.csss.editor.event.RasterizeShapeEvent;
+import cs.csss.editor.event.RemoveArtboardEvent;
 import cs.csss.editor.event.SwitchToNonVisualLayerEvent;
 import cs.csss.editor.event.SwitchToVisualLayerEvent;
+import cs.csss.editor.line.Line;
+import cs.csss.editor.shape.Shape;
+import cs.csss.engine.ChannelBuffer;
+import cs.csss.engine.ColorPixel;
 import cs.csss.engine.Engine;
 import cs.csss.engine.NamedNanoVGTypeface;
+import cs.csss.project.Artboard;
 import cs.csss.project.CSSSProject;
+import cs.csss.project.Layer;
+import cs.csss.ui.elements.CSSpacer;
+import cs.csss.ui.elements.SymbolAccessSelectableText;
+import cs.csss.ui.menus.ChooseColorDialogue;
 import cs.csss.ui.menus.ConfirmationBox;
 import cs.csss.ui.menus.NotificationBox;
 import cs.csss.ui.menus.VectorTextMenu;
@@ -62,6 +88,9 @@ import cs.csss.ui.menus.VectorTextMenu;
 		TIER_THREE_PADDING = 90 ,
 		TIER_FOUR_PADDING = 120 ,
 		TIER_FIVE_PADDING = 150 ,
+		TIER_SIX_PADDING = 180 ,
+		TIER_SEVEN_PADDING = 210 ,
+		TIER_EIGHT_PADDING = 240 ,
 		OPTION_TEXT = TEXT_RIGHT|TEXT_MIDDLE;
 	
 	/**
@@ -74,12 +103,21 @@ import cs.csss.ui.menus.VectorTextMenu;
 		expandNonvisual = false ,
 		expandArtboards = false ,
 		expandVisualLayers = false ,
-		expandNonVisualLayers = false ,
+		expandNonvisualLayers = false ,
 		expandVectorTextBoxes = false ,
-		expandFonts = false;
+		expandFonts = false ,
+		expandShapes = false ,
+		expandEllipses = false ,
+		expandRectangles = false ,
+		expandLines = false ,
+		expandLinearLines = false ,
+		expandBezierLines = false ,
+		expandBezierLinesControlPoints = false;;
 	
 	private CSSSProject project;
 	private final CSUserInterface ui;
+
+	private boolean changedColor = false;
 	
 	/**
 	 * Creates a right hand side panel.
@@ -94,9 +132,9 @@ import cs.csss.ui.menus.VectorTextMenu;
 		ui.setDimensions(ui.xPosition(), 77, ui.interfaceWidth(), ui.interfaceHeight());
 		ui.options = UI_BORDERED|UI_TITLED|UI_ICONIFYABLE;
 		
-		ui.specifyLayout((context , stack) -> {
+		ui.attachedLayout((context , stack) -> {
 			
-			if((project = editor.project()) == null) { 
+			if((project = editor.project()) == null) {
 				
 				nk_layout_row_dynamic(context , 20 , 1);
 				nk_text_wrap_colored(context , "No project is active." , NkColor.malloc(stack).set(
@@ -283,6 +321,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 				});
 
 			}
+			
 			/*
 			 * Artboard Section
 			 */
@@ -309,7 +348,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 					
 				}
 				
-				 project.forEachArtboard(artboard -> {
+				project.forEachArtboard(artboard -> {
 					
 					nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 
@@ -332,33 +371,26 @@ import cs.csss.ui.menus.VectorTextMenu;
 					pad(context , TIER_THREE_PADDING);
 					int rowWidth = (ui.interfaceWidth() - TIER_THREE_PADDING - 54) / 2;
 					nk_layout_row_push(context , rowWidth);
-					if(nk_button_text(context , "Copy")) editor.rendererPost(() -> editor.addRender(project.deepCopy(artboard).render()));
+					if(nk_button_text(context , "Copy")) editor.eventPush(new DeepCopyArtboardEvent(project , artboard));
 					
 					nk_layout_row_push(context , rowWidth);
-					if(nk_button_text(context , "Remove")) Engine.THE_TEMPORAL.onTrue(() -> true , () -> editor.rendererPost(() -> {
+					
+					if(artboard.isShallowCopy()) {
 						
-						editor.project().removeArtboard(artboard);
+						if(nk_button_text(context , "Go To Source")) project.moveCameraToSourceOf(artboard);
 						
-					}));
+					} else {
+					
+						if(nk_button_text(context , "Remove")) editor.eventPush(new RemoveArtboardEvent(project , artboard));
+						
+					}					
 					
 					nk_layout_row_end(context);
 					
 					//visual layers
 					
-					nk_layout_row_begin(context , NK_STATIC , 30 , 2);
-					pad(context , TIER_THREE_PADDING);
-					nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);
-
-					if(nk_selectable_symbol_text(context , toMenuSymbol(expandVisualLayers) , "Visual Layers" , TEXT_MIDDLE , asByte(
-						expandVisualLayers
-					))) { 
-						
-						expandVisualLayers = !expandVisualLayers;
-						
-					}
-
-					nk_layout_row_end(context);
-
+					dropDown(context , TIER_THREE_PADDING , "Visual Layers" , expandVisualLayers , () -> expandVisualLayers = !expandVisualLayers);
+					
 					if(expandVisualLayers) artboard.forEachVisualLayer(layer -> {
 
 						int rank = artboard.getLayerRank(layer);
@@ -397,25 +429,15 @@ import cs.csss.ui.menus.VectorTextMenu;
 					
 					//nonvisual layers
 					
-					nk_layout_row_begin(context , NK_STATIC , 30 , 2);
-					pad(context , TIER_THREE_PADDING);
-					nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);
-					
-					if(nk_selectable_symbol_text(
-						context , 
-						toMenuSymbol(expandNonVisualLayers) , 
-						"Nonvisual Layers" , 
-						TEXT_MIDDLE, 
-						asByte(expandNonVisualLayers)
-					)) { 
-						
-						expandNonVisualLayers = !expandNonVisualLayers;
-						
-					}
-
-					nk_layout_row_end(context);
-					
-					if(expandNonVisualLayers) artboard.forEachNonVisualLayer(layer -> {
+					dropDown(
+						context, 
+						TIER_THREE_PADDING, 
+						"Nonvisual Layers", 
+						expandNonvisualLayers, 
+						() -> expandNonvisualLayers = !expandNonvisualLayers
+					);
+										
+					if(expandNonvisualLayers) artboard.forEachNonVisualLayer(layer -> {
 						
 						nk_layout_row_begin(context , NK_STATIC , 20 , 2);
 						pad(context , TIER_FOUR_PADDING);
@@ -442,8 +464,281 @@ import cs.csss.ui.menus.VectorTextMenu;
 						
 					});
 
-				});
+					dropDown(context , TIER_THREE_PADDING , "Shapes" , expandShapes , () -> expandShapes = !expandShapes);
+										
+					if(expandShapes) {
+					
+						dropDown(context , TIER_FOUR_PADDING , "Ellipses" , expandEllipses , () -> expandEllipses = !expandEllipses);
 						
+						int columnWidth = elementSpaceFromPadding(TIER_SIX_PADDING) / 2;
+
+						if(expandEllipses) artboard.activeLayerEllipses().forEachRemaining(ellipse -> {
+							
+							dropDown(
+								context , 
+								TIER_FIVE_PADDING , 
+								String.format("Ellipse at (%d , %d)" , (int)ellipse.midX() , (int)ellipse.midY()) ,
+								ellipse == editor.activeShape()  ,
+								() -> editor.activeShape(editor.activeShape() == ellipse ? null : ellipse)
+							);
+							
+							if(ellipse != editor.activeShape()) return;
+														
+							boolean needToReset = false;
+							
+							int previousXRadius = ellipse.xRadius();
+							int previousYRadius = ellipse.yRadius();
+							float previousIterations = ellipse.iterations();
+							boolean filled = ellipse.fill();
+													
+							//radius
+							int selectedXRadius = propertyi(context , TIER_SIX_PADDING , "X Radius" , 1 , previousXRadius , 999999 , 1 , 1.0f);
+							int selectedYRadius = propertyi(context , TIER_SIX_PADDING , "Y Radius" , 1 , previousYRadius , 999999 , 1 , 1.0f);
+							
+							//iterations
+							float newIterations = propertyf(
+								context , 
+								TIER_SIX_PADDING , 
+								"Iterations" , 
+								1f , 
+								previousIterations , 
+								9999f , 
+								1f , 
+								1f
+							);
+							
+							shapeChanger(editor, nuklear, context, columnWidth, stack, artboard, ellipse, filled);
+							
+							boolean newFill = ellipse.fill();
+							
+							ColorPixel newBorderColor = ellipse.borderColor();
+							ColorPixel newFillColor = ellipse.fillColor();
+							
+							needToReset = 
+								previousXRadius != selectedXRadius || 
+								previousYRadius != selectedYRadius || 
+								previousIterations != newIterations || 
+								filled != newFill ||
+								changedColor;
+							
+							ellipse.xRadius(selectedXRadius);
+							ellipse.yRadius(selectedYRadius);
+							ellipse.iterations(newIterations);
+							ellipse.fill(newFill);
+							
+							if(needToReset) { 
+								
+								editor.rendererPost(ellipse::reset);
+								changedColor = false;
+								
+							}
+							
+						});
+												
+						dropDown(context, TIER_FOUR_PADDING, "Rectangles", expandRectangles, () -> expandRectangles = !expandRectangles);
+						
+						if(expandRectangles) artboard.activeLayerRectangles().forEachRemaining(rectangle -> {
+
+							dropDown(
+								context , 
+								TIER_FIVE_PADDING , 
+								String.format("Rectangle at (%d, %d)", (int)rectangle.midX() , (int)rectangle.midY()) ,
+								editor.activeShape() == rectangle ,
+								() -> editor.activeShape(editor.activeShape() == rectangle ? null : rectangle)
+							);
+							
+ 							if(editor.activeShape() != rectangle) return;
+
+ 							boolean previousFill = rectangle.fill();
+
+							int previousWidth = rectangle.shapeWidth() , previousHeight = rectangle.shapeHeight();
+							
+							int newWidth = propertyi(context , TIER_SIX_PADDING , "Width" , 1 , previousWidth , 99999 , 1 , 1f);
+							int newHeight = propertyi(context , TIER_SIX_PADDING , "Height" , 1 , previousHeight , 99999 , 1 , 1f);
+
+							shapeChanger(editor, nuklear, context, columnWidth, stack, artboard, rectangle, previousFill);
+							
+							boolean newFill = rectangle.fill();
+							
+							rectangle.shapeWidth(newWidth);
+							rectangle.shapeHeight(newHeight);
+							
+							if(newFill != previousFill || newWidth != previousWidth || newHeight != previousHeight || changedColor) { 
+								
+								editor.rendererPost(rectangle::reset);
+								changedColor = false;
+								
+							}
+							
+						});
+												
+					}
+					
+					dropDown(context, TIER_THREE_PADDING, "Lines", expandLines, () -> expandLines = !expandLines);
+					
+					if(expandLines) {
+						
+						dropDown(context, TIER_FOUR_PADDING, "Linear Line" , expandLinearLines	, () -> expandLinearLines = !expandLinearLines);
+						
+						if(expandLinearLines) {
+							
+							artboard.linearLines().forEachRemaining(line -> {
+
+								String format = String.format(
+									"P1: (%d , %d), P2: (%d , %d)", 
+									line.endpoint1X() , line.endpoint1Y() , 
+									line.endpoint2X() , line.endpoint2Y()
+								);
+								
+								dropDown(context, TIER_FIVE_PADDING, format, editor.activeLine() == line, () -> toggleCurrentLine(editor, line));
+								
+								if(editor.activeLine() != line) return;
+								
+								ColorPixel color = line.color();
+																
+								int previousThickness = line.thickness();
+								int newThickness = slider(context , "Thickness" , TIER_SIX_PADDING , previousThickness , 1 , 999 , 2 , 2);
+								boolean reset = previousThickness != newThickness;
+								line.thickness(newThickness);
+								
+								button(context, TIER_SIX_PADDING, 30, "Color", () -> {
+									
+									Layer activeLayer = artboard.activeLayer();
+									
+									 new ChooseColorDialogue(
+										nuklear, 
+										editor.colorInputsAreHex(), 
+										"Line Color", 
+										.4f, .4f, 
+										activeLayer::pixelSizeBytes , 
+										pixel -> {
+											
+											line.color(ChannelBuffer.asChannelBuffer(pixel));
+											changedColor = true;
+											
+										}, () -> {}
+									);
+									 
+								});
+																
+								button(context , TIER_SIX_PADDING , 30 , "Delete" , () -> {
+									
+									editor.eventPush(new DeleteLineEvent(artboard , line , editor));
+									
+								});
+								
+								if(changedColor || reset) { 
+									
+									editor.rendererPost(() -> line.reset(artboard));
+									changedColor = false;
+									
+								}
+								
+							});
+							
+						}
+						
+						dropDown(context, TIER_FOUR_PADDING, "Bezier" , expandBezierLines , () -> expandBezierLines = !expandBezierLines);
+						
+						if(expandBezierLines) {
+							
+							artboard.bezierLines().forEachRemaining(line -> {
+
+								String format = String.format(
+									"P1: (%d , %d), P2: (%d , %d)", 
+									line.endpoint1X() , line.endpoint1Y() , 
+									line.endpoint2X() , line.endpoint2Y()
+								);
+								
+								dropDown(context, TIER_FIVE_PADDING, format, editor.activeLine() == line, () -> toggleCurrentLine(editor, line));
+								
+								if(editor.activeLine() != line) return;
+								
+								int prevThickness = line.thickness();
+								int newThickness = slider(context , "Thickness" , TIER_SIX_PADDING , line.thickness() , 1 ,  999 , 2 , 2);
+								line.thickness(newThickness);
+								
+								boolean reset = prevThickness != newThickness;
+								
+								button(context, TIER_SIX_PADDING, 30, "Color", () -> {
+									
+									Layer activeLayer = artboard.activeLayer();
+									
+									 new ChooseColorDialogue(
+										nuklear, 
+										editor.colorInputsAreHex(), 
+										"Line Color", 
+										.4f, .4f, 
+										activeLayer::pixelSizeBytes , 
+										pixel -> {
+											
+											line.color(ChannelBuffer.asChannelBuffer(pixel));
+											changedColor = true;
+											
+										}, () -> {}
+									);
+									 
+								});
+
+								button(context , TIER_SIX_PADDING , 30 , "Delete" , () -> {
+									
+									editor.eventPush(new DeleteLineEvent(artboard , line , editor));
+									
+								});
+								
+								if(changedColor || reset) { 
+									
+									editor.rendererPost(() -> line.reset(artboard));
+									changedColor = false;
+									
+								}
+								
+								dropDown(
+									context , 
+									TIER_SIX_PADDING , 
+									"Control Points" , 
+									expandBezierLinesControlPoints , 
+									() -> expandBezierLinesControlPoints = !expandBezierLinesControlPoints
+								);
+								
+								if(expandBezierLinesControlPoints) {
+
+									int i = 0;
+									for(Iterator<Vector2f> points = line.controlPoints() ; points.hasNext() ; i++) {
+
+										Vector2f next = points.next();
+										
+										nk_layout_row_begin(context , NK_STATIC , 20 , 2);
+										pad(context , TIER_SEVEN_PADDING);
+										String control = String.format("%d) X: %d, Y: %d", i , (int)next.x() , (int)next.y());
+										nk_layout_row_push(context , elementSpaceFromPadding(TIER_SEVEN_PADDING));
+										nk_text(context , control , TEXT_LEFT|TEXT_MIDDLE);
+												
+										int finalI = i;
+										button(context , TIER_SEVEN_PADDING , 30 , "Delete" , () -> {
+											
+											editor.eventPush(new DeleteControlPointEvent(artboard , line , finalI));
+											
+										});
+										
+										button(context , TIER_SEVEN_PADDING , 30 , "Rearrange" , () -> {
+										
+											editor.startReorderControlPoint(artboard , line , finalI);
+																						
+										});
+										
+									}									
+									
+								}
+								
+							});
+							
+						}
+						
+					}
+				
+				 });
+				 
 			}
 			
 //			nk_layout_row_begin(context , NK_STATIC , 30 , 2);
@@ -593,7 +888,87 @@ import cs.csss.ui.menus.VectorTextMenu;
 //				
 //			}
 			
-		});	
+		});
+
+	}
+
+	/**
+	 * Displays common parts of ellipse and rectangle changers
+	 * 
+	 * @param editor
+	 * @param nuklear
+	 * @param context
+	 * @param columnWidth
+	 * @param stack
+	 * @param artboard
+	 * @param shape
+	 * @param filled
+	 */
+	private void shapeChanger(
+		Editor editor , 
+		CSNuklear nuklear , 
+		NkContext context , 
+		int columnWidth , 
+		MemoryStack stack , 
+		Artboard artboard , 
+		Shape shape , 
+		boolean filled
+	) {
+		
+		nk_layout_row_begin(context , NK_STATIC , 30 , 3);
+		pad(context , TIER_SIX_PADDING);
+		nk_layout_row_push(context , columnWidth);
+		if(nk_checkbox_text(context , "Fill" , toByte(stack, filled))) shape.toggleFill();
+		nk_layout_row_push(context , columnWidth);
+		if(nk_checkbox_text(context , "Hide" , toByte(stack, shape.hide()))) shape.toggleHide();
+		nk_layout_row_end(context);
+		
+		nk_layout_row_begin(context , NK_STATIC , 30 , 3);
+		pad(context , TIER_SIX_PADDING);
+		nk_layout_row_push(context , columnWidth);
+		if(nk_button_text(context , " Border"))  new ChooseColorDialogue(
+			nuklear , 
+			editor.colorInputsAreHex() ,
+			"Border Color" , 
+			0.4f , 0.4f , 
+			() -> artboard.activeLayer().palette().channelsPerPixel() , 
+			color -> {
+				
+				changedColor = true;
+				shape.borderColor(color);
+				
+			} , 
+			() -> {}
+		);
+		
+		nk_layout_row_push(context , columnWidth);
+		if(nk_button_text(context , "Fill")) new ChooseColorDialogue(
+			nuklear , 
+			editor.colorInputsAreHex() ,
+			"Fill Color" , 
+			0.4f , 0.4f , 
+			() -> artboard.activeLayer().palette().channelsPerPixel() , 
+			color -> {
+				
+				shape.fillColor(color);
+				changedColor = true;
+				shape.fill(true);
+				
+			} ,
+			() -> {} 
+		);
+		
+		nk_layout_row_end(context);
+		
+		button(context, TIER_SIX_PADDING, 30, "Rasterize", () -> editor.pushRasterizeShapeEvent(shape));
+
+		button(
+			context ,
+			TIER_SIX_PADDING ,
+			30 ,
+			"Delete" ,
+			() -> editor.eventPush(new DeleteShapeEvent(artboard , shape , editor))
+		);
 		
 	}
 	
@@ -671,12 +1046,12 @@ import cs.csss.ui.menus.VectorTextMenu;
 
 	}
 
-	private int slider(NkContext context , int padding , int current , int min , int max , int increase , float increasePerPixel) {
+	private int slider(NkContext context , String text , int padding , int current , int min , int max , int increase , float increasePerPixel) {
 
 		nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 		pad(context , padding);			
 		nk_layout_row_push(context , ui.interfaceWidth() - padding - 40);						
-		int result = nk_propertyi(context, "Row Height" , 1 , current , 9999, 1, increasePerPixel);			
+		int result = nk_propertyi(context, text , min , current , 9999, increase, increasePerPixel);			
 		nk_layout_row_end(context);
 
 		return result;
@@ -704,9 +1079,64 @@ import cs.csss.ui.menus.VectorTextMenu;
 			
 	}	
 
+	private void dropDown(NkContext context , int padding , String text , boolean currentValue , Lambda onPress) {
+
+		nk_layout_row_begin(context , NK_STATIC , 30 , 2);
+		pad(context , padding);
+		nk_layout_row_push(context , elementSpaceFromPadding(padding));
+		if(nk_selectable_symbol_text(context , toMenuSymbol(currentValue) , text , TEXT_MIDDLE , asByte(currentValue))) onPress.invoke();
+		nk_layout_row_end(context);
+		
+	}
+	
+	private int propertyi(NkContext context , int padding , String text , int min , int current , int max , int step , float incPerPixel) {
+
+		nk_layout_row_begin(context , NK_STATIC , 30 , 2);
+		pad(context , padding);
+		nk_layout_row_push(context , elementSpaceFromPadding(padding));
+		int result = nk_propertyi(context , text , min , current , max , step , incPerPixel);
+		nk_layout_row_end(context);
+		return result;	
+		
+	}
+
+	private float propertyf(
+		NkContext context , 
+		int padding , 
+		String text , 
+		float min , 
+		float current , 
+		float max , 
+		float step , 
+		float incPerPixel
+	) {
+
+		nk_layout_row_begin(context , NK_STATIC , 30 , 2);
+		pad(context , padding);
+		nk_layout_row_push(context , elementSpaceFromPadding(padding));
+		float result = nk_propertyf(context , text , min , current , max , step , incPerPixel);
+		nk_layout_row_end(context);
+		return result;	
+		
+	}
+	
 	private void onTrue(Lambda onTrue) {
 		
 		Engine.THE_TEMPORAL.onTrue(() -> true , onTrue);
+		
+	}
+	
+	private int elementSpaceFromPadding(int padding) {
+		
+		return ui.interfaceWidth() - padding - 40;
+		
+	}
+	
+	private void toggleCurrentLine(Editor editor , Line line) {
+		
+		Line active = editor.activeLine();
+		if(active == line) editor.activeLine(null);
+		else editor.activeLine(line);
 		
 	}
 	

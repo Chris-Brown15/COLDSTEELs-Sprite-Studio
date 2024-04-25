@@ -8,6 +8,7 @@ import static cs.core.utils.CSUtils.specify;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import cs.core.utils.ShutDown;
@@ -17,6 +18,7 @@ import cs.csss.engine.LookupPixel;
 import cs.csss.project.Artboard;
 import cs.csss.project.utils.Artboards;
 import cs.csss.project.utils.RegionIterator;
+import cs.csss.project.utils.RegionPosition;
 
 /**
  * Class responsible for importing PNGs, JPEGs, and BMPs and converting them into Artboards.
@@ -69,6 +71,8 @@ public class ImageImporter implements ShutDown {
 		if(filepath.endsWith(".bmp")) source = new BMP(filepath , channels);
 		else if (filepath.endsWith(".jpg")) source = new JPG(filepath , channels);
 		else if (filepath.endsWith(".png")) source = new PNG(filepath , channels);
+	
+		Objects.requireNonNull(source.imageData());
 		
 	}
 	
@@ -84,16 +88,18 @@ public class ImageImporter implements ShutDown {
 		ByteBuffer image = source.imageData();
 		LookupPixel[][] imageColors = new LookupPixel[artboard.height()][artboard.width()];
 				
-		int[] next;						
+		RegionPosition position;					
 		for(RegionIterator iterator = Artboards.region(0, 0, artboard.width(), artboard.height()) ; image.hasRemaining() ; ) {
 			
-			next = iterator.next();
-			imageColors[next[1]][next[0]] = artboard.putInPalette(artboard.createPalettePixel(image));
+			position = iterator.next();
+			imageColors[position.row()][position.col()] = artboard.putInPalette(artboard.createPalettePixel(image));
 						
 		}
 		
 		artboard.putColorsInImage(0, 0, artboard.width(), artboard.height(), imageColors);
-
+		//must reset position for shut down.
+		image.position(0);
+		
 	}
 
 	/**
@@ -126,13 +132,13 @@ public class ImageImporter implements ShutDown {
 	 * @see cs.core.utils.ShutDown#shutDown()
 	 */
 	public void shutDown() {
-		
+
+		if(isFreed()) return;
 		source.shutDown();
 		
 	}
 
 	/**
-	 * 
 	 * @return {@code true} if the image being imported with this {@code ImageImporter} is freed. 
 	 * 
 	 * @see cs.core.utils.ShutDown#isFreed()

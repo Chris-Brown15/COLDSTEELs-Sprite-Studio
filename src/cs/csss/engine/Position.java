@@ -7,7 +7,7 @@ package cs.csss.engine;
  */
 public abstract class Position {
 
-	private final float[] positions;
+	protected final float[] positions;
 	
 	/**
 	 * Creates a position object from the given {@code positions}.
@@ -75,14 +75,14 @@ public abstract class Position {
 	 */
 	public void moveTo(int xPosition , int yPosition) {
 	
-		translate(-midX() + xPosition , -midY() + yPosition);
+		translate((int)(-midX() + xPosition) , (int)(-midY() + yPosition));
 			
 	}	
 
 	/**
-	 * Returns the width of this artboard.
+	 * Returns the width of this position.
 	 * 
-	 * @return — width of this artboard.
+	 * @return Width of this position.
 	 */
 	public int width() {
 		
@@ -91,9 +91,9 @@ public abstract class Position {
 	}
 
 	/**
-	 * Returns the height of this artboard.
+	 * Returns the height of this position.
 	 * 
-	 * @return — height of this artboard.
+	 * @return Height of this position.
 	 */
 	public int height() {
 		
@@ -102,9 +102,9 @@ public abstract class Position {
 	}
 
 	/**
-	 * Returns the top Y coordinate (in world space) of this artboard.
+	 * Returns the top Y coordinate (in world space) of this position.
 	 * 
-	 * @return — top Y coordinate of this artboard.
+	 * @return Top Y coordinate of this position.
 	 */
 	public float topY() {
 		
@@ -113,9 +113,9 @@ public abstract class Position {
 	}
 
 	/**
-	 * Returns the bottom Y coordinate (in world space) of this artboard.
+	 * Returns the bottom Y coordinate (in world space) of this position.
 	 * 
-	 * @return — bottom Y coordinate of this artboard.
+	 * @return Bottom Y coordinate of this position.
 	 */
 	public float bottomY() {
 		
@@ -124,9 +124,9 @@ public abstract class Position {
 	}
 
 	/**
-	 * Returns the left X coordinate (in world space) of this artboard.
+	 * Returns the left X coordinate (in world space) of this position.
 	 * 
-	 * @return — left X coordinate of this artboard.
+	 * @return Reft X coordinate of this position.
 	 */
 	public float leftX() {
 		
@@ -135,9 +135,9 @@ public abstract class Position {
 	}
 
 	/**
-	 * Returns the right X coordinate (in world space) of this artboard.
+	 * Returns the right X coordinate (in world space) of this position.
 	 * 
-	 * @return — right X coordinate of this artboard.
+	 * @return Right X coordinate of this position.
 	 */
 	public float rightX() {
 		
@@ -146,9 +146,9 @@ public abstract class Position {
 	}
 
 	/**
-	 * Returns the midpoint Y coordinate (in world space) of this artboard.
+	 * Returns the midpoint Y coordinate (in world space) of this position.
 	 * 
-	 * @return — midpoint X coordinate of this artboard.
+	 * @return Midpoint X coordinate of this position.
 	 */
 	public float midX() {
 		
@@ -157,14 +157,14 @@ public abstract class Position {
 	}
 
 	/**
-	 * Returns the midpoint Y coordinate (in world space) of this artboard.
+	 * Returns the midpoint Y coordinate (in world space) of this position.
 	 * 
-	 * @return — midpoint Y coordinate of this artboard.
+	 * @return Midpoint Y coordinate of this position.
 	 */
 	public float midY() {
 		
 		return bottomY() + (height() / 2);
 		
 	}
-	
+
 }

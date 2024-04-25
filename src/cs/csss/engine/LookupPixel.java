@@ -1,5 +1,8 @@
 package cs.csss.engine;
 
+import java.nio.ByteBuffer;
+import java.util.Objects;
+
 /**
  * Interface for pixels that provide lookup values.
  */
@@ -51,6 +54,19 @@ public interface LookupPixel extends Pixel {
 		}
 		
 		return -1;
+		
+	}
+		
+	/**
+	 * Stores the lookup values of this pixel as bytes in {@code buffer}.
+	 * 
+	 * @param buffer a buffer to write to
+	 * @throws NullPointerException if {@code buffer} is <code>null</code>.
+	 */
+	default void buffer(ByteBuffer buffer) {
+		
+		Objects.requireNonNull(buffer);
+		buffer.put(lookupX()).put(lookupY());
 		
 	}
 	

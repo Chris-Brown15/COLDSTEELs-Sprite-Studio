@@ -53,11 +53,7 @@ public class SelectionAreaRender extends CSRender implements ShutDown {
 	
 	public final TransformPosition positions;
 
-	public final int 
-		startingLeftX ,
-		startingBottomY ,
-		width , 
-		height;
+	public final int startingLeftX , startingBottomY , width , height;
 	
 	private final LayerPixel[][] regionContents;
 	

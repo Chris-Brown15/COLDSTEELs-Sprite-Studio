@@ -13,7 +13,7 @@ import cs.csss.project.Artboard;
 import cs.csss.project.IndexPixel;
 import cs.csss.project.LayerPixel;
 import cs.csss.utils.ByteBufferUtils;
-import cs.csss.utils.ByteBufferUtils.CorrectedParameters;
+import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 
 /**
  * Rotates a given region along its midpoint. 
@@ -80,7 +80,7 @@ import cs.csss.utils.ByteBufferUtils.CorrectedParameters;
 		int leftX = indices[0];
 		int bottomY = indices[1];
 		
-		CorrectedParameters corrected = ByteBufferUtils.correctifyIndices(artboard, leftX, bottomY, renderWidth, renderHeight).params();
+		CorrectedResult corrected = ByteBufferUtils.correctifyIndices(artboard, leftX, bottomY, renderWidth, renderHeight);
 		this.leftX = corrected.leftX();
 		this.bottomY = corrected.bottomY();
 		this.renderWidth = corrected.width();

@@ -40,7 +40,7 @@ public class CSSSException extends RuntimeException {
 		super(message, cause);
 		if(logTrace) {
 			
-			Logging.syserr(message);
+			Logging.syserrln(message);
 			logStackTrace(getStackTrace());
 			
 		}
@@ -101,7 +101,7 @@ public class CSSSException extends RuntimeException {
 
 	private void logStackTrace(StackTraceElement[] elements) {
 		
-		for(int i = 0 ; i < elements.length ; i++) Logging.syserr("\t" + elements[i].toString());
+		for(int i = 0 ; i < elements.length ; i++) Logging.syserrln("\t" + elements[i].toString());
 		
 	}
 	

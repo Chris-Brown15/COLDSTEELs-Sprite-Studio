@@ -11,11 +11,21 @@ import static org.lwjgl.util.lz4.LZ4.LZ4_decompress_safe;
 import static cs.core.utils.CSUtils.require;
 
 import java.nio.ByteBuffer;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
+import cs.core.utils.ShutDown;
 import cs.csss.annotation.FreeAfterUse;
 import cs.csss.annotation.Invalidated;
+import cs.csss.editor.line.BezierLine;
+import cs.csss.editor.line.Line;
+import cs.csss.editor.line.LinearLine;
+import cs.csss.editor.shape.Ellipse;
+import cs.csss.editor.shape.Rectangle;
+import cs.csss.editor.shape.Shape;
+import cs.csss.engine.ColorPixel;
 
 /**
  * 
@@ -30,7 +40,7 @@ import cs.csss.annotation.Invalidated;
  * @author Chris Brown
  *
  */
-public abstract class Layer {
+public abstract class Layer implements ShutDown {
 
 	/**
 	 * Writes the contents of {@code source} into {@code destination}. Each pixel will occupy two bytes in the destination and for any 
@@ -69,16 +79,46 @@ public abstract class Layer {
 				
 	}
 	
+	/**
+	 * Dimensions of  the layer.
+	 */
 	public final int width , height;
 	
-	//if locked, this layer cannot be modified, if hiding, the contents of this layer are not in the texture for the artboard.
-	protected boolean locked = false , hiding = false;
+	/**
+	 * Whether this layer is locked. If so, it cannot be modified.
+	 */
+	protected boolean locked = false;
 	
+	/**
+	 * Whether this layer is hiding. If so, its modifications are not visible on the owning artboard.
+	 */
+	protected boolean hiding = false;
+	
+	/**
+	 * Name of this layer.
+	 */
 	public final String name;
+	
+	/**
+	 * Palette corresponding to this palette.
+	 */
 	protected final ArtboardPalette palette;
 	
+	/**
+	 * Internal layer data store.
+	 */
 	protected volatile LayerDataStore layerDataStore;
 		
+	/**
+	 * Manager for shapes in this layer.
+	 */
+	protected volatile ShapeManager shapes = new ShapeManager();
+	
+	/**
+	 * Manager for lines in this layer.
+	 */
+	protected volatile LineManager lines = new LineManager();
+	
 	/**
 	 * Constructs a layer with the given name, palette, width and height
 	 * 
@@ -161,7 +201,13 @@ public abstract class Layer {
 	 */
 	public final boolean containsModificationTo(int xIndex , int yIndex) {
 		
-		return layerDataStore.modifiesAtIndex(xIndex, yIndex);
+		if(layerDataStore.modifiesAtIndex(xIndex, yIndex)) return true;
+		return lines.lines.stream()
+			.anyMatch(line -> {
+			
+				return false;
+			
+			});
 		
 	}
 	
@@ -193,6 +239,8 @@ public abstract class Layer {
 	 * @return 2D array of layer pixels representing this layer's contents at the specified region.
 	 */
 	public LayerPixel[][] get(int xIndex , int yIndex , int width , int height) {
+		
+		checkParams(xIndex , yIndex , width , height);
 		
 		return layerDataStore.get(xIndex, yIndex, width, height);
 		
@@ -241,9 +289,324 @@ public abstract class Layer {
 	 * 
 	 * @param hiding — whether this layer is hiding
 	 */
-	void setHiding(boolean hiding) {
+	public void hiding(boolean hiding) {
 		
 		this.hiding = hiding;
+		
+	}
+	
+	/**
+	 * Adds the given shape to this layer.
+	 * 
+	 * @param add a shape to add
+	 * @throws IllegalArgumentException if {@code add}'s channels per pixel does not match this layer's channels per pixel.
+	 */
+	public void addShape(Shape add) {
+		
+		shapes.add(add);
+		
+	}
+	
+	/**
+	 * Removes the given shape from this layer.
+	 * 
+	 * @param remove a shape to remove
+	 * @throws IllegalArgumentException if {@code remove} is not in this layer. 
+	 */
+	public void removeShape(Shape remove) {
+		
+		if(!shapes.remove(remove)) throw new IllegalArgumentException("Shape not found in this layer.");
+		
+	}
+	
+	/**
+	 * Returns whether this layer's shape manager contains {@code shape}.
+	 * 
+	 * @param shape a shape whose ownership by this layer is being checked 
+	 * @return Whether this layer's shape manager contains {@code shape}.
+	 * @throws NullPointerException if {@code shape} is <code>null</code>.
+	 */
+	public boolean containsShape(Shape shape) {
+		
+		Objects.requireNonNull(shape);		
+		return shapes.contains(shape);
+		
+	}
+	
+	/**
+	 * Invokes {@code callback} for each shape in this layer.
+	 * 
+	 * @param callback code to invoke for each shape.
+	 */
+	public void forEachShape(Consumer<Shape> callback) {
+		
+		shapes.shapes().forEach(callback);
+		
+	}
+	
+	/**
+	 * Returns a stream over the ellipses in this layer.
+	 * 
+	 * @return Stream over the ellipses in this layer.
+	 */
+	public Stream<Ellipse> ellipsesStream() {
+		
+		return shapes.ellipses();
+		
+	}
+
+	/**
+	 * Returns a stream over the rectangles in this layer.
+	 * 
+	 * @return Stream over the rectangles in this layer.
+	 */
+	public Stream<Rectangle> rectanglesStream() {
+		
+		return shapes.rectangles();
+		
+	}
+
+	/**
+	 * Returns a stream over the shapes in this layer. 
+	 * 
+	 * @return Stream over the shapes in this layer.
+	 */
+	public Stream<Shape> shapesStream() {
+		
+		return shapes.shapes();
+		
+	}
+		
+	/**
+	 * Returns an iterator over the ellipses in this layer.
+	 * 
+	 * @return Iterator over the ellipses in this layer.
+	 */
+	public Iterator<Ellipse> ellipsesIterator() {
+		
+		return shapes.ellipses().iterator();
+		
+	}
+
+	/**
+	 * Returns an iterator over the rectangles in this layer.
+	 * 
+	 * @return Iterator over the rectangles in this layer.
+	 */
+	public Iterator<Rectangle> rectanglesIterator() {
+		
+		return shapes.rectangles().iterator();
+		
+	}
+
+	/**
+	 * Returns an iterator over the shapes in this layer. 
+	 * 
+	 * @return Iterator over the shapes in this layer.
+	 */
+	public Iterator<Shape> shapesIterator() {
+		
+		return shapes.shapes().iterator();
+		
+	}
+	
+	/**
+	 * Creates a new ellipse on this layer.
+	 * 
+	 * @param artboard artboard owning this layer
+	 * @param xRadius the x radius of the ellipse
+	 * @param yRadius the y radius of the ellipse
+	 * @param borderColor the border color of the ellipse 
+	 * @param fillColor the color of the fill of the ellipse
+	 * @param fill whether to fill the ellipse
+	 * @param formatColor whether to format the given colors for the resulting shape as documented in 
+	 * 					  {@link Shape#formatColor(ColorPixel, cs.csss.engine.ChannelBuffer, int)}
+	 * @return Newly created ellipse.
+	 */
+	public Ellipse newEllipse(
+		Artboard artboard, 
+		int xRadius, 
+		int yRadius, 
+		ColorPixel borderColor , 
+		ColorPixel fillColor, 
+		boolean fill, 
+		boolean formatColor
+	) {
+		
+		return shapes.newEllipse(artboard, xRadius, yRadius, borderColor , fillColor , palette().channelsPerPixel , fill, formatColor);
+		
+	}
+	
+	/**
+	 * Creates a new rectangle on this layer.
+	 * 
+	 * @param artboard artboard owning this layer
+	 * @param width width of the rectangle
+	 * @param height height of the rectangle
+	 * @param borderColor border color of the rectangle 
+	 * @param fillColor color of the fill of the rectangle
+	 * @param fill whether to fill the rectangle
+	 * @param formatColor whether to format the given colors for the resulting shape as documented in 
+	 * 					  {@link Shape#formatColor(ColorPixel, cs.csss.engine.ChannelBuffer, int)}
+	 * @return Newly created rectangle.
+	 */
+	public Rectangle newRectangle(
+		Artboard artboard, 
+		int width, 
+		int height, 
+		ColorPixel borderColor , 
+		ColorPixel fillColor, 
+		boolean fill, 
+		boolean formatColor
+	) {
+		
+		return shapes.newRectangle(artboard, width, height, borderColor , fillColor , palette().channelsPerPixel , fill, formatColor);
+		
+	}
+	
+	/**
+	 * Removes the given line from this layer.
+	 * 
+	 * @param remove a line to remove
+	 * @throws IllegalArgumentException if {@code remove} is not in this layer. 
+	 */
+	public void removeLine(Line remove) {
+		
+		if(!lines.remove(remove)) throw new IllegalArgumentException("Line not found in this layer.");
+		
+	}
+	
+	/**
+	 * Adds {@code line} to the list of lines for this layer. 
+	 * 
+	 * @param line a line to add
+	 * @throws NullPointerException if {@code line} is <code>null</code>.
+	 * @throws IllegalArgumentException if {@code line} is already in this layer.
+	 */
+	public void addLine(Line line) { 
+		
+		Objects.requireNonNull(line);
+		
+		if(containsLine(line)) throw new IllegalArgumentException("Line is already in this layer.");
+		
+		lines.add(line);
+		
+	}
+	
+	/**
+	 * Invokes {@code callback} for each line in this layer.
+	 * 
+	 * @param callback code to invoke for each line.
+	 */
+	public void forEachLine(Consumer<Line> callback) {
+		
+		lines.lines().iterator().forEachRemaining(callback);
+		
+	}
+
+	/**
+	 * Returns a stream over the lines in this layer.
+	 * 
+	 * @return Stream over the lines in this layer.
+	 */
+	public Stream<Line> linesStream() {
+		
+		return lines.lines();
+		
+	}
+	
+	/**
+	 * Returns a stream over linear lines in this layer.
+	 * 
+	 * @return Stream over linear lines in this layer.
+	 */
+	public Stream<LinearLine> linearLinesStream() {
+		
+		return lines.linearLines();
+		
+	}
+
+	/**
+	 * Returns a stream over bezier lines in this layer.
+	 * 
+	 * @return Stream over bezier lines in this layer.
+	 */
+	public Stream<BezierLine> bezierLinesStream() {
+		
+		return lines.bezierLines();
+		
+	}
+	
+	/**
+	 * Returns an iterator over the lines in this layer.
+	 * 
+	 * @return Iterator over the lines in this layer.
+	 */
+	public Iterator<Line> linesIterator() {
+		
+		return lines.lines().iterator();
+		
+	}
+	
+	/**
+	 * Returns an iterator over linear lines in this layer.
+	 * 
+	 * @return Iterator over linear lines in this layer.
+	 */
+	public Iterator<LinearLine> linearLinesIterator() {
+		
+		return lines.linearLines().iterator();
+		
+	}
+
+	/**
+	 * Returns an iterator over bezier lines in this layer.
+	 * 
+	 * @return Iterator over bezier lines in this layer.
+	 */
+	public Iterator<BezierLine> bezierLinesIterator() {
+		
+		return lines.bezierLines().iterator();
+		
+	}
+	
+	/**
+	 * Returns whether this layer contains the given line.
+	 * 
+	 * @param contain line whose presence in this layer is being checked 
+	 * @return Whether {@code contain} is in this layer.
+	 * 
+	 * @throws NullPointerException if {@code contain} is <code>null</code>.
+	 */
+	public boolean containsLine(Line contain) {
+		
+		return lines.contains(Objects.requireNonNull(contain));
+		
+	}
+	
+	/**
+	 * Creates and returns a new linear line in this layer.
+	 * 
+	 * @param color color of the new line
+	 * @return Newly created line.
+	 * @throws NullPointerException if {@code color} is <code>null</code>.
+	 */
+	public LinearLine newLinearLine(ColorPixel color) {
+		
+		return lines.newLinearLine(Objects.requireNonNull(color));
+		
+	}
+	
+	/**
+	 * Creates and returns a new bezier line in this layer.
+	 * 
+	 * @param color color of the new line
+	 * @return Newly created line.
+	 * @throws NullPointerException if {@code color} is <code>null</code>.
+	 */
+	public BezierLine newBezierLine(ColorPixel color) {
+		
+		return lines.newBezierLine(Objects.requireNonNull(color));
 		
 	}
 	
@@ -412,5 +775,36 @@ public abstract class Layer {
 		return decompressed;
 				
 	}
+	
+	protected void checkParams(int leftX , int bottomY , int width , int height) {
 		
+		if(width <= 0) throw new IllegalArgumentException("Width is not positive: " + width);
+		if(height <= 0) throw new IllegalArgumentException("Height is not positive: " + height);
+		Objects.checkIndex(leftX, this.width);
+		Objects.checkIndex(bottomY , this.height);
+		Objects.checkIndex(leftX + width , this.width + 1);
+		Objects.checkIndex(bottomY + height, this.height + 1);
+		
+	}
+
+	@Override public String toString() {
+		
+		return "Layer";
+		
+	}
+
+	@Override public void shutDown() {
+		
+		if(isFreed()) return;
+		
+		shapes.shutDown();
+		
+	}
+
+	@Override public boolean isFreed() {
+		
+		return shapes.isFreed();
+		
+	}
+	
 }

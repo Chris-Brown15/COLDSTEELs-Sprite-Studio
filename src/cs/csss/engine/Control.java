@@ -54,8 +54,7 @@ public class Control {
 		TRANSLATE_CAMERA = new Control("Move Camera" , "Move the camera when pressed" , GLFW_MOUSE_BUTTON_MIDDLE , false) ,
 		INCREASE_BRUSH_SIZE = new Control("Increase Brush Size" , "Increases the brush size if the current brush has a radius." , GLFW_KEY_MINUS) ,
 		DECREASE_BRUSH_SIZE = new Control("Decrease Brush Size" , "Decreases the brush size if the current brush has a radius." , GLFW_KEY_EQUAL) ,
-		TWO_D_CURSOR_DRAG = new Control("Drag Cursor" , "Drag the cursor one direction only." , GLFW_KEY_TAB)
-		;
+		TWO_D_CURSOR_DRAG = new Control("Drag Cursor" , "Drag the cursor one direction only." , GLFW_KEY_TAB);
 
 	/**
 	 * Returns an iterator over all controls.
@@ -90,9 +89,9 @@ public class Control {
 			boolean wasPressed = x.pressed;
 			
 			x.pressed = checkPressedCallback.apply(x.key , x.isKeyboard);
-			if(!wasPressed && x.pressed) x.struck = true;
-			else x.struck = false;
-			
+			x.struck = !wasPressed && x.pressed;			
+			x.released = wasPressed && !x.pressed;
+
 		}
 		
 	}
@@ -104,7 +103,7 @@ public class Control {
 	/**
 	 * Represents whether this control is pressed this main loop iteration. Will only be true once per physical pressing of a key.
 	 */
-	protected boolean struck = false , pressed = false, isKeyboard = true;
+	protected boolean struck = false , pressed = false , released = false , isKeyboard = true;
 	
 	/**
 	 * Creates a new control with a given tooltip and a glfw key code which is assumed to be a keyboard keycode.
@@ -223,6 +222,17 @@ public class Control {
 	public boolean struck() {
 		
 		return struck;
+		
+	}
+	
+	/**
+	 * Returns whether this control is released. A key is released if it was pressed last update but is not this update.
+	 * 
+	 * @return Whether this control is released.
+	 */
+	public boolean released() {
+		
+		return released;
 		
 	}
 

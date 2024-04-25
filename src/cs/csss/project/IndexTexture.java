@@ -47,7 +47,7 @@ public class IndexTexture extends CSTexture {
 		bytesPerChannel = 1 ,
 		glDataFormat = GL_RG ,
 		glChannelType = GL_UNSIGNED_BYTE ,
-		pixelSizeBytes = 2;
+		pixelSizeBytes = channelsPerPixel * bytesPerChannel;
 	
 	/**
 	 * OpenGL constants for methods.
@@ -72,7 +72,7 @@ public class IndexTexture extends CSTexture {
 	IndexPixel lighterTransparentBackground = new IndexPixel(1 , 0);
 	
 	int width , height;
-		
+	
 	/**
 	 * Tracks some additional variables but does not modify the behavior of {@linkplain IndexTexture#initialize(CSGraphic, int) initialize}.
 	 */
@@ -94,7 +94,9 @@ public class IndexTexture extends CSTexture {
 			defaultValueForPixels[0] , 
 			defaultValueForPixels[1]
 		);
-		
+
+		users.getAndIncrement();
+	
 		super.initialize(graphic, textureOptions);
 		
 		graphic.shutDown();
@@ -126,8 +128,7 @@ public class IndexTexture extends CSTexture {
 	}
 	
 	/**
-	 * {@code Number} version of {@linkplain IndexTexture#putSubImage(int, int, int, int, ByteBuffer) putColor} in which the values of the
-	 * given array are considered channel values and buffered into offheap memory and passed to the graphics card.
+	 * Stores the given lookup pixel in each position of the specified region
 	 * 
 	 * @param xIndex — x index of the bottom left corner of the region to recolor
 	 * @param yIndex — y index of the bottom left corner of the region to recolor
@@ -140,7 +141,7 @@ public class IndexTexture extends CSTexture {
 		if(xIndex < 0) xIndex = 0;
 		if(yIndex < 0) yIndex = 0;
 		
-		//I HAVE NO IDEA WHY THESE NEED TO BE BUMPED, THEY JUST DO
+		//These values have to be bumped, possibly due to how glTexSubImage2D works. If they aren't the result is incorrect.
 		int pixels = (widthPixels + 1) * (heightPixels + 1);
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			
@@ -156,6 +157,46 @@ public class IndexTexture extends CSTexture {
 			
 		}
 		
+	}
+	
+	/**
+	 * Stores the given reigon of lookup pixels in the texture at the specified region.
+	 * 
+	 * @param leftX left x coordinate of the region
+	 * @param bottomY bottom y coordinate of the region
+	 * @param width width of the region
+	 * @param height height of the region 
+	 * @param region 2D array of pixels to store
+	 */
+	void putSubImage(int leftX , int bottomY , int width , int height , LookupPixel[][] region) {
+		
+		if(leftX < 0) leftX = 0; 
+		if(bottomY < 0) bottomY = 0; 
+ 
+		try(MemoryStack stack = MemoryStack.stackPush()) {                                                                    
+			                                                                                                                  
+			for(int row = 0 ; row < height ; row++) {
+
+				StackOrHeapAllocation allocation = Artboards.stackOrHeapBuffer(stack, width * pixelSizeBytes);
+				
+				for(int col = 0 ; col < width ; col++) { 
+
+					LookupPixel x = region[row][col];
+					if(x == null) x = Artboard.backgroundColorIndexForPixelIndex(leftX + col, bottomY + row);
+					allocation.buffer().put(x.lookupX()).put(x.lookupY()); 
+
+				} 
+       
+				//we do a single buffer per row. I believe a bug exists with glTexSubImage2D and this solution, though suboptimal, is the best way
+				//around it.
+				allocation.buffer().rewind();
+				putSubImage(leftX, bottomY + row , width, 1, allocation.buffer());
+				allocation.free();
+			                                                                                                                  
+			}                                                                                                                 
+	
+		}
+			
 	}
 	
 	void setCheckerBackground() {
@@ -341,6 +382,12 @@ public class IndexTexture extends CSTexture {
 		freeTexelBuffer(texelBuffer);
 
 		return pixelValue;
+		
+	}
+	
+	void incrementOwners() {
+		
+		users.incrementAndGet();
 		
 	}
 	

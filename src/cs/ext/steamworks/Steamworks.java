@@ -3,7 +3,7 @@
  */
 package cs.ext.steamworks;
 
-import static cs.csss.engine.Logging.sysDebug;
+import static cs.csss.engine.Logging.sysDebugln;
 
 import java.io.IOException;
 
@@ -57,17 +57,17 @@ public class Steamworks implements ShutDown {
 			SteamApplicationData.registerApplicationData(appID);
 			
 			SteamAPI.loadLibraries();
-			sysDebug("Was Steam Native API Loaded: " + SteamAPIHelper.wasNativeAPILoaded());
+			sysDebugln("Was Steam Native API Loaded: " + SteamAPIHelper.wasNativeAPILoaded());
 			isSteamworksInitialized = SteamAPI.init();
 
 		} catch (SteamException e) {
 			
 			e.printStackTrace();
-			sysDebug("Error Initializing Steam");
+			sysDebugln("Error Initializing Steam");
 						
 		}
 		
-		sysDebug("Was Steam Initialized: " + isSteamworksInitialized);
+		sysDebugln("Was Steam Initialized: " + isSteamworksInitialized);
 		
 	}
 	

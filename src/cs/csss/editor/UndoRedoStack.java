@@ -33,27 +33,27 @@ public class UndoRedoStack {
 				
 	}
 
-	void undo(CSStandardRenderer renderer , UndoRedoStack redo) {
+	CSSSEvent undo(CSStandardRenderer renderer , UndoRedoStack redo) {
 		
-		if(queue.empty()) return;
+		if(queue.empty()) return null;
 		
 		CSSSEvent undone = queue.get();
 
 		if(undone.isRenderEvent) renderer.post(undone::undo);
 		else undone.undo();
-		redo.push(undone);
+		return redo.push(undone);
 	
 	}
 
-	void redo(CSStandardRenderer renderer , UndoRedoStack redo) {
+	CSSSEvent redo(CSStandardRenderer renderer , UndoRedoStack redo) {
 		
-		if(queue.empty()) return;
+		if(queue.empty()) return null;
 		
 		CSSSEvent undone = queue.get();
 
 		if(undone.isRenderEvent) renderer.post(undone::_do);
 		else undone._do();
-		redo.push(undone);
+		return redo.push(undone);
 	
 	}
 
@@ -68,6 +68,17 @@ public class UndoRedoStack {
 		
 	}
 
+	/**
+	 * Returns the size of this stack, that is, the current number of elements in it.
+	 * 
+	 * @return Number of elements in this stack.
+	 */
+	public int size() {
+		
+		return queue.size();
+		
+	}
+	
 	/**
 	 * Shuts down this stack by releasing references to the events within it and freeing any memory associated with any events still in it.
 	 * @param renderer

@@ -8,18 +8,36 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+
+import org.joml.Matrix4f;
+import org.joml.Vector2f;
+import org.joml.Vector3f;
 
 import cs.core.utils.CSRefInt;
 import cs.core.utils.ShutDown;
 import cs.coreext.nanovg.NanoVGFrame;
 import cs.coreext.nanovg.NanoVGTypeface;
 import cs.csss.annotation.RenderThreadOnly;
+import cs.csss.editor.line.BezierLine;
+import cs.csss.editor.line.LinearLine;
+import cs.csss.editor.shape.Ellipse;
+import cs.csss.editor.shape.Rectangle;
+import cs.csss.editor.shape.Shape;
 import cs.csss.engine.Control;
 import cs.csss.engine.Engine;
 import cs.csss.engine.Logging;
+import cs.csss.project.io.CTSP2File;
+import cs.csss.project.io.CTSP2File.ArtboardShapesAndLinesChunk;
+import cs.csss.project.io.CTSP2File.BezierChunk;
+import cs.csss.project.io.CTSP2File.EllipseChunk;
+import cs.csss.project.io.CTSP2File.LineChunk;
+import cs.csss.project.io.CTSP2File.LinearChunk;
+import cs.csss.project.io.CTSP2File.RectangleChunk;
+import cs.csss.project.io.CTSP2File.ShapeChunk;
 import cs.csss.project.io.CTSPFile;
 import cs.csss.project.io.CTSPFile.AnimationChunk;
 import cs.csss.project.io.CTSPFile.AnimationFrameChunk;
@@ -213,21 +231,46 @@ public class CSSSProject implements ShutDown {
  		visualPalette = loadPalette(ctsp.paletteChunks()[0]);
  		for(int i = 1 ; i < 5 ; i ++) nonVisualPalettes.add(loadPalette(ctsp.paletteChunks()[i]));
  		
- 		Logging.sysDebug("Constructed Palettes");
+ 		Logging.sysDebugln("Constructed Palettes");
  		
  		//artboards
  		for(ArtboardChunk x : ctsp.artboardChunks()) loadArtboard(x);
  		
- 		Logging.sysDebug("Constructed Artboards");
+ 		Logging.sysDebugln("Constructed Artboards");
  		
  		//animations
  		for(AnimationChunk x : ctsp.animationChunks()) loadAnimation(x);
  		
  		arrangeArtboards();
- 		arrangeArtboards();
+// 		arrangeArtboards();
  		
  	}
-	
+ 	
+ 	@RenderThreadOnly public CSSSProject(Engine engine , CTSP2File ctsp2) {
+
+ 		this(engine , (CTSPFile)ctsp2);
+ 		
+ 		ArtboardShapesAndLinesChunk[] shapeAndLineChunks = ctsp2.artboardShapesAndLinesChunks();
+ 		
+ 		Logging.sysDebugln("Loading shapes and lines...");
+ 		
+ 		for(ArtboardShapesAndLinesChunk x : shapeAndLineChunks) {
+ 			
+ 			Artboard artboard = getArtboard(x.artboardName());
+ 			
+ 			loadEllipses(x, artboard); 			
+ 			loadRectangles(x, artboard); 			
+ 			loadLinearLines(x, artboard); 			
+ 			loadBezierLines(x, artboard);
+ 			
+ 		}
+ 		
+ 		forEachNonShallowCopiedArtboard(Artboard::showAllLines);
+ 		
+ 		Logging.sysDebugln("Done."); 		
+ 		
+ 	}
+
  	/**
  	 * Initializes this project.
  	 */
@@ -266,6 +309,11 @@ public class CSSSProject implements ShutDown {
 		
 	}
 	
+	/**
+	 * Deletes a nonvisual layer from all artboards in the project, using the given prototype to as the identifier for which layer to remove.
+	 * 
+	 * @param layer a prototype to identify which layers to remove
+	 */
 	@RenderThreadOnly public void deleteNonVisualLayer(NonVisualLayerPrototype layer) {
 		
 		synchronized(allArtboards) {
@@ -293,17 +341,44 @@ public class CSSSProject implements ShutDown {
 	 * Appends the given artboard to the current animation
 	 * 
 	 * @param artboard — an artboard
+	 * @return The newly added animation frame.
 	 */
-	@RenderThreadOnly public void appendArtboardToCurrentAnimation(Artboard artboard) {
+	@RenderThreadOnly public AnimationFrame appendArtboardToCurrentAnimation(Artboard artboard) {
 		
-		appendArtboardToCurrentAnimationDontArrange(artboard);
+		int index = appendArtboardToCurrentAnimationDontArrange(artboard);
 		arrangeArtboards();
+		return currentAnimation.getFrame(index);
 		
 	}	
 	
-	private void appendArtboardToCurrentAnimationDontArrange(Artboard artboard) {
+	/**
+	 * Appends the given artboard to the given animation.
+	 * 
+	 * @param animation animation to append an artboard to
+	 * @param artboard artboard to append to an animation 
+	 * @return Newly created frame.
+	 */
+	@RenderThreadOnly public AnimationFrame appendArtboardToAnimation(Animation animation , Artboard artboard) {
+		
+		Objects.requireNonNull(animation);
+		Objects.requireNonNull(artboard);
+		
+		int index = appendArtboardToAnimationDontArrange(animation , artboard);
+		arrangeArtboards();
+		return animation.getFrame(index);
+		
+	}
+	
+	/**
+	 * 
+	 * @param artboard
+	 * @return Index of the newly added frame
+	 */
+	private int appendArtboardToCurrentAnimationDontArrange(Artboard artboard) {
 
 		boolean wasLoose = looseArtboards.remove(artboard);
+
+		int index = currentAnimation.numberFrames();
 		
 		if(wasLoose) {
 			
@@ -313,34 +388,58 @@ public class CSSSProject implements ShutDown {
 			
 			Artboard shallowCopy = engine.renderer().make(() -> copier.copy(artboard)).get();
 			currentAnimation.appendArtboard(shallowCopy);
-			Engine.THE_TEMPORAL.onTrue(() -> true , () -> allArtboards.add(shallowCopy));
+			allArtboards.add(shallowCopy);
 			
 		}		
+
+		return index;
+		
+	}
+	
+	private int appendArtboardToAnimationDontArrange(Animation animation , Artboard artboard) {
+
+		boolean wasLoose = looseArtboards.remove(artboard);
+		
+		int index = animation.numberFrames();
+		
+		if(wasLoose) {
+			
+			animation.appendArtboard(artboard);
+			
+		} else {
+			
+			Artboard shallowCopy = engine.renderer().make(() -> copier.copy(artboard)).get();
+			animation.appendArtboard(shallowCopy);
+			allArtboards.add(shallowCopy);
+			
+		}		
+		
+		return index;
 		
 	}
 	
 	private Optional<Artboard> removeArtboardFromAnimation(Animation animation , int index) {
 
-		AnimationFrame frame = currentAnimation.removeFrame(index);
+		AnimationFrame removedArtboardsFrame = animation.removeFrame(index);
 		
-		boolean wasShallow = copier.isCopy(frame.board);
-		if(wasShallow) { 
+		boolean wasShallow = copier.isCopy(removedArtboardsFrame.board);
+		if(wasShallow) {
 			
-			removeArtboard(frame.board);
+			deleteArtboard(removedArtboardsFrame.board);
 			return Optional.empty();
 			
 		} else FindFirstShallowCopy: {
 			
 			//if the removed frame is a source of other shallow copies, we look through each animation until we find a shallow copy that 
 			//was made from the removed one. In that case, we replace the shallow copy with the original.
-			if(copier.isSource(frame.board)) for(Animation x : animations) for(int i = 0 ; i < x.frames.size() ; i++) {
+			if(copier.isSource(removedArtboardsFrame.board)) for(Animation x : animations) for(int i = 0 ; i < x.frames.size() ; i++) {
 				
 				AnimationFrame iterFrame = x.frames.get(i);
 				
-				if(copier.isCopy(iterFrame.board) && copier.getSourceOf(iterFrame.board) == frame.board) { 
+				if(copier.isCopy(iterFrame.board) && copier.getSourceOf(iterFrame.board) == removedArtboardsFrame.board) { 
 					
-					x.replaceFrame(i , frame.board);
-					removeArtboard(iterFrame.board);
+					x.replaceFrame(i , removedArtboardsFrame.board);
+					deleteArtboard(iterFrame.board);
 					break FindFirstShallowCopy;
 					
 				}
@@ -349,7 +448,7 @@ public class CSSSProject implements ShutDown {
 		
 		}
 			
-		return Optional.of(frame.board);
+		return Optional.of(removedArtboardsFrame.board);
 		
 	}
 	
@@ -399,15 +498,6 @@ public class CSSSProject implements ShutDown {
 	}
 	
 	/**
-	 * Draws all artboards in this project.
-	 */
-	@RenderThreadOnly public void renderAllArtboards() {
-		
-		renderAllArtboards(currentShader);
-		
-	}
-
-	/**
 	 * Draws all vector text boxes in this project
 	 *  
 	 * @param frame — NanoVG Frame for the current application frame
@@ -417,7 +507,8 @@ public class CSSSProject implements ShutDown {
 		vectorTextBoxes.forEach(textBox -> textBox.renderBoxAndText(frame));
 		
 	}
-		
+	
+	
 	/**
 	 * Renders all artboards with the given shader.
 	 * 
@@ -432,7 +523,7 @@ public class CSSSProject implements ShutDown {
 			
 			shader.updateTextures(artboard.activeLayer().palette , artboard.indexTexture());
 			shader.activate();			
-			artboard.draw();
+			artboard.draw(engine.camera());
 			
 		});
 		
@@ -491,7 +582,7 @@ public class CSSSProject implements ShutDown {
 	 	engine.renderer().post(() -> {
 
 	 		CSRefInt rowHeightAccum = new CSRefInt(arrangeLooseArtboardsNew() + 25);	 		
-	 		animations.sort((animation1 , animation2) -> animation1.getTotalWidth() - animation2.getTotalWidth()); 		
+	 		animations.sort((animation1 , animation2) -> animation1.getTotalWidth() - animation2.getTotalWidth()); 
 	 		animations.stream().filter(animation -> !animation.isEmpty()).forEach(x -> {
 
 		 		Iterator<Artboard> iter = x.frames.stream().map(frame -> frame.board).iterator();
@@ -743,12 +834,18 @@ public class CSSSProject implements ShutDown {
 	 * 
 	 * @param artboard — an artboard whose index is being queried 
 	 * @return Index of {@code artboard} in this project.
+	 * @throws NullPointerException if {@code artboard} is <code>null</code>.
+	 * @throws IllegalStateException if {@code artboard} is not in the list of all artboards.
 	 */
 	public int getArtboardIndex(Artboard artboard) {
 		
+		Objects.requireNonNull(artboard);
+		
 		synchronized(allArtboards) {
 			
-			return allArtboards.indexOf(artboard);
+			int indexOf = allArtboards.indexOf(artboard);
+			if(indexOf == -1) throw new IllegalStateException("Artboard is not in the list of all artboards, which should be impossible.");
+			return indexOf;
 		
 		}
 		
@@ -899,8 +996,8 @@ public class CSSSProject implements ShutDown {
 	}
 	
 	/**
-	 * Invokes{@code callback} for each artboard in this project that is not a shallow copy of another artboard. These could be loose or
-	 * nonloose artboards, but for nonloose artboards, they are artboards which are not in more than one animation.
+	 * Invokes {@code callback} for each artboard in this project that is not a shallow copy of another artboard. This includes loose artboards 
+	 * (artboards that are not in any animation), and nonloose artboards.
 	 * 
 	 * @param callback — code to invoke
 	 */
@@ -913,6 +1010,17 @@ public class CSSSProject implements ShutDown {
 		}
 		
 	}	
+	
+	/**
+	 * Returns an iterator over only the artboards in the project that are not shallow copies.
+	 * 
+	 * @return Iterator over artboards that are not shallow copies.
+	 */
+	public Iterator<Artboard> nonShallowCopiedArtboards() {
+		
+		return allArtboards.stream().filter(artboard -> !copier.isCopy(artboard)).iterator();
+		
+	}
 	
 	/**
 	 * Given some animation, {@code callback} is invoked for each artboard of the project which is a valid candidate for being added to the
@@ -963,7 +1071,7 @@ public class CSSSProject implements ShutDown {
 	 * @param artboard — an artboard
 	 * @return {@code true} if {@code artboard} is a source for shallow copy of another artboard.
 	 */
-	public boolean isCopySource(Artboard isSource) {
+	public boolean isSource(Artboard isSource) {
 		
 		return copier.isSource(isSource);
 		
@@ -982,34 +1090,115 @@ public class CSSSProject implements ShutDown {
 	}
 	
 	/**
-	 * Removes the given artboard from this project.
+	 * Deletes the memory of {@code artboard} and removes it from this project permanently.
 	 * 
 	 * @param artboard — an artboard to remove
 	 */
-	@RenderThreadOnly public void removeArtboard(Artboard artboard) {
-		
-		engine.renderer().removeRender(artboard.render());
-		artboard.render().shutDown();
-		
-		if(artboard == currentArtboard) currentArtboard = null;
-		
-		Engine.THE_TEMPORAL.onTrue(() -> true, () -> {
-			
-			synchronized(allArtboards) {
-				
-				allArtboards.remove(artboard);
+	@RenderThreadOnly public void deleteArtboard(Artboard artboard) {
 
-			}
-			
-			looseArtboards.remove(artboard);
-			copier.removeCopy(artboard);
-			animations.forEach(animation -> animation.removeFrame(artboard));
-			
-			arrangeArtboards();
-		
-		});
+		removeArtboard(artboard);
+		artboard.shutDown();
 		
 	}	
+	
+	/**
+	 * Removes {@code artboard} from this project but does not shut down its memory. If the removed artboard is a source for shallow copies, the copies
+	 * are shut down.
+	 * 
+	 * @param artboard artboard to remove
+	 * @throws NullPointerException if {@code artboard} is <code>null</code>.
+	 */
+	@RenderThreadOnly public void removeArtboard(Artboard artboard) {
+		
+		Objects.requireNonNull(artboard);
+		if(artboard == currentArtboard) currentArtboard = null;
+
+		synchronized(allArtboards) {
+			
+			allArtboards.remove(artboard);
+
+		}
+
+		boolean wasLoose;
+		synchronized(looseArtboards) { 
+	
+			wasLoose = looseArtboards.remove(artboard);
+		
+		}
+		
+		if(!wasLoose) {
+
+			removeArtboardFromAnimation(artboard);			
+			
+			if(copier.isSource(artboard)) {
+				
+				List<Artboard> copies = shallowCopiesOf(artboard);
+				while(!copies.isEmpty()) {
+				
+					Artboard copy = copies.remove(0);					
+					removeArtboardFromAnimation(copy);
+					copier.removeCopy(copy);
+					allArtboards.remove(copy);
+					copy.shutDown();
+				
+				}
+				
+			} else if (copier.isCopy(artboard)) { 
+				
+				copier.removeCopy(artboard);
+				artboard.shutDown();
+				
+			}
+		
+		}
+		
+		arrangeArtboards();
+	
+	}
+	
+	@RenderThreadOnly public AnimationFrame removeArtboardFromAnimation(Artboard removeFromAnim) {
+		
+		for(Animation x : animations) {
+			
+			int indexOf = x.indexOf(removeFromAnim);
+			if(indexOf == -1) continue;
+			
+			return x.removeFrame(indexOf);
+			
+		}
+		
+		return null;
+		
+	}
+	
+	/**
+	 * Returns a {@link List} of the shallow copies of the given artboard.
+	 * 
+	 * @param source an artboard whose shallow copies are being queried
+	 * @return {@link List} over the artboards that are a shallow copy of {@code source}.
+	 * @throws NullPointerException if {@code source} is <code>null</code>.
+	 * @throws IllegalArgumentException if {@code source} is not a source artboard.
+	 */
+	public List<Artboard> shallowCopiesOf(Artboard source) {
+		
+		List<Artboard> copies = new ArrayList<>();
+		if(isSource(source)) copier.copiesOf(Objects.requireNonNull(source)).forEachRemaining(artboard -> copies.add(artboard));
+		return copies;
+		
+	}
+	
+	/**
+	 * Returns whether this project currently has a reference to {@code searchFor}.
+	 * 
+	 * @param searchFor artboard to search for.
+	 * @return Whether this project currently has a reference to {@code searchFor}.
+	 * @throws NullPointerException if {@code searchFor} is <code>null</code>.
+	 */
+	public boolean containsArtboard(Artboard searchFor) {
+		
+		return allArtboards.contains(Objects.requireNonNull(searchFor));
+		
+	}
 	
 	/**
 	 * Returns the current palette. If no artboard is active, the visual palette is returned.
@@ -1049,24 +1238,6 @@ public class CSSSProject implements ShutDown {
 	}
 	
 	/* Artboard Copy Methods */
-	
-	/**
-	 * Takes a source artboard and returns a shallow copy of it by the semantics of 
-	 * {@link cs.csss.project.Artboard#shallowCopy(String, Artboard) shallowCopy(String , Artboard)}.
-	 * 
-	 * @param source — source artboard
-	 * @return Shallow copy of {@code source}.
-	 */
-	@RenderThreadOnly public Artboard shallowCopy(Artboard source) {
-		
-		Artboard copy = copier.copy(source);
-		engine.renderer().addRender(copy.render());
-		addArtboard(copy);
-		return copy;
-				
-		
-		
-	}
 	
 	/**
 	 * Calculates and returns the number of artboards that are not shallow copies. 
@@ -1139,7 +1310,7 @@ public class CSSSProject implements ShutDown {
 		
 		});
 		
-		addArtboardDontArrange(newArtboard);
+		addLooseArtboardDontArrange(newArtboard);
 		
 		return newArtboard;
 		
@@ -1169,7 +1340,7 @@ public class CSSSProject implements ShutDown {
 	@RenderThreadOnly public Artboard deepCopy(Artboard source , String newArtboardName) {
 		
 		Artboard result = Artboard.deepCopy(newArtboardName, source, this);
-		addArtboard(result);
+		addLooseArtboard(result); 
 		return result;
 		
 	}
@@ -1239,29 +1410,104 @@ public class CSSSProject implements ShutDown {
 		
 	}
 
-	private void addArtboard(Artboard newArtboard) {
+	/**
+	 * Adds the given artboard to this project. The artboard is understood to be loose, that is, to not be in any animations, but is not checked.
+	 * 
+	 * @param newArtboard artboard to add
+	 * @throws NullPointerException if {@code newArtboard} is <code>null</code>.
+	 */
+	@RenderThreadOnly public void addLooseArtboard(Artboard newArtboard) {
 
-		synchronized(allArtboards) {
-			
-			allArtboards.add(newArtboard);
-			
-		}
-		
-		looseArtboards.add(newArtboard);
-
+		addLooseArtboardDontArrange(newArtboard);
 		arrangeArtboards();
 		
 	}
 	
-	private void addArtboardDontArrange(Artboard newArtboard) {
+	/**
+	 * Adds the given artboard to this project in the given index. The artboard is understood to be loose, that is, to not be in any animations, but is
+	 * not checked.
+	 *  
+	 * @param index index to place the artboard at
+	 * @param artboard artboard to add
+	 * @throws IndexOutOfBoundsException if {@code index} is invalid as an index for this project.
+	 * @throws NullPointerException if {@code artboard} is <code>null</code>.
+	 */
+	@RenderThreadOnly public void addLooseArtboard(int index , Artboard artboard) {
+		
+		Objects.requireNonNull(artboard);
+		
+		synchronized(allArtboards) {
+			
+			allArtboards.add(index , artboard);
+			
+		}
+		
+		synchronized(looseArtboards) {
+			
+			looseArtboards.add(artboard);
+			
+		}
+		
+		arrangeArtboards();
+		
+	}
+	
+	/**
+	 * Adds the given artboard to this project. The artboard is understood to not be loose, meaning it is not in any animation.
+	 * 
+	 * @param add artboard to add
+	 * @throws NullPointerException if {@code add} is <code>null</code>.
+	 */
+	@RenderThreadOnly public void addNonLooseArtboard(Artboard add) {
+		
+		Objects.requireNonNull(add);
+		
+		synchronized(allArtboards) {
+			
+			allArtboards.add(add);
+			
+		}
+		
+		arrangeArtboards();
+		
+	}
+	
+	/**
+	 * Adds the given artboard to this project. The artboard is understood to not be loose, meaning it is not in any animation.
+	 * 
+	 * @param index the index to add the artboard at
+	 * @param add artboard to add
+	 * @throws NullPointerException if {@code add} is <code>null</code>.
+	 * @throws IndexOutOfBoundsException if {@code index} is invalid as an index.
+	 */
+	@RenderThreadOnly public void addNonLooseArtboard(int index , Artboard add) {
+		
+		Objects.requireNonNull(add);
+		synchronized(allArtboards) {
+			
+			allArtboards.add(index , add);
+			
+		}
+		
+		arrangeArtboards();
+		
+	}
+	
+	private void addLooseArtboardDontArrange(Artboard newArtboard) {
 
+		Objects.requireNonNull(newArtboard);
+		
 		synchronized(allArtboards) {
 			
 			allArtboards.add(newArtboard);
 			
 		}
 		
-		looseArtboards.add(newArtboard);
+		synchronized(looseArtboards) {
+			
+			looseArtboards.add(newArtboard);
+		
+		}
 
 	}
 	
@@ -1330,7 +1576,7 @@ public class CSSSProject implements ShutDown {
 		}
 			
 		memFree(uncompressed); 		
-		layer.setHiding(hiding);
+		layer.hiding(hiding);
 		layer.setLock(locked);
 		
 		return layer;
@@ -1571,6 +1817,30 @@ public class CSSSProject implements ShutDown {
 	}
 
 	/**
+	 * Invokes the given callback for each shape in this project. 
+	 * 
+	 * @param callback code to invoke
+	 * @throws NullPointerException if {@code callback} is <code>null</code>.
+	 */
+	public void forAllShapes(Consumer<Shape> callback) {
+		
+		Objects.requireNonNull(callback);
+		forEachNonShallowCopiedArtboard(artboard -> artboard.forAllLayers(layer -> layer.forEachShape(callback)));
+		
+	}
+	
+	/**
+	 * Returns an {@link Iterator} over all {@link Shape}s in this project. 
+	 * 
+	 * @return Iterator over all shapes in this project.
+	 */
+	public Iterator<Shape> allShapes() {
+		
+		return new ProjectShapesIterator(this);
+		
+	}
+	
+	/**
 	 * Computes size and position data needed for exporting.
 	 * 
 	 * @return Record storing width, height, and midpoint information.
@@ -1580,11 +1850,7 @@ public class CSSSProject implements ShutDown {
 		//gather information about the state of the objects being saved
 		
 		//world coordinates notating the extreme points of the project
-		float 	
-			rightmostX = 0 ,
-			leftmostX = Integer.MAX_VALUE ,
-			uppermostY = 0 ,
-			lowermostY = Integer.MAX_VALUE;
+		float rightmostX = 0 , leftmostX = Integer.MAX_VALUE , uppermostY = 0 , lowermostY = Integer.MAX_VALUE;
 		
 	 	Iterator<Artboard> artboards = allArtboards();
 		
@@ -1687,7 +1953,7 @@ public class CSSSProject implements ShutDown {
  		
  		Animation animation = createAnimation(x.name());
  		animation.defaultSwapType(AnimationSwapType.valueOf(x.defaultSwapType()));
- 		animation.setFrameTime(x.defaultSwapTime());
+ 		animation.setTime(x.defaultSwapTime());
  		animation.setUpdates(x.defaultUpdates());
  		
  		currentAnimation(animation);
@@ -1698,7 +1964,7 @@ public class CSSSProject implements ShutDown {
  			//most recent frame
  			AnimationFrame frame = animation.getFrame(animation.numberFrames() - 1); 			
  			AnimationSwapType swapType = AnimationSwapType.valueOf(y.swapType());
- 			frame.swapType(() -> swapType);
+ 			animation.setFrameSwapType(animation.numberFrames() -1, swapType);
  			
  			if(y.frameTime() == animation.getFrameTime.getAsFloat()) frame.time(animation.defaultSwapTime());
  			else frame.time(new FloatReference(y.frameTime()));
@@ -1709,10 +1975,120 @@ public class CSSSProject implements ShutDown {
  		}
  		
  	}
- 	
-	@Override public void shutDown() {
 
-		forEachArtboard(artboard -> engine.removeRender(artboard.render()));		
+	private void loadBezierLines(ArtboardShapesAndLinesChunk x, Artboard artboard) {
+		
+		BezierChunk[] beziers = x.bezierLines();
+		for(BezierChunk bezier : beziers) {
+			
+			LineChunk line = bezier.line();
+			int layerIndex = line.layerIndex();
+			Layer owner = line.belongsToVisualLayer() ? artboard.getVisualLayer(layerIndex) : artboard.getNonVisualLayer(layerIndex);
+			BezierLine loaded = owner.newBezierLine(line.color());
+			loaded.setEndpoint1(artboard, line.endpoint1X(), line.endpoint1Y());
+			loaded.setEndpoint2(artboard, line.endpoint2X(), line.endpoint2Y());
+			loaded.thickness(line.thickness()); 				
+			for(Vector2f p : bezier.controlPoints()) loaded.controlPoint(artboard, (int)p.x, (int)p.y);
+			
+		}
+		
+	}
+
+	private void loadLinearLines(ArtboardShapesAndLinesChunk x, Artboard artboard) {
+		
+		LinearChunk[] linears = x.linearLines();
+		for(LinearChunk linear : linears) {
+			
+			LineChunk line = linear.line();
+			int layerIndex = line.layerIndex();
+			Layer owner = line.belongsToVisualLayer() ? artboard.getVisualLayer(layerIndex) : artboard.getNonVisualLayer(layerIndex);
+			LinearLine loaded = owner.newLinearLine(line.color());
+			loaded.setEndpoint1(artboard, line.endpoint1X(), line.endpoint1Y());
+			loaded.setEndpoint2(artboard, line.endpoint2X(), line.endpoint2Y());
+			loaded.thickness(line.thickness());
+			
+		}
+		
+	}
+
+	private void loadRectangles(ArtboardShapesAndLinesChunk x, Artboard artboard) {
+		
+		RectangleChunk[] rectangles = x.rectangles();
+		for(RectangleChunk rectangle : rectangles) {
+			
+			ShapeChunk shape = rectangle.shape();
+			int layerIndex = shape.layerIndex();
+			Layer owner = shape.belongsToVisualLayer() ? artboard.getVisualLayer(layerIndex) : artboard.getNonVisualLayer(layerIndex);
+			Rectangle loaded = owner.newRectangle(
+				artboard, 
+				shape.width(), 
+				shape.height(), 
+				shape.borderColor(), 
+				shape.fillColor(), 
+				shape.fill(), 
+				false
+			);
+			
+			loaded.hide(shape.hide());
+			loaded.moveTo(artboard.midX() + shape.offsetX(), artboard.midY() + shape.offsetY());
+			
+		}
+		
+	}
+
+	private void loadEllipses(ArtboardShapesAndLinesChunk x, Artboard artboard) {
+		
+		EllipseChunk[] ellipses = x.ellipses();
+		for(EllipseChunk ellipse : ellipses) {
+			
+			ShapeChunk shape = ellipse.shape();
+			int layerIndex = shape.layerIndex();
+			Layer owner = shape.belongsToVisualLayer() ? artboard.getVisualLayer(layerIndex) : artboard.getNonVisualLayer(layerIndex); 				
+			Ellipse loaded = owner.newEllipse(
+				artboard , 
+				ellipse.xRadius() , 
+				ellipse.yRadius() , 
+				shape.borderColor() , 
+				shape.fillColor() ,  
+				shape.fill(), 
+				false
+			);
+			
+			loaded.hide(shape.hide());				
+			loaded.moveTo(artboard.midX() + shape.offsetX(), artboard.midY() + shape.offsetY());
+			
+		}
+		
+	}
+	
+	/**
+	 * Moves the camera to the source artboard of {@code copy}, a shallow copied artboard.
+	 * 
+	 * @param copy artboard whose source is being moved to
+	 * @throws NullPointerException if {@code copy} is <code>null</code>.
+	 * @throws IllegalArgumentException if {@code copy} is not a shallow copy.
+	 */
+	public void moveCameraToSourceOf(Artboard copy) {
+		
+		Artboard source = getSource(copy);
+		Matrix4f cameraTranslation = engine.camera().viewTranslation();
+		Vector3f translationBuffer = new Vector3f();
+		cameraTranslation.getTranslation(translationBuffer);
+		cameraTranslation.translate(translationBuffer.negate().sub(source.midX() , source.midY() , 0));									
+		
+	}
+	
+	public void registerSourceAndShallowCopies(Artboard source , List<Artboard> shallowCopies) {
+		
+		copier.registerCopySourceAndShallowCopies(source , shallowCopies);
+		
+	}
+	
+ 	@RenderThreadOnly @Override public void shutDown() {
+
+ 		if(isFreed()) return;
+ 		
+		forEachArtboard(Artboard::shutDown);		
 		vectorTextBoxes.forEach(VectorText::shutDown);
 		isFreed.set(true);
 		

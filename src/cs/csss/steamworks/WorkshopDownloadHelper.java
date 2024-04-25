@@ -92,7 +92,7 @@ public class WorkshopDownloadHelper {
 			} catch (IOException e) {
 				
 				e.printStackTrace();
-				Logging.syserr("Failed to load a workshop item, continuing.");
+				Logging.syserrln("Failed to load a workshop item, continuing.");
 				continue;
 				
 			}
@@ -118,7 +118,7 @@ public class WorkshopDownloadHelper {
 		} catch (IOException e) {
 			
 			e.printStackTrace();
-			Logging.syserr("Failed to retrieve tags for downloaded item, cannot install now.");
+			Logging.syserrln("Failed to retrieve tags for downloaded item, cannot install now.");
 			return;
 			
 		}

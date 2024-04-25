@@ -43,6 +43,7 @@ import cs.csss.engine.CSSSCamera;
 import cs.csss.engine.ChannelBuffer;
 import cs.csss.engine.ColorPixel;
 import cs.csss.engine.Engine;
+import cs.csss.engine.LookupPixel;
 import cs.csss.engine.Pixel;
 import cs.csss.engine.TransformPosition;
 import cs.csss.misc.files.CSFolder;
@@ -162,7 +163,7 @@ import cs.csss.misc.utils.FlexableGraphic;
 		
 		if(currentRow == paletteHeight) {
 			
-			syserr("Too many colors have been added to this palette, resetting palette.");
+			syserrln("Too many colors have been added to this palette, resetting palette.");
 			currentRow = 0;
 			currentCol = 3;
 			
@@ -189,7 +190,7 @@ import cs.csss.misc.utils.FlexableGraphic;
 	
 	void resizeAndCopy(int newWidth , int newHeight) {
 		
-		syserr("Resizing, new palette is " + paletteWidth + " x " + paletteHeight);
+		syserrln("Resizing, new palette is " + paletteWidth + " x " + paletteHeight);
 		
 		ByteBuffer newPaletteMemory = BufferUtils.createByteBuffer(paletteHeight * paletteWidth * channelsPerPixel);
 		int palettePosition = paletteMemory.position();
@@ -254,16 +255,14 @@ import cs.csss.misc.utils.FlexableGraphic;
 	 * <B>Note:</B> Must be called from the render thread.
 	 * 
 	 * @param colors
-	 * @return {@code short[]} containing the x and y coordinates of {@code colors}.
+	 * @return Lookup pixel containing the x and y coordinates of {@code colors}.
 	 */
-	public short[] putOrGetColors(ColorPixel colors) {
+	public LookupPixel putOrGetColors(ColorPixel colors) {
 	
-		short[] indices = getIndicesOfColor(colors);
+		LookupPixel indices = getIndicesOfColor(colors);
 		if(indices == null) { 
 			
-			indices = new short[2];
-			indices[0] = currentCol;
-			indices[1] = currentRow;
+			indices = new IndexPixel(currentCol , currentRow);
 			put(colors);
 			
 		}
@@ -284,25 +283,27 @@ import cs.csss.misc.utils.FlexableGraphic;
 	 * @param color — the color to find
 	 * @return The indices of {@code color} in this palette if found, or <code>null</code> otherwise.
 	 */
-	public short[] getIndicesOfColor(ColorPixel color) {
+	public LookupPixel getIndicesOfColor(ColorPixel color) {
 		
 		boolean foundMatch = false;
 		short row = 0 , col = 0;
 
+		PalettePixel currentPixel = null;
+		
 		//iterate over palette
 		FindMatch: for(; row <= currentRow ; row++) for(; col < currentCol ; col++) {
 			
-			PalettePixel currentPixel = new PalettePixel(paletteMemory , col , row);
-			if(foundMatch = color.compareTo(currentPixel) == 0) break FindMatch;
+			currentPixel = new PalettePixel(paletteMemory , col , row);
+			if(foundMatch = currentPixel.compareTo(color) == 0) break FindMatch;
 			
 		}
 				  	
 		if(!foundMatch) return null;
 
-		return new short[] {col , row};
-		
+		return new IndexPixel(col , row);
+				
 	}
-	
+		
 	/**
 	 * Returns a read-only texel buffer for this palette.
 	 * 
@@ -656,6 +657,19 @@ import cs.csss.misc.utils.FlexableGraphic;
 			setByIndex(alpha , 3);
 			
 		}
+		
+		@Override public int compareTo(Pixel other) {
+		
+			if(other instanceof ColorPixel color) {
+				
+				for(int i = 0 ; i < channelsPerPixel ; i++) if(color.i(i) != i(i)) return -1;
+				return 0;
+				
+			}
+			
+			return -1;
+			
+		}	
 		
 		/**
 		 * Creates a new palette pixel frm the channel values of {@code other}.

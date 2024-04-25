@@ -13,7 +13,6 @@ import static org.lwjgl.nuklear.Nuklear.nk_propertyf;
 import static org.lwjgl.nuklear.Nuklear.nk_propertyi;
 import static org.lwjgl.nuklear.Nuklear.nk_selectable_symbol_text;
 import static org.lwjgl.nuklear.Nuklear.nk_spacer;
-
 import static cs.csss.ui.utils.UIUtils.toByte;
 import static cs.core.ui.CSUIConstants.*;
 
@@ -106,7 +105,7 @@ public class AnimationPanel implements ShutDown {
 			UIAttachedElement averageFrameTimeSlider = new UIAttachedElement(frameTimeRow , () -> {
 				
 				float current = animation().getFrameTime.getAsFloat();
-				animation().setFrameTime(nk_propertyf(nuklear.context() , timeSliderText , 0 , current , 999999f , .1f , .1f));
+				animation().setTime(nk_propertyf(nuklear.context() , timeSliderText , 0 , current , 999999f , .1f , .1f));
 				
 			});
 			
@@ -156,9 +155,8 @@ public class AnimationPanel implements ShutDown {
 
 		CSRow topRow = optionGroup.ui.new CSRow(30);
 		topRow.pushWidth(30);
-		CSButton 
-			playButton = topRow.new CSButton(SYMBOL_TRIANGLE_RIGHT , this::togglePlay) ,
-			stopButton = topRow.new CSButton(SYMBOL_RECT_SOLID , this::togglePlay);
+		CSButton playButton = topRow.new CSButton(SYMBOL_TRIANGLE_RIGHT , this::togglePlay); 
+		CSButton stopButton = topRow.new CSButton(SYMBOL_RECT_SOLID , this::togglePlay);
 		
 		topRow.doLayout = doLayout; 
 		playButton.doLayout = () -> animation() != null && !animation().playing();
@@ -173,7 +171,12 @@ public class AnimationPanel implements ShutDown {
 		CSDynamicRow statsRow = optionGroup.ui.new CSDynamicRow();
 		statsRow.doLayout = doLayout;
 		
-		for(int i = 0 ; i < swapTypes.length ; i++) (swapTypeRows[i] = optionGroup.ui.new CSDynamicRow()).doLayout = () -> animation() != null;
+		for(int i = 0 ; i < swapTypes.length ; i++) { 
+			
+			swapTypeRows[i] = optionGroup.ui.new CSDynamicRow();
+			swapTypeRows[i].doLayout = () -> animation() != null;
+			
+		}
 		
 		statsRow.new CSText(() -> "Dimensions (WxH): " + animation().frameWidth() + ", " + animation().frameHeight() , textOptions);
 		
@@ -181,7 +184,7 @@ public class AnimationPanel implements ShutDown {
 		buttonsRow.doLayout = doLayout;
 		buttonsRow.new CSButton("Reset Frame View" , () -> {
 			
-			zoom = 0.3f ; xTranslation = 0 ; yTranslation = 0;
+			zoom = 0.3f ; xTranslation = yTranslation = 0;
 			
 		});
 		
@@ -205,10 +208,14 @@ public class AnimationPanel implements ShutDown {
 				
 				nk_layout_row_begin(context , NK_DYNAMIC , 20 , 1);
 				nk_layout_row_push(context , .33f);
+				
+				StringBuilder artboardName = new StringBuilder("Artboard " + artboard.name);
+				if(artboard.isShallowCopy()) artboardName.append(" Alias");
+				
 				if(nk_selectable_symbol_text(
 					context , 
 					dropdownSymbol , 
-					"Artboard " + artboard.name , 
+					artboardName , 
 					TEXT_RIGHT , 
 					toByte(stack , isActiveFrame))
 				) animation().currentFrameIndex(current);
@@ -273,7 +280,7 @@ public class AnimationPanel implements ShutDown {
 			
 		});
 		
-		//this code attaches the code within the lambda to the element that will be placed next on thet top part section row. This is an
+		//this code attaches the code within the lambda to the element that will be placed next on the top part section row. This is an
 		//empty group that will contain the frame of the image.
 		new UIAttachedElement(topPartSections , () -> {
 			

@@ -9,7 +9,6 @@ import cs.csss.engine.ColorPixel;
 import cs.csss.engine.LookupPixel;
 import cs.csss.engine.Pixel;
 import cs.csss.project.Artboard;
-import cs.csss.project.IndexPixel;
 
 /**
  * Brush used to replace a color within a palette to the selected color in the left hand side panel.
@@ -27,10 +26,10 @@ import cs.csss.project.IndexPixel;
 
 	@Override public CSSSEvent use(Artboard artboard, Editor editor, int xIndex, int yIndex) {
 
-		IndexPixel clickedPixel = artboard.getIndexPixelAtIndices(xIndex, yIndex);		
+		LookupPixel clickedPixel = artboard.getIndexPixelAtIndices(xIndex, yIndex);		
 		Pixel editorSelected = editor.selectedColorValues();
 		if(editorSelected instanceof LookupPixel) return new NOPEvent();
-		return new ModifyPaletteEvent(artboard , clickedPixel.xIndex , clickedPixel.yIndex , (ColorPixel)editorSelected);
+		return new ModifyPaletteEvent(artboard , clickedPixel.unsignedLookupX() , clickedPixel.unsignedLookupY() , (ColorPixel)editorSelected);
 
 	}
 

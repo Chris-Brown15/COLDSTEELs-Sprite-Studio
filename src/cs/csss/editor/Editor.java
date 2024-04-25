@@ -1,9 +1,11 @@
 package cs.csss.editor;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import static cs.csss.editor.event.CSSSMemoryEvent.*;
+
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.Consumer;
@@ -12,9 +14,8 @@ import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 import org.joml.Vector2f;
+import org.lwjgl.nuklear.NkPluginFilter;
 
-import cs.core.CSDisplay;
-import cs.core.graphics.CSRender;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
 import cs.core.utils.Lambda;
 import cs.core.utils.ShutDown;
@@ -31,26 +32,36 @@ import cs.csss.editor.brush.Delete_RegionBrush;
 import cs.csss.editor.brush.EraserBrush;
 import cs.csss.editor.brush.Eye_DropperBrush;
 import cs.csss.editor.brush.Flood_FillBrush;
+import cs.csss.editor.brush.LinesBrush;
 import cs.csss.editor.brush.Move_RegionBrush;
 import cs.csss.editor.brush.PencilBrush;
 import cs.csss.editor.brush.Replace_AllBrush;
 import cs.csss.editor.brush.RotateBrush;
 import cs.csss.editor.brush.Scale_RegionBrush;
 import cs.csss.editor.brush.Select_ArtboardBrush;
-import cs.csss.editor.event.AnonymousEvent;
+import cs.csss.editor.brush.ShapesBrush;
 import cs.csss.editor.event.CSSSEvent;
+import cs.csss.editor.event.CSSSMemoryEvent;
 import cs.csss.editor.event.ModifyPaletteDirectEvent;
-import cs.csss.editor.event.NOPEvent;
+import cs.csss.editor.event.RasterizeShapeEvent;
+import cs.csss.editor.event.ShutDownEventEvent;
 import cs.csss.editor.event.TogglePaletteReferenceModeEvent;
+import cs.csss.editor.line.BezierLine;
+import cs.csss.editor.line.Line;
+import cs.csss.editor.line.Line.LineMod;
 import cs.csss.editor.palette.AnalogousPalette;
 import cs.csss.editor.palette.ComplementaryPalette;
 import cs.csss.editor.palette.MonochromaticPalette;
+import cs.csss.editor.shape.Ellipse;
+import cs.csss.editor.shape.Rectangle;
+import cs.csss.editor.shape.Shape;
 import cs.csss.editor.ui.AnimationPanel;
 import cs.csss.editor.ui.ArtboardPaletteUI;
 import cs.csss.editor.ui.FilePanel;
 import cs.csss.editor.ui.LHSPanel;
 import cs.csss.editor.ui.RHSPanel;
 import cs.csss.engine.CSSSCamera;
+import cs.csss.engine.CSSSDisplay;
 import cs.csss.engine.ChannelBuffer;
 import cs.csss.engine.ColorPixel;
 import cs.csss.engine.Control;
@@ -65,7 +76,9 @@ import cs.csss.project.ArtboardPalette;
 import cs.csss.project.CSSSProject;
 import cs.csss.project.IndexPixel;
 import cs.csss.project.VisualLayer;
+import cs.csss.project.utils.Artboards;
 import cs.csss.ui.utils.UIUtils;
+import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 
 /**
  * Editor handles tasks relating to modifying artboards. It functions on a largely event-driven architecture where implementations of 
@@ -93,7 +106,9 @@ public class Editor implements ShutDown {
 	private static volatile CSSSBrush theScriptBrush2 = null;
 	private static volatile CSSSModifyingBrush theModifyingScriptBrush2 = null;
 	private static volatile CSSSSelectingBrush theSelectingScriptBrush2 = null;
-
+	private static ShapesBrush theShapeBrush;
+	private static LinesBrush theLineBrush;
+	
 	/**
 	 * Returns the current script brush.
 	 * 
@@ -124,6 +139,28 @@ public class Editor implements ShutDown {
 	public static CSSSSelectingBrush theSelectingScriptBrush2() {
 		
 		return theSelectingScriptBrush2;
+		
+	}
+	
+	/**
+	 * Returns the shape brush.
+	 * 
+	 * @return Shape brush.
+	 */
+	public static ShapesBrush theShapeBrush() {
+		
+		return theShapeBrush;
+		
+	}
+	
+	/**
+	 * Returns the line brush. 
+	 *  
+	 * @return Line brush.
+	 */
+	public static LinesBrush theLineBrush() {
+		
+		return theLineBrush;
 		
 	}
 	
@@ -164,13 +201,21 @@ public class Editor implements ShutDown {
 	
 	private LookupPixel currentColorIndices;
 	
+	private ConcurrentLinkedDeque<Consumer<NanoVGFrame>> nanoVGRenderCallbacks = new ConcurrentLinkedDeque<>();
+
+	private Shape activeShape = null;
+	private Line activeLine = null;
+	
+	private ActiveItemBounder activeShapeBounder = new ActiveItemBounder();	
+	private ActiveItemBounder activeLineBounder = new ActiveItemBounder();
+	
 	/**
 	 * Creates an editor object. 
 	 * 
 	 * @param engine — the engine of this application
 	 * @param display — display for the application
 	 */
-	public Editor(Engine engine , CSDisplay display) {
+	public Editor(Engine engine , CSSSDisplay display) {
 		
 		this.engine = engine;
 		
@@ -187,7 +232,45 @@ public class Editor implements ShutDown {
 		new AnalogousPalette(15);
 		new ComplementaryPalette(6);
 		
-		display.window.onWindowResize((newWidth , newHeight) -> paletteUI.camera.resetProjection(newWidth, newHeight));
+		display.window.onWindowResize(paletteUI::onFramebufferResize);
+		
+		activeLineBounder.showLeftSideMover = 
+		activeLineBounder.showTopSideMover = 
+		activeLineBounder.showRightSideMover = 
+		activeLineBounder.showBottomSideMover = false;
+		
+		theShapeBrush = new ShapesBrush(Map.of(
+			"Ellipse" , () -> rendererMake(() -> {
+			
+				Artboard current = currentArtboard();
+				if(current == null) return null;
+				return current.newEllipse();
+			
+			}).get() ,
+			"Rectangle" , () -> rendererMake(() -> {
+				
+				Artboard current = currentArtboard();
+				if(current == null) return null;
+				return current.newRectangle();
+				
+			}).get()
+		));
+		
+		theLineBrush = new LinesBrush(Map.of(
+			"Linear" , () -> {
+				
+				Artboard current = currentArtboard();
+				return current != null ? current.newLinearLine(currentColor) : null;
+				
+			} ,
+			"Bezier" , () -> {
+
+				Artboard current = currentArtboard();
+				return current != null ? current.newBezierLine(currentColor) : null;
+				
+			}
+			
+		));
 		
 	}
 
@@ -196,6 +279,9 @@ public class Editor implements ShutDown {
 	 */
 	public void update() {
 
+		//sets the active artboard first
+		findCurrentArtboard();
+		
 		updateCurrentBrush();
 		//add new events
 		editArtboardOnControls();
@@ -207,11 +293,12 @@ public class Editor implements ShutDown {
 		handleEvents();	
 		//update the current project's animation if running
 		playAnimation();
-	
+			
 	}
 	
 	/**
-	 * Pushes an event on the undo queue and the list of all events.
+	 * Pushes an event onto the event queue and the undo stack. If pushing {@code event} onto the undo stack causes another event to be pushed off it and
+	 * the removed event is an instance of {@code ShutDown}, it is shut down.
 	 * 
 	 * @param event — any event
 	 */
@@ -219,17 +306,41 @@ public class Editor implements ShutDown {
 		
 		events.add(event);
 
-		if(event.isTransientEvent) events.add(shutDownEventReflection(event)); 
-		else {
-			
-			CSSSEvent removed = undos.push(event);
-			if(removed == null) return;
-			eventPush(shutDownEventReflection(removed));
-			
-		}
+		if(event.isTransientEvent) forceFreeEjectedEvent(event); 		
+		else handleEjectedEvent(undos.push(event), true);
 
 	}
+	
+	/**
+	 * Receives all events ejected from either the undo or redo stack. When an event is ejected, it is checked for being a {@link CSSSMemoryEvent}, in 
+	 * which case the semantics for shutting down events containing memory are carried out. 
+	 * 
+	 * @param event the event to handle
+	 * @param justEjectedFromUndo if <code>true</code>, {@code event} is understood to have just been ejected from the undo stack, otherwise it is 
+	 * 							  understood to have been ejected from the redo stack
+	 */
+	private void handleEjectedEvent(CSSSEvent event , boolean justEjectedFromUndo) {
+		
+		if(event instanceof CSSSMemoryEvent asMemoryEvent) {
+			
+			if(justEjectedFromUndo && asMemoryEvent.isAny(SHUTDOWN_ON_REMOVE_FROM_UNDO)) eventPush(new ShutDownEventEvent(asMemoryEvent));
+			else if (!justEjectedFromUndo && asMemoryEvent.isAny(SHUTDOWN_ON_REMOVE_FROM_REDO)) eventPush(new ShutDownEventEvent(asMemoryEvent));
+						
+		}
+		
+	}
+	
+	/**
+	 * Frees the given event as long as it is a memory event, ignoring its shut down cases identifier.
+	 * 
+	 * @param event the event to shut down
+	 */
+	private void forceFreeEjectedEvent(CSSSEvent event) {
 
+		if(event instanceof CSSSMemoryEvent asMemoryEvent) eventPush(new ShutDownEventEvent(asMemoryEvent));
+			
+	}
+	
 	/**
 	 * Handles any events associated with this editor.
 	 */
@@ -245,7 +356,7 @@ public class Editor implements ShutDown {
 				
 				} catch(Exception e) {
 					
-					Logging.syserr("Event excepted " + x);
+					Logging.syserrln("Event excepted " + x);
 					e.printStackTrace();
 					
 				}
@@ -267,22 +378,9 @@ public class Editor implements ShutDown {
 		
 		if(project == null) return;
 		
-		boolean cursorInBoundsForBrush = cursorInBoundsForBrush();
-		float[] cursor = engine.getCursorWorldCoords();			
-
 		Artboard current = project.currentArtboard();
-		
-		if(project.freemoveMode() && Control.ARTBOARD_INTERACT.struck()) {
-			
-			if(current == null) project.setCurrentArtboardByMouse(cursor[0], cursor[1]); 
-			else project.currentArtboard(null);
-			return;		
-			
-		}
-		
-		if(!cursorInBoundsForBrush || currentBrush == null) return;
-		
-		if(Control.ARTBOARD_INTERACT.pressed()) current = setCurrentArtboard(cursor); 
+
+		float[] cursor = engine.getCursorWorldCoords();			
 		
 		if(current != null && current.isCursorInBounds(cursor)) {
 		
@@ -300,7 +398,7 @@ public class Editor implements ShutDown {
 					
 				} catch(Exception e) {
 					
-					Logging.syserr("Brush _do failed for brush " + currentBrush);
+					Logging.syserrln("Brush _do failed for brush " + currentBrush);
 					e.printStackTrace();
 					
 				} else {
@@ -323,13 +421,14 @@ public class Editor implements ShutDown {
 
 		if(Control.PRELIM.pressed()) if(Control.PRELIM2.pressed()) {
 			
-			if(Control.UNDO.pressed()) undo();
-			else if (Control.REDO.pressed()) redo();
+			if(Control.UNDO.pressed()) handleEjectedEvent(undo(), false);
+			else if (Control.REDO.pressed()) handleEjectedEvent(redo(), true);
+			
 		
 		} else {
 			
-			if(Control.UNDO.struck()) undo();
-			else if (Control.REDO.struck()) redo();
+			if(Control.UNDO.struck()) handleEjectedEvent(undo(), false);
+			else if (Control.REDO.struck()) handleEjectedEvent(redo(), true);
 		
 		}
 		
@@ -365,6 +464,39 @@ public class Editor implements ShutDown {
 	}
 
 	/**
+	 * Renders all NanoVG render callbacks currently pushed. 
+	 * 
+	 * @param frame a frame for rendering
+	 */
+	public void renderNanoVGCallbacks(NanoVGFrame frame) {
+		
+		while(!nanoVGRenderCallbacks.isEmpty()) nanoVGRenderCallbacks.pop().accept(frame);
+		
+	}
+	
+	private void findCurrentArtboard() {
+
+		CSSSProject project = project();
+		
+		if(project == null) return;
+		
+		float[] cursor = engine.getCursorWorldCoords();			
+		
+		if(project.freemoveMode() && Control.ARTBOARD_INTERACT.struck()) {
+			
+			if(project.currentArtboard() == null) project.setCurrentArtboardByMouse(cursor[0], cursor[1]); 
+			else project.currentArtboard(null);
+			return;		
+			
+		}
+		
+		if(!cursorInBoundsForBrush() || currentBrush == null) return;
+		
+		if(Control.ARTBOARD_INTERACT.pressed()) setCurrentArtboard(cursor); 
+		
+	}
+	
+	/**
 	 * Updates the current brush if it is a stateful brush.
 	 */
 	private void updateCurrentBrush() {
@@ -373,27 +505,29 @@ public class Editor implements ShutDown {
 		
 		if(currentBrush.stateful) {
 			
-			CSSSProject project = project();
 			rendererPost(() -> {
 				
 				if(Engine.isDebug()) {
 					
 					try {
 						
-						currentBrush.update(project == null ? null : project.currentArtboard() , this);
+						currentBrush.update(currentArtboard() , this);
 					
 					} catch(Exception e) {
 						
-						Logging.syserr("Brush update failed for brush " + currentBrush);
+						Logging.syserrln("Brush update failed for brush " + currentBrush);
 						e.printStackTrace();
 													
 					}
 					
-				} else currentBrush.update(project == null ? null : project.currentArtboard() , this);
+				} else currentBrush.update(currentArtboard() , this);
 			
 			}).await();
 		
 		}
+		
+		if(currentBrush instanceof ShapesBrush && activeShape != null) pushNanoRenderCallback(this::boxOnActiveShape);
+		if(currentBrush instanceof LinesBrush && activeLine != null) pushNanoRenderCallback(this::boxOnActiveLine);
 		
 		Artboard current = currentArtboard();
 		if(currentBrush instanceof CSSSModifyingBrush modifingBrush && current != null) {
@@ -429,7 +563,7 @@ public class Editor implements ShutDown {
 			
 		if(!Control.ARTBOARD_INTERACT.pressed()) return;
 		
-		CSSSCamera camera = paletteUI.camera;
+		CSSSCamera camera = paletteUI.camera();
 		
 		//select a position on the palette.
 		
@@ -478,19 +612,25 @@ public class Editor implements ShutDown {
 	
 	/**
 	 * Invokes the most recent event's undo code.
+	 * 
+	 * @return The event that was ejected from the redo stack as a result of undoing the event that got undone, or <code>null</code> if either the undo
+	 * 		   stack is empty or it is not at capacity, so no event has to be ejected.
 	 */
-	public void undo() {
+	public CSSSEvent undo() {
 		
-		undos.undo(engine.renderer() , redos);
+		return undos.undo(engine.renderer() , redos);
 		
 	}
 	
 	/**
 	 * Redoes the most recently undone event's code.
+	 * 
+	 * @return The event that was ejected from the undo stack as a result of redoing the event that got redone, or <code>null</code> if either the redo
+	 * 		   stack is empty or it is not at capacity, so no event has to be ejected. 
 	 */
-	public void redo() {
+	public CSSSEvent redo() {
 		
-		redos.redo(engine.renderer() , undos);
+		return redos.redo(engine.renderer() , undos);
 		
 	}
 
@@ -562,7 +702,7 @@ public class Editor implements ShutDown {
 		TransformPosition palettePosition = currentPalette.position();
 		
 		NanoVG nano = engine.nanoVG();
-		nano.converter().camera(paletteUI.camera);
+		nano.converter().camera(paletteUI.camera());
 
 		Vector2f bounderInScreenSpace = nano.worldToScreen(palettePosition.leftX() + paletteXIndex , palettePosition.bottomY() + paletteYIndex);
 		
@@ -671,17 +811,63 @@ public class Editor implements ShutDown {
 	}
 	
 	/**
+	 * Returns the number of elements in the undo stack.
+	 * 
+	 * @return Number of elements in the undo stack.
+	 */
+	public int undoSize() {
+		
+		return undos.size();
+				
+	}
+
+	/**
+	 * Returns the number of elements in the redo stack.
+	 * 
+	 * @return Number of elements in the redo stack.
+	 */
+	public int redoSize() {
+		
+		return redos.size();
+		
+	}
+	
+	/**
 	 * Sets the capacity of both the undo and redo stack.
 	 * 
 	 * @param size — new capacity for the stacks
 	 */
 	public void setUndoAndRedoCapacity(int size) {
 		
+		clearEventStructures();
 		redos = new UndoRedoStack(size);
 		undos = new UndoRedoStack(size);
 		
 	}
 	
+	/**
+	 * Clears the undo and redo stacks, freeing any memory their events held.
+	 */
+	public void clearEventStructures() {
+		
+		handleEvents();
+		
+		while(redos.size() > 0) if(redos.queue.get() instanceof CSSSMemoryEvent asMemoryEvent && asMemoryEvent.isAny(SHUTDOWN_ON_REMOVE_FROM_REDO))  { 
+			
+			if(asMemoryEvent.isRenderEvent) rendererPost(() -> asMemoryEvent.onStackClear(false));
+			else asMemoryEvent.onStackClear(false);
+		
+		}
+		
+		while(undos.size() > 0) if(undos.queue.get() instanceof CSSSMemoryEvent asMemoryEvent && asMemoryEvent.isAny(SHUTDOWN_ON_REMOVE_FROM_UNDO)) { 
+			
+			if(asMemoryEvent.isRenderEvent) rendererPost(() -> asMemoryEvent.onStackClear(true));
+			else asMemoryEvent.onStackClear(true);
+		
+		}
+		
+	}
+		
 	/**
 	 * Sets the active colors of the color picker in the left hand side panel to {@code pixel}.
 	 * 
@@ -1018,6 +1204,55 @@ public class Editor implements ShutDown {
 	}
 	
 	/**
+	 * Creates a new input box for reordering control points on a bezier line.
+	 * 
+	 * @param artboard artboard the given line belongs to
+	 * @param line the line whose control points are being reordered
+	 * @param controlPointOriginalIndex the index of the control point to move somewhere else
+	 */
+	public void startReorderControlPoint(Artboard artboard , BezierLine line , int controlPointOriginalIndex) {
+		
+		engine.startReorderControlPoint(artboard , line , controlPointOriginalIndex);
+		
+	}
+	
+	/**
+	 * Creates an input box in which the user can provide some input.
+	 * 
+	 * @param title title of the input box
+	 * @param description description text within the input box
+	 * @param filter filter for what type of characters can be input in the input box 
+	 * @param maxCharacters max number of characters that can be input in the box
+	 * @param onAccept code invoked when accepted 
+	 * @param onCancel code invoked when cancelled
+	 */
+	public void startDetailedInputBox(
+		String title , 
+		String description , 
+		NkPluginFilter filter , 
+		int maxCharacters , 
+		Consumer<String> onAccept , 
+		Lambda onCancel
+	) {
+		
+		engine.startDetailedInputBox(title , description , filter , maxCharacters , onAccept , onCancel);
+		
+	}
+	
+	/**
+	 * Creates a notification box which displays a message to the user.
+	 * 
+	 * @param title title for the notification box
+	 * @param message message displayed in the box
+	 * @param onOK code to invoke when the user presses OK
+	 */
+	public void startDetailedNotification(String title , String message , Lambda onOK) {
+		
+		engine.startNotification(title, message, onOK);
+		
+	}
+	
+	/**
 	 * Returns the animation panel. 
 	 * 
 	 * @return The animation panel.
@@ -1087,18 +1322,7 @@ public class Editor implements ShutDown {
 		animationPanel.toggleShow();
 		
 	}
-	
-	/**
-	 * Adds a render object to the renderer.
-	 * 
-	 * @param render — a fully initialized render object
-	 */
-	public void addRender(CSRender render) {
-		
-		engine.renderer().addRender(render);
-		
-	}
-	
+
 	/**
 	 * Returns whether the animation panel is showing.
 	 * 
@@ -1158,6 +1382,9 @@ public class Editor implements ShutDown {
 		project.setCurrentArtboardByMouse(cursor[0] , cursor[1]);
 		
 		Artboard current = project.currentArtboard();
+		
+		//unset any active line during this
+		if(current != oldCurrent) activeLine = null;
 		
 		if(project.freemoveMode()) {
 			
@@ -1584,34 +1811,170 @@ public class Editor implements ShutDown {
 		return engine.windowSize();
 		
 	}
-		
+	
 	/**
-	 * Uses reflection to detect whether a shutdown method is present on the given event. This is for the advantage of Jython implementations of 
-	 * {@code CSSSEvent}. 
+	 * Pushes the given code to be invoked when rendering. 
 	 * 
-	 * @param event — the event to shut down
-	 * @return An event that will shutdown the given event.
+	 * @param callback code to invoke
+	 * @throws NullPointerException if {@code callback} is <code>null</code>.
 	 */
-	private CSSSEvent shutDownEventReflection(CSSSEvent event) {
+	public void pushNanoRenderCallback(Consumer<NanoVGFrame> callback) {
 		
-		Method shutDownMethod;
-		try {
+		nanoVGRenderCallbacks.push(Objects.requireNonNull(callback));
+		
+	}
+	
+	/**
+	 * Pushes a {@link RasterizeShapeEvent} event and handles validation.
+	 * 
+	 * @param shape shape to rasterize
+	 */
+	public void pushRasterizeShapeEvent(Shape shape) {
+		
+		Artboard currentArtboard = currentArtboard();
+		CorrectedResult correct = Artboards.worldCoordinatesToCorrectArtboardCoordinates(
+			currentArtboard ,
+			(int)shape.leftX() ,                               
+			(int)shape.bottomY(),                              
+			shape.textureWidth() ,
+			shape.textureHeight()                                     
+		);                                                     
+		
+		eventPush(new RasterizeShapeEvent(currentArtboard , shape , correct));
+		
+	}
+	
+	/**
+	 * Returns the active shape.
+	 * 
+	 * @return The active shape.
+	 */
+	public Shape activeShape() {
+		
+		return activeShape;
+		
+	}
+
+	/**
+	 * Sets the acive shape.
+	 *  
+	 * @param activeShape new active shape
+	 */
+	public void activeShape(Shape activeShape) {
+		
+		this.activeShape = activeShape;
+		
+	}
+
+	/**
+	 * Returns the active line.
+	 * 
+	 * @return Active line.
+	 */
+	public Line activeLine() {
+		
+		return activeLine;
+		
+	}
+
+	/**
+	 * Sets the active line.
+	 * 
+	 * @param activeLine new active line
+	 */
+	public void activeLine(Line activeLine) {
+		
+		this.activeLine = activeLine;
+		
+	}
+
+	/**
+	 * Returns the bounder for the active shape.
+	 * 
+	 * @return Bounder for the active shape.
+	 */
+	public ActiveItemBounder activeShapeBounder() {
+		
+		return activeShapeBounder;
+		
+	}
+	
+	public ActiveItemBounder activeLineBounder() {
+		
+		return activeLineBounder;
+		
+	}
+	
+	/**
+	 * Draws a nano box on the active shape.
+	 * 
+	 * @param frame the nano frame to render on
+	 * @throws NullPointerException if {@code frame} is <code>null</code>.
+	 */
+	public void boxOnActiveShape(NanoVGFrame frame) {
+		
+		Objects.requireNonNull(frame);
+		
+		if(activeShape instanceof Rectangle asRectangle) {
+
+			float leftX = asRectangle.leftX();
+			float bottomY = asRectangle.bottomY();
 			
-			shutDownMethod = event.getClass().getMethod("shutDown");
-			return new AnonymousEvent(event.isRenderEvent , () -> {
-				
-				try {
-					
-					shutDownMethod.invoke(event);
-					
-				} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {}
-				
-			});
+			activeShapeBounder.set(leftX - 1, bottomY - 1, asRectangle.textureWidth + 2, asRectangle.textureHeight + 2);			
+			activeShapeBounder.castToInts();
+			activeShapeBounder.render(frame);
 			
-		} catch (NoSuchMethodException | SecurityException e) {}
-				
-		return new NOPEvent();
+		} else if (activeShape instanceof Ellipse asEllipse) {
 			
+			int xRadius = asEllipse.xRadius();
+			int yRadius = asEllipse.yRadius();
+			float leftX = asEllipse.leftX() + xRadius;
+			float bottomY = asEllipse.bottomY() + yRadius;
+			
+			activeShapeBounder.set(leftX - 1, bottomY , (xRadius << 1) + 3, (yRadius << 1) + 2);		
+			activeShapeBounder.castToInts();
+			activeShapeBounder.render(frame);
+
+		}
+		
+	}
+	
+	/**
+	 * Draws a box over the active line if possible.
+	 * 
+	 * @param frame the nano frame to render with
+	 */
+	public void boxOnActiveLine(NanoVGFrame frame) {
+		
+		Objects.requireNonNull(frame);
+		
+		if(activeLine == null) return;
+		
+		Artboard current = currentArtboard();
+		if(current == null) return;
+
+		List<LineMod> lineMods = activeLine.lineMods();
+		if(lineMods.size() < 1) return;
+		
+		int minX = Integer.MAX_VALUE , minY = Integer.MAX_VALUE , maxX = Integer.MIN_VALUE , maxY = Integer.MIN_VALUE;
+		
+		for(LineMod mod : lineMods) {
+			
+			if(mod.textureX() + mod.width() > maxX) maxX = mod.textureX() + mod.width();
+			if(mod.textureY() + mod.height() > maxY) maxY = mod.textureY() + mod.height();
+			if(mod.textureX() < minX) minX = mod.textureX(); 
+			if(mod.textureY() < minY) minY = mod.textureY();
+			
+		}
+	
+		minX = (int) current.artboardXToWorldX(minX);
+		minY = (int) current.artboardYToWorldY(minY);
+		maxX = (int) current.artboardXToWorldX(maxX);
+		maxY = (int) current.artboardYToWorldY(maxY);
+		
+		activeLineBounder.set(minX - 1, minY - 1, maxX - minX + 2, maxY - minY + 2);
+		activeLineBounder.render(frame);
+		
 	}
 	
 	@Override public void shutDown() {

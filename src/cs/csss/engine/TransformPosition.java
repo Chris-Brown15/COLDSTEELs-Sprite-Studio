@@ -22,7 +22,7 @@ public class TransformPosition extends Position {
 	
 	@Override public void translate(int x, int y) {
 
-		translate(x , y);
+		translate((float)x , (float)y);
 				
 	}
 

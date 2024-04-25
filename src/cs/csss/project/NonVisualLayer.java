@@ -32,6 +32,8 @@ public class NonVisualLayer extends Layer {
 			
 		});
 		
+		lines.lines.forEach(line -> line.putModsInArtboard(artboard , this));
+				
 		hiding = true;
 		
 	}
@@ -41,10 +43,13 @@ public class NonVisualLayer extends Layer {
 		forEachModification(pixel -> {
 			
 			artboard.writeToIndexTexture(pixel.textureX, pixel.textureY, 1, 1, palette.getColorByIndices(pixel.lookupX, pixel.lookupY));
+			forEachLine(line -> line.reset(artboard));
 			
 		});
 		
 		hiding = false;
+		
+		lines.lines.forEach(line -> line.reset(artboard , this));
 		
 	}
 	
@@ -71,7 +76,7 @@ public class NonVisualLayer extends Layer {
 		
 	}
 	
-	void hiding(boolean hiding) {
+	@Override public void hiding(boolean hiding) {
 		
 		this.hiding = hiding;
 		

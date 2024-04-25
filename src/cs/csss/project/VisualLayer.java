@@ -66,6 +66,8 @@ public class VisualLayer extends Layer {
 		
 		hiding = false;
 		
+		forEachLine(line -> line.reset(artboard , this));
+		
 	}
 	
 	@RenderThreadOnly @Override public void hide(Artboard artboard) {
@@ -101,6 +103,8 @@ public class VisualLayer extends Layer {
 			
 		});
 	
+		forEachLine(line -> line.putModsInArtboard(artboard));
+		
 		hiding = true;
 		
 	}

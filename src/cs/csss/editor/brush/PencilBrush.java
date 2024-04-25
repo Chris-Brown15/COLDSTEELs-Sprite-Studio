@@ -8,6 +8,7 @@ import cs.csss.engine.Pixel;
 import cs.csss.project.Artboard;
 import cs.csss.project.utils.Artboards;
 import cs.csss.project.utils.RegionIterator;
+import cs.csss.project.utils.RegionPosition;
 
 /**
  * Creates events that modify singular regions of the artboard.
@@ -32,7 +33,7 @@ import cs.csss.project.utils.RegionIterator;
 
 	@Override public boolean canUse(Artboard artboard, Editor editor, int xIndex, int yIndex) {
 
-		if(!super.canUse(artboard, editor, xIndex, yIndex)) return false;
+		if(!super.canUse(artboard, editor, xIndex, yIndex) || !editor.cursorInBoundsForBrush()) return false;
 		
 		/*
 		 * The pencil can be used if any pixel modification of the given layer does not match the editor selected color.
@@ -49,10 +50,10 @@ import cs.csss.project.utils.RegionIterator;
 		RegionIterator iter = Artboards.region(region[0], region[1], region[2], region[3]);
 		while(iter.hasNext()) {
 			
-			int[] iterPosition = iter.next();
+			RegionPosition iterPosition = iter.next();
 
 			//the condition inside the parentheses will be true when the pixel does match the current iteration's pixel
-			if(!(artboard.doColorsMatch(editorActive, iterPosition[0] , iterPosition[1]))) return true;
+			if(!(artboard.doColorsMatch(editorActive, iterPosition.col() , iterPosition.row()))) return true;
 							
 		}
 		

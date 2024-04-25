@@ -37,7 +37,7 @@ public class NotificationBox extends Dialogue {
 				
 		int realHeight = height;
 		
-		int height = (int) Math.ceil((length / realHeight)) * 22;
+		int height = (int) Math.ceil((length / realHeight)) * 20;
 				
 		ui.new CSDynamicRow(height).new CSText(message);
 		

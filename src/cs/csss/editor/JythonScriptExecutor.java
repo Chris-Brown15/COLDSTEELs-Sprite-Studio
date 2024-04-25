@@ -344,13 +344,13 @@ public class JythonScriptExecutor {
 				PyCode code;
 				try {
 
-					Logging.sysDebug("Compiling " + name);
+					Logging.sysDebugln("Compiling " + name);
 					code = interpreter.compile(new FileReader(file));
 					
 				} catch (FileNotFoundException e) {
 
 					e.printStackTrace();
-					Logging.syserr("Failed to compile " + name);
+					Logging.syserrln("Failed to compile " + name);
 					return false;
 					
 				}
@@ -421,17 +421,17 @@ public class JythonScriptExecutor {
 	 */
 	private PyObject runScriptNameFunction(String name , PyCode code,  Object[] arguments) {
 
-		Logging.sysDebug("Running " + name);
+		Logging.sysDebugln("Running " + name);
 		try(PythonInterpreter interpreter = new PythonInterpreter()) {
 			
-			Logging.sysDebug("Starting execution of code.");
+			Logging.sysDebugln("Starting execution of code.");
 			interpreter.exec(code);
-			Logging.sysDebug("Executed code.");
+			Logging.sysDebugln("Executed code.");
 			PyObject nameFunction = interpreter.get(name);
 			PyObject[] argsAsPyObjects = new PyObject[arguments.length];
 			ClassicPyObjectAdapter adapter = new ClassicPyObjectAdapter();
 			for(int i = 0 ; i < argsAsPyObjects.length ; i++) argsAsPyObjects[i] = adapter.adapt(arguments[i]);
-			Logging.sysDebug(String.format("Starting function call (%d args).", argsAsPyObjects.length));
+			Logging.sysDebugln(String.format("Starting function call (%d args).", argsAsPyObjects.length));
 			PyObject result = null;
 			//if in debug mode, catch an exception if an error occurs
 			if(Engine.isDebug()) try {
@@ -444,7 +444,7 @@ public class JythonScriptExecutor {
 			
 			} else result = nameFunction.__call__(argsAsPyObjects);
 			
-			Logging.sysDebug("Finished call to function " + name + ".");
+			Logging.sysDebugln("Finished call to function " + name + ".");
 			return result;
 			
 		}

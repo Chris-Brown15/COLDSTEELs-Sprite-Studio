@@ -6,8 +6,8 @@ import java.io.IOException;
 import java.io.PrintStream;
 
 /**
- * Logging class providing utilities for logging and printing information about the running instance of Sprite Studio. Principally this class provides
- * the ability to print to multiple places at once.
+ * Logging class providing utilities for logging and printing information about the running instance of Sprite Studio. Principally this class 
+ * provides the ability to print to multiple places at once.
  * 
  * @author Chris Brown
  *
@@ -30,74 +30,120 @@ public class Logging {
 			fileOut = new PrintStream(new BufferedOutputStream(new FileOutputStream("debug/out" + LOG_FILE_TYPE)) , true);
 			fileErr = new PrintStream(new BufferedOutputStream(new FileOutputStream("debug/err" + LOG_FILE_TYPE)) , true);
 			
-			sysout("Initialized Log Writer");
+			sysoutln("Initialized Log Writer");
 			
 		}
 		
-		sysout(String.format("Version: %s" , Engine.VERSION_STRING));
+		sysoutln(String.format("Version: %s" , Engine.VERSION_STRING));
 		
 	}
 	
 	/**
-	 * Prints the given objects.
+	 * Prints the given objects followed by a line feed.
 	 * 
 	 * @param x — objects to print
 	 */
-	public static void sysout(Object... x) {
+	public static void sysoutln(Object... x) {
 		
-		sysoutInternal(x);
+		sysoutInternal(true , x);
 		
 	}
 	
 	/**
-	 * Prints the given objects in the error output.
+	 * Prints the given objects without any line feed.
+	 * 
+	 * @param x objects to print
+	 */
+	public static void sysout(Object...x) {
+		
+		sysoutInternal(false, x);
+		
+	}
+	
+	/**
+	 * Prints the given objects in the error output followed by a line feed.
 	 * 
 	 * @param x — objects to print
+	 */
+	public static void syserrln(Object... x) {
+
+		syserrInternal(true , x);
+				
+	}
+	
+	/**
+	 * Prints the given objects to the error output without a line feed.
+	 * 
+	 * @param x objects to print
 	 */
 	public static void syserr(Object... x) {
-
-		String print = stringFromVararg(x);
 		
-		System.err.println(print);
-		if(printToFile) {
-			
-			System.setErr(fileErr);
-			System.err.println(print);
-			System.setErr(stdErr);
-			
-		}
-				
+		syserrInternal(false , x);
+		
 	}
 	
 	/**
-	 * Prints the given objects only if debug mode is on.
+	 * If {@link Engine#isDebug() Engine.isDebug()}, the given objects are printed as error with a line feed at the end. Otherwise, nothing happens.
 	 * 
 	 * @param x — objects to print
 	 */
-	public static void sysDebug(Object... x) {
+	public static void sysDebugln(Object... x) {
 		
-		if(Engine.isDebug()) syserr(x);
+		if(Engine.isDebug()) syserrln(x);
 				
 	}
+
+	/**
+	 * If {@link Engine#isDebug() Engine.isDebug()}, the given objects are printed as error without a line feed at the end. Otherwise, nothing 
+	 * happens.
+	 * 
+	 * @param x — objects to print
+	 */
+	public static void sysDebug(Object...x) {
+		
+		if(Engine.isDebug()) syserr(x);
+		
+	}
 	
-	private static void sysoutInternal( Object... x) {
+	private static void sysoutInternal(boolean lineFeed , Object... x) {
 
 		String print = stringFromVararg(x);
 		
-		System.out.println(print);
+		System.out.print(print);
+		if(lineFeed) System.out.print('\n');
 		if(printToFile) {
 			
 			System.setOut(fileOut);
-			System.out.println(print);
+			System.out.print(print);
+			if(lineFeed) System.out.print('\n');
 			System.setOut(stdOut);
 			
 		}
 				
 	}
 		
+	private static void syserrInternal(boolean lineFeed , Object...x) {
+
+		String print = stringFromVararg(x);
+		
+		System.err.print(print);
+		if(lineFeed) System.err.print('\n');
+		if(printToFile) {
+			
+			System.setErr(fileErr);
+			System.err.print(print);
+			if(lineFeed) System.err.print('\n');
+			System.setErr(stdErr);
+			
+		}
+				
+	}
+	
 	private static String stringFromVararg(Object... args) {
 
 		StringBuilder string = new StringBuilder();
+		
+		if(args.length == 0) return string.toString();
 		
 		if(Engine.isDebug()) string.append(DEBUG_PRINT_PREFIX);
 		

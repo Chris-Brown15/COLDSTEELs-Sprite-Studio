@@ -4,13 +4,13 @@ import static org.lwjgl.system.MemoryUtil.memAlloc;
 import static org.lwjgl.system.MemoryUtil.memFree;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 import cs.csss.project.Artboard;
 import cs.csss.project.IndexPixel;
-import cs.csss.project.IndexTexture;
-import cs.csss.project.LayerPixel;
 import cs.csss.project.utils.Artboards;
 import cs.csss.project.utils.RegionIterator;
+import cs.csss.project.utils.RegionPosition;
 
 /**
  * Contains method(s) for modifying {@code ByteBuffers}, which are used extensively throughout Sprite Studio.
@@ -117,7 +117,8 @@ public final class ByteBufferUtils {
 	public static IndexPixel[][] bufferToIndices(ByteBuffer contents , int width , int height) {
 		
 		IndexPixel[][] pixels = new IndexPixel[height][width];		
-		for(int row = 0 ; row < height ; row++) for(int col = 0 ; col < width ; col++) pixels[row][col] = new IndexPixel(contents);		
+		for(int row = 0 ; row < height ; row++) for(int col = 0 ; col < width ; col++) pixels[row][col] = new IndexPixel(contents);
+		contents.rewind();
 		return pixels;
 		
 	}
@@ -136,15 +137,15 @@ public final class ByteBufferUtils {
 		
 		IndexPixel[][] pixelRegion = new IndexPixel[height][width];
 		RegionIterator iter = Artboards.region(0 , 0 , width , height);
-		int[] values;
+		
 		while(iter.hasNext()) { 
 		
-			values = iter.next();
+			RegionPosition position = iter.next();
 			byte x = contents.get();
 			byte y = contents.get();
 			if(dropIf.test(x, y)) continue;
 			
-			pixelRegion[values[1]][values[0]] = new IndexPixel(x , y);
+			pixelRegion[position.row()][position.col()] = new IndexPixel(x , y);
 			
 		}
 		
@@ -153,7 +154,9 @@ public final class ByteBufferUtils {
 	}
 	
 	/**
-	 * Ensures the parameters given are not out of the bounds of the given artboard.
+	 * Ensures the parameters given are not out of the bounds of the given artboard. The resulting object's left x, bottom y, and the space defined 
+	 * by left x + width and bottom y + height are in bounds for the given artboard. The advance x and advance y values represent offsets from the 
+	 * bottom left coordinate to begin indexing from in a 2D array of pixels.
 	 * 
 	 * @param artboard — some artboard
 	 * @param leftX — a left x coordinate
@@ -161,13 +164,12 @@ public final class ByteBufferUtils {
 	 * @param width — width of the region
 	 * @param height — height of the region
 	 * @return Container for the corrected bottom left coordinate and dimensions.
+	 * @see CorrectedResult
 	 */
 	public static CorrectedResult correctifyIndices(Artboard artboard , int leftX , int bottomY , int width , int height) {
 
 		int advanceX = 0;
-		int advanceY = 0;		
-		int limitX = 0;
-		int limitY = 0;		
+		int advanceY = 0;	
 		int operationalWidth = width;
 		int operationalHeight = height;
 
@@ -175,7 +177,7 @@ public final class ByteBufferUtils {
 		//check extreme lows:
 		if(leftX < 0) {
 			
-			// the right of the render is left of the left of the artboard, just return
+			// the right of the region is left of the left of the artboard, just return
 			if(leftX + width < 0) return null;
 			operationalWidth += leftX;
 			//positive value representing the number of pixels we're removing
@@ -186,7 +188,7 @@ public final class ByteBufferUtils {
 		
 		if(bottomY < 0) {
 			
-			// the top of the render is below the bottom of the artboard
+			// the top of the region is below the bottom of the artboard
 			if(bottomY + height < 0) return null;
 			operationalHeight += bottomY;
 			advanceY -= bottomY;
@@ -196,55 +198,55 @@ public final class ByteBufferUtils {
 		
 		if(leftX + width > artboard.width()) {
 			
-			//the left of the render is past the right of the artboard
-			if(leftX >= artboard.width()) return null;			
-			limitX = (leftX + width) - artboard.width(); 
-			operationalWidth -= limitX;
+			//the left of the region is past the right of the artboard
+			if(leftX >= artboard.leftX() + artboard.width()) return null;
+			operationalWidth = artboard.width() - leftX;
 			
 		}
 		
 		if(bottomY + height > artboard.height()) {
 		
-			//the bottom of the render is above the top of the artboard
-			if(bottomY >= artboard.height()) return null;
-			limitY = (bottomY + height) - artboard.height();			
-			operationalHeight -= limitY;
+			//the bottom of the region is above the top of the artboard
+			if(bottomY >= artboard.height()) return null;			
+			operationalHeight = artboard.height() - bottomY;
 			
 		}
 		
-		return new CorrectedResult(
-			new CorrectedParameters(leftX , bottomY , operationalWidth , operationalHeight) , 
-			new CorrectedParameterOffsets(advanceX , advanceY , limitX, limitY, operationalWidth, operationalHeight)
-		);
+		return new CorrectedResult(leftX , bottomY , operationalWidth , operationalHeight , advanceX , advanceY);
 		
 	}
 	
 	/**
-	 * Puts the given buffer of pixels into the given artboard starting from the {@code (leftX , bottomY)} coordinate and going right and 
-	 * up.
+	 * Performs the same operations as {@link #correctifyIndices(Artboard, int, int, int, int)}, but this method stores the result in an array. The 
+	 * array is laid out as
+	 * <ol>
+	 * 	<li> corrected left X </li>
+	 * 	<li> corrected bottom Y </li>
+	 * 	<li> corrected width </li>
+	 * 	<li> corrected height </li>
+	 * 	<li> X advancement </li>
+	 * 	<li> Y advancement </li>
+	 * </ol>
 	 * 
-	 * @param current — artboard to write to
-	 * @param leftX — left x coordinate of the region
-	 * @param bottomY — bottom y coordinate of the region
-	 * @param width — width of the region to write to
-	 * @param height — width of the region to write to
-	 * @param contents — buffer containing lookup data to write to the artboard
-	 * @param dropIf — condition for dropping a pixel.
+	 * @param artboard artboard to correct for
+	 * @param leftX left x coordinate of a region
+	 * @param bottomY bottom y coordinate of a region
+	 * @param width width of a region
+	 * @param height height of a region 
+	 * @param destination {@code int} array containing results 
+	 * @return {@code destination}.
+	 * @throws ArrayStoreException if {@code destination}'s length is less than six.
+	 * @throws NullPointerException if {@code artboard} is <code>null</code>.
+	 * @see #correctifyIndices(Artboard, int, int, int, int)
 	 */
-	public static void putBufferInArtboard(
-		Artboard artboard , 
-		int leftX , 
-		int bottomY , 
-		int width , 
-		int height , 
-		ByteBuffer contents ,
-		BiBytePredicate dropIf
-	) {
+	public static int[] correctifyIndices(Artboard artboard , int leftX , int bottomY , int width , int height , int[] destination) {
 
+		Objects.requireNonNull(artboard);
+		if(destination == null) destination = new int[6];
+		if(destination.length < 6) throw new ArrayStoreException("Destination length must be >= 6");
+		
 		int advanceX = 0;
-		int advanceY = 0;		
-		int limitX = 0;
-		int limitY = 0;		
+		int advanceY = 0;	
 		int operationalWidth = width;
 		int operationalHeight = height;
 
@@ -252,8 +254,8 @@ public final class ByteBufferUtils {
 		//check extreme lows:
 		if(leftX < 0) {
 			
-			// the right of the render is left of the left of the artboard, just return
-			if(leftX + width < 0) return;
+			// the right of the region is left of the left of the artboard, just return
+			if(leftX + width < 0) return null;
 			operationalWidth += leftX;
 			//positive value representing the number of pixels we're removing
 			advanceX -= leftX;
@@ -263,8 +265,8 @@ public final class ByteBufferUtils {
 		
 		if(bottomY < 0) {
 			
-			// the top of the render is below the bottom of the artboard
-			if(bottomY + height < 0) return;
+			// the top of the region is below the bottom of the artboard
+			if(bottomY + height < 0) return null;
 			operationalHeight += bottomY;
 			advanceY -= bottomY;
 			bottomY = 0;
@@ -273,79 +275,40 @@ public final class ByteBufferUtils {
 		
 		if(leftX + width > artboard.width()) {
 			
-			//the left of the render is past the right of the artboard
-			if(leftX >= artboard.width()) return;			
-			limitX = (leftX + width) - artboard.width(); 
-			operationalWidth -= limitX;
+			//the left of the region is past the right of the artboard
+			if(leftX >= artboard.leftX() + artboard.width()) return null;
+			operationalWidth = artboard.width() - leftX;
 			
 		}
 		
 		if(bottomY + height > artboard.height()) {
 		
-			//the bottom of the render is above the top of the artboard
-			if(bottomY >= artboard.height()) return;
-			limitY = (bottomY + height) - artboard.height();			
-			operationalHeight -= limitY;
+			//the bottom of the region is above the top of the artboard
+			if(bottomY >= artboard.height()) return null;			
+			operationalHeight = artboard.height() - bottomY;
 			
 		}
 		
-		int maxRow = bottomY + operationalHeight;
-		int maxCol = leftX + operationalWidth;
-
-		contents.position(advanceY * width * IndexTexture.pixelSizeBytes);
-		contents.limit(contents.limit() - (limitY * width * IndexTexture.pixelSizeBytes));
+		destination[0] = leftX;
+		destination[1] = bottomY;
+		destination[2] = operationalWidth;
+		destination[3] = operationalHeight;
+		destination[4] = advanceX;
+		destination[5] = advanceY;
 		
-		for(int row = bottomY ; row < maxRow ; row++) {
-	
-			contents.position(contents.position() + (advanceX * IndexTexture.pixelSizeBytes));
-			
-			 for(int col = leftX ; col < maxCol ; col++) {
-					
-				byte lookupX = contents.get();
-				byte lookupY = contents.get();
-				
-				if(dropIf.test(lookupX, lookupY)) continue;
-				
-				LayerPixel pixel = new LayerPixel(col , row , lookupX , lookupY);
-				artboard.putColorInImage(col, row, 1, 1, pixel);
-				
-			}
-
-			contents.position(contents.position() + (limitX * IndexTexture.pixelSizeBytes));			
-			 
-		}
-
-		memFree(contents);
-	
+		return destination;
+		
 	}
 	
 	private ByteBufferUtils() {}
 
 	/**
 	 * Container for modified indices and dimensions of regions of pixels
-	 */
-	public record CorrectedParameters(int leftX , int bottomY , int width , int height) {}
-	
-	/**
-	 * Container for offsets for use when working with regins of pixels.
 	 * <p>
-	 * 	The {@code advance} integers are used to notate where the new bottom left of the region is. These will always be greater than the
-	 * 	original bottom left coordinate of the region. The {@code limit} integers notate where to stop when working with a region. And the
-	 * 	{@code operational} dimensions are the new dimensions of the region.
+	 * 	The {@code advance} integers are used to notate where the new bottom left of the region is. These will always be greater than or equal to the
+	 * 	original bottom left coordinate of the region. 
 	 * </p>
 	 */
-	public record CorrectedParameterOffsets(
-		int advanceX , 
-		int advanceY , 
-		int limitX , 
-		int limitY , 
-		int operationalWidth , 
-		int operationalHeight
-	) {}
-
-	/**
-	 * Container for corrected parameters and corrected offsets.
-	 */
-	public record CorrectedResult(CorrectedParameters params , CorrectedParameterOffsets offsets) {}
+	public record CorrectedResult(int leftX , int bottomY , int width , int height , int advanceX , int advanceY) {}
 	
 }

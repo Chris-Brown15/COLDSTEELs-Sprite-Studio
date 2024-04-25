@@ -23,9 +23,7 @@ public class ImageGrabber {
 	private final Lambda renderCallback;
 	
 	private final RenderBuffer renderbuffer;
-	private final int 
-		width ,
-		height;
+	private final int width , height;
 	
 	/**
 	 * Creates an image grabber.

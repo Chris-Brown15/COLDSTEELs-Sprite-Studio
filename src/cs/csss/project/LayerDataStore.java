@@ -23,7 +23,7 @@ interface LayerDataStore  {
 	 * @param height — height of the subregion to query
 	 * @return Two dimensional array containing modifications of this layer.
 	 */
-	public default LayerPixel[][] get(int xIndex , int yIndex , final int width , final int height) {
+	public default LayerPixel[][] get(int xIndex , int yIndex , int width , int height) {
 		
 		LayerPixel[][] region = new LayerPixel[height][width];
 		for(int row = 0 ; row < height ; row++ , yIndex++) for(int col = 0 , xOffset = xIndex; col < width ; col++ , xOffset++) {

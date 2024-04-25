@@ -26,7 +26,7 @@ import cs.csss.project.Artboard;
 	
 	@Override public boolean canUse(Artboard artboard, Editor editor, int xIndex, int yIndex) {
 		
-		if(!super.canUse(artboard, editor, xIndex, yIndex)) return false;
+		if(!super.canUse(artboard, editor, xIndex, yIndex) || !editor.cursorInBoundsForBrush()) return false;
 		
 		Pixel colorClicked = artboard.getColorPointedToByIndexPixel(xIndex, yIndex) , selectedColor = editor.selectedColorValues();
 		

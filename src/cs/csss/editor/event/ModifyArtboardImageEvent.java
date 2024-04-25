@@ -1,6 +1,7 @@
 package cs.csss.editor.event;
 
 import cs.csss.annotation.RenderThreadOnly;
+import cs.csss.engine.LookupPixel;
 import cs.csss.engine.Pixel;
 import cs.csss.project.Artboard;
 import cs.csss.project.ArtboardPalette;
@@ -19,6 +20,7 @@ import cs.csss.project.ArtboardPalette;
 	private final Pixel color;
 	//used to track if a new color was added to the palette. If it was, and this event is undone, we want to remove the added color from the palette.
 	private boolean addedToPalette = false , didYet = false;
+	private final LookupPixel[][] previousRegion;
 
 	/**
 	 * Creates a modify artboard image event.
@@ -57,9 +59,11 @@ import cs.csss.project.ArtboardPalette;
 		this.yIndex = yIndex;
 		this.width = width;
 		this.height = height;
+		
+		this.previousRegion = artboard.getRegionOfLayerPixels(xIndex, yIndex, width, height);
 
 		this.color = color.clone();
-				
+		
 	}
 
 	@Override public void _do() {
@@ -73,8 +77,7 @@ import cs.csss.project.ArtboardPalette;
  			
  			artboard.putColorInImage2(xIndex, yIndex, width, height, color);
  			
- 			int newPaletteX = palette.currentCol();
- 			
+ 			int newPaletteX = palette.currentCol(); 			
  							 //if this is true, we have added a new color
  			addedToPalette = newPaletteX != currentPaletteX;
  			
@@ -84,7 +87,6 @@ import cs.csss.project.ArtboardPalette;
 
 	@Override public void undo() {
 
-		artboard.removePixels(xIndex, yIndex, width, height);
 		if(addedToPalette) {
 			
 			ArtboardPalette palette = artboard.activeLayer().palette();
@@ -92,6 +94,8 @@ import cs.csss.project.ArtboardPalette;
 			
 		}
 		
+		artboard.replace(xIndex, yIndex, width, height, previousRegion);
+							
 	}
 
 }

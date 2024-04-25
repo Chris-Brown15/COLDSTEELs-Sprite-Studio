@@ -8,10 +8,9 @@ import java.util.NoSuchElementException;
  * {@code int[]}. The first index of this array is the iterators current column position, and the second index is the iterators current row
  * position. The same array returned every time, but its values will change with each call to {@code next}.
  */
-public class RegionIterator implements Iterator<int[]> {
+public class RegionIterator implements Iterator<RegionPosition> {
 
-	int row = 0;
-	int col = 0;
+	RegionPosition position;
 	
 	/**
 	 * Information for the iteration process.
@@ -21,15 +20,14 @@ public class RegionIterator implements Iterator<int[]> {
 		maxRow ,
 		maxCol;
 
-	int[] current = new int[2];
-
+	int col , row;
+	
 	RegionIterator(int startX , int startY , int width , int height) {
 
 		startCol = startX;
 		maxCol = startCol + width;
 		maxRow = startY + height;
-		row = startY;
-		col = startX;
+		position = new RegionPosition(col = startX , row = startY);
 		
 	}
 
@@ -40,7 +38,7 @@ public class RegionIterator implements Iterator<int[]> {
 	 */
 	public int row() {
 		
-		return row;
+		return position.row;
 		
 	}
 	
@@ -51,7 +49,7 @@ public class RegionIterator implements Iterator<int[]> {
 	 */
 	public int col() {
 		
-		return col;
+		return position.col;
 		
 	}
 	
@@ -61,12 +59,12 @@ public class RegionIterator implements Iterator<int[]> {
 		
 	}
 
-	@Override public int[] next() {
+	@Override public RegionPosition next() {
 		
 		if(!hasNext()) throw new NoSuchElementException("This iterator has completed.");
 		
-		current[0] = col;
-		current[1] = row;
+		position.col = col;
+		position.row = row;
 		
 		col++;
 		if(col == maxCol) {
@@ -76,7 +74,7 @@ public class RegionIterator implements Iterator<int[]> {
 			
 		}
 				
-		return current;
+		return position;
 		
 	}
 

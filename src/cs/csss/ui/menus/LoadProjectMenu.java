@@ -16,9 +16,7 @@ import cs.csss.misc.files.CSFolder;
  */
 public class LoadProjectMenu extends Dialogue {
 
-	private String selected = null;
-	private String[] entries;
-	
+	private String selected = null;	
 	private boolean readyToFinish = false;	
 	
 	/**
@@ -34,12 +32,10 @@ public class LoadProjectMenu extends Dialogue {
 		
 		// load names of projects
 		
-		CSFolder projects = CSFolder.getRoot("data").getOrCreateSubdirectory("projects");
-		System.out.println(projects.asFile().exists());
-		
+		CSFolder projects = CSFolder.getRoot("data").getOrCreateSubdirectory("projects");		
 		var subdirectories = projects.filesIterator();
-	 	entries = new String[projects.files().size()];
-	 	System.out.println(projects.files().size());
+		String[] entries = new String[projects.files().size()];
+	 	
 	 	int i = 0;
 	 	while(subdirectories.hasNext()) entries[i++] = subdirectories.next().name(); 
 	 	
@@ -77,13 +73,35 @@ public class LoadProjectMenu extends Dialogue {
 	}
 	
 	/**
-	 * Returns the selected project.
+	 * Returns the selected project's name.
 	 * 
-	 * @return The selected project
+	 * @return The selected project's name.
 	 */
 	public String get() {
 		
+		if(selected != null) {
+
+			int extensionDotIndex = selected.lastIndexOf('.');
+			if(extensionDotIndex != -1) return selected.substring(0 , extensionDotIndex);		
+			
+		}
+
 		return selected;
+				
+	}
+	
+	/**
+	 * Returns the extension of the file named {@link #get()}, or <code>null</code> if either no file was selected or the selected file did not appear to
+	 * have an extension.
+	 *  
+	 * @return File extension of the returned file if any was found, or <code>null</code>.
+	 */
+	public String extension() {
+		
+		int extensionDotIndex;
+		if(selected == null || (extensionDotIndex = selected.lastIndexOf('.')) == -1) return null;
+		
+		return selected.substring(extensionDotIndex);
 		
 	}
 	

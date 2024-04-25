@@ -15,6 +15,7 @@ import cs.csss.misc.files.CSFolder;
 import cs.csss.misc.textio.CSTextIO;
 import cs.csss.project.CSSSProject;
 import cs.csss.project.IndexTexture;
+import cs.csss.project.io.CTSP2File;
 import cs.csss.project.io.CTSPFile;
 
 /**
@@ -148,11 +149,18 @@ class UserSettings2 {
 				
 				String previousProject = stats.get(UserSettings2.previousProject);
 				if(!previousProject.equals("null")) {
+										
+					if(CTSPFile.projectExists(previousProject , CTSPFile.DEFAULT_FILE_EXTENSION)) { 
+						
+						engine.loadProject(previousProject , CTSPFile.DEFAULT_FILE_EXTENSION);
+						
+					} else if(CTSPFile.projectExists(previousProject, CTSP2File.FILE_EXTENSION)) {
+						
+						engine.loadProject(previousProject, CTSP2File.FILE_EXTENSION);
+						
+					} 
 					
-					previousProject += CTSPFile.FILE_EXTENSION;				
-					if(CTSPFile.projectExists(previousProject)) engine.loadProject(previousProject);
-					
-				}
+				} 
 				
 			}
 			

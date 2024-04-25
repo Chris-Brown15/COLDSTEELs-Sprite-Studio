@@ -1,5 +1,6 @@
 package cs.csss.editor.event;
 
+import cs.csss.editor.Editor;
 import cs.csss.project.CSSSProject;
 
 /**
@@ -10,15 +11,18 @@ import cs.csss.project.CSSSProject;
 public class ShutDownProjectEvent extends CSSSEvent {
 
 	private final CSSSProject shutThisDown;
+	private final Editor editor;
 	
 	/**
 	 * Creats an event that shuts a project down.
 	 * 
+	 * @param editor the editor
 	 * @param shutThisDown — the project to shut down
 	 */
-	public ShutDownProjectEvent(CSSSProject shutThisDown) {
+	public ShutDownProjectEvent(Editor editor , CSSSProject shutThisDown) {
 
-		super(false , true);
+		super(true , true);
+		this.editor = editor;
 		this.shutThisDown = shutThisDown;
 
 	}
@@ -26,7 +30,9 @@ public class ShutDownProjectEvent extends CSSSEvent {
 	@Override public void _do() {
 
 		shutThisDown.shutDown();
-
+		editor.activeLine(null);
+		editor.activeShape(null);
+		
 	}
 
 	@Override public void undo() {}

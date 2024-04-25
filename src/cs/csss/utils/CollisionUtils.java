@@ -8,16 +8,30 @@ import cs.csss.engine.Position;
 public final class CollisionUtils {
 
 	/**
-	 * Returns whether {@code isBetween} is strictly greater than {@code lower} and strictly less than {@code higher}.
+	 * Returns whether {@code isBetween} is greater than {@code lower} and less than {@code higher}.
 	 * 
 	 * @param isBetween — a number whose status as being between {@code lower} and {@code higher} is being queried
 	 * @param lower — a value {@code isBetween} must be greater than for {@code true} to be returned 
 	 * @param higher — a value {@code isBetween} must be less than for {@code true} to be returned
-	 * @return {@code true} if {@code isBetween} is strictly greater than {@code lower} and strictly less than {@code higher}.
+	 * @return {@code true} if {@code isBetween} is greater than {@code lower} and less than {@code higher}.
 	 */
 	public static boolean between(int isBetween, int lower , int higher) {
 		
-		return isBetween > lower && isBetween < higher;
+		return isBetween >= lower && isBetween <= higher;
+		
+	}
+	
+	/**
+	 * Returns whether {@code isBetween} is greater than or equal to {@code lower} and less than or equal to {@code higher}.
+	 * 
+	 * @param isBetween a value being checked for being between {@code lower} and {@code higher}
+	 * @param lower a lower bound
+	 * @param higher a higher bound
+	 * @return <code>true</code> if {@code isBetween} is greater than or equal to {@code lower} and less than or equal to {@code higher}
+	 */
+	public static boolean between(float isBetween , float lower , float higher) {
+		
+		return isBetween >= lower && isBetween <= higher;
 		
 	}
 	
@@ -69,8 +83,8 @@ public final class CollisionUtils {
 	 */
 	public static boolean colliding(Position artboard1 , Position artboard2) {
 	
-		return collidingX(artboard1 , artboard2) && collidingY(artboard1 , artboard2);
-		
+		return collidingX(artboard1 , artboard2) && collidingY(artboard1 , artboard2); 
+			
 	}
 	
 	/**

@@ -21,7 +21,8 @@ public abstract class CSSSEvent {
 	/**
 	 * Creates an event and assigns its {@code isRenderEvent} value.
 	 * 
-	 * @param isRenderEvent
+	 * @param isRenderEvent if {@code true}, this event must be executed in the render thread
+	 * @param isTransientEvent if <code>true</code>, this event cannot be undone
 	 */
 	public CSSSEvent(boolean isRenderEvent , boolean isTransientEvent) {
 		

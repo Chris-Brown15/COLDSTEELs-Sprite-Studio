@@ -31,7 +31,9 @@ public class Hotkey extends Control {
 		SIMPLE_SCRIPT_BRUSH_HOTKEY = new Hotkey("Script Brush" , GLFW_KEY_J , Editor::theScriptBrush2),
 		MODIFYING_SCRIPT_BRUSH_HOTKEY = new Hotkey("Modifing Script Brush" , GLFW_KEY_K , Editor::theModifyingScriptBrush2) ,
 		SELECTING_REGION_SCRIPT_HOTKEY = new Hotkey("Selecting Script Brush" , GLFW_KEY_L , Editor::theSelectingScriptBrush2) ,
-		SELECT_ARTBOARD_HOTKEY = new Hotkey("Select Artboard" , GLFW_KEY_1 , () -> Editor.theArtboardSelector);
+		SELECT_ARTBOARD_HOTKEY = new Hotkey("Select Artboard" , GLFW_KEY_1 , () -> Editor.theArtboardSelector) ,
+		SHAPE_BRUSH_HOTKEY = new Hotkey("Shapes" , GLFW_KEY_R , Editor::theShapeBrush) ,
+		LINE_BRUSH_HOTKEY = new Hotkey("Lines" , GLFW_KEY_L , Editor::theLineBrush);
 	
 	
 	/**

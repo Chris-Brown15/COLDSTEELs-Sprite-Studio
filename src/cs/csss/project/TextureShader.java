@@ -11,7 +11,8 @@ import cs.csss.annotation.RenderThreadOnly;
  */
 @RenderThreadOnly public class TextureShader extends CSSSShader {
 
-	private int textureLocation;
+	private int textureLocation , channelsLocation;
+	
 	
 	/**
 	 * Initializes this shader by loading its source code from disk.
@@ -24,13 +25,28 @@ import cs.csss.annotation.RenderThreadOnly;
 		);
 		
 		textureLocation = getUniformLocation("sampler");
+		channelsLocation = getUniformLocation("channels");
+		channels(4);
+				
+	}
+	
+	/**
+	 * Sets the number of channels per pixel the texture this shader is intended to render is. This must be called <em>after</em> 
+	 * {@link #updateTextures(ArtboardPalette, CSTexture)}.
+	 * 
+	 * @param channels number of channels per pixel.
+	 */
+	@RenderThreadOnly public void channels(int channels) {
+		
+		uploadInt(channelsLocation, channels);
 		
 	}
 	
-	@Override public void updateTextures(ArtboardPalette palette , CSTexture texture) {
+	@RenderThreadOnly @Override public void updateTextures(ArtboardPalette palette , CSTexture texture) {
 
 		texture.activate(0);
 		uploadInt(textureLocation , 0);
+		channels(4);		
 		
 	}
 

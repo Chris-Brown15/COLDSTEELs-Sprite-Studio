@@ -4,7 +4,6 @@ import static org.lwjgl.opengl.GL30C.GL_SCISSOR_TEST;
 import static org.lwjgl.opengl.GL11C.glEnable;
 import static org.lwjgl.opengl.GL30C.glScissor;
 import static org.lwjgl.opengl.GL11C.glDisable;
-import static cs.core.utils.CSUtils.specify;
 
 import java.util.Objects;
 import java.util.Vector;
@@ -115,10 +114,33 @@ public class Animation {
 		
 	}			
 	
-	void putArtboard(final Artboard artboard, final int index) {
+	/**
+	 * Puts {@code artboard} in this animation at {@code index}.
+	 * 
+	 * @param artboard an artboard to add 
+	 * @param index the index in the animation to add {@code artboard} at
+	 * @throws IndexOutOfBoundsException if {@code index} is invalid as a position to put an artboard at.
+	 */
+	public void putArtboard(final Artboard artboard, final int index) {
 		
 		validateIndex(index);		
 		frames.add(index, newFrame(artboard));
+		
+	}
+	
+	/**
+	 * Puts an existing frame in this animation at the given index.
+	 * 
+	 * @param frame frame to put
+	 * @param index index to put {@code frame}
+	 * @throws NullPointerException if {@code frame} is <code>null</code>.
+	 * @throws IndexOutOfBoundsException if {@code index} is out of bounds as an index for putting.
+	 */
+	public void putFrame(AnimationFrame frame , int index) {
+		
+		Objects.requireNonNull(frame);
+		validateIndex(index);
+		frames.add(index , frame);
 		
 	}
 	
@@ -147,6 +169,18 @@ public class Animation {
 		
 	}
 		
+	/**
+	 * Returns the animation frame {@code artboard} belongs to.
+	 * 
+	 * @param artboard artboard whose owning frame is being searched for
+	 * @return Animation frame whose artboard is {@code artboard}, or <code>null</code> if no frame in this animation contains {@code artboard}. 
+	 */
+	public AnimationFrame getFrameOf(Artboard artboard) {
+		
+		for(AnimationFrame f : frames) if(f.board == artboard) return f;
+		return null;
+	}
+	
 	AnimationFrame removeFrame(int index) {
 		
 		validateIndex(index);
@@ -331,7 +365,8 @@ public class Animation {
 		
 		Objects.checkIndex(frameIndex, frames.size());
 		Objects.requireNonNull(swapType);
-		frames.get(frameIndex).swapType(() -> swapType);
+		if(swapType == defaultSwapType) frames.get(frameIndex).swapType(this::defaultSwapType);
+		else frames.get(frameIndex).swapType(() -> swapType);
 		
 	}
 	
@@ -364,7 +399,7 @@ public class Animation {
 	 * @param screenHeight — needed because Nuklear's origin is top left but OpenGL represents its points as bottom left, so we need to get 
 	 * 						 the difference to get the bottom left point for the scissor test
 	 */
-	@RenderThreadOnly public void renderCurrentFrame(CSSSCamera camera , AnimationPanel renderOnto , int screenHeight ) {		
+	@RenderThreadOnly public void renderCurrentFrame(CSSSCamera camera , AnimationPanel renderOnto , int screenHeight) {		
 	
 		AnimationFrame frame = getCurrentFrame();
 		
@@ -408,7 +443,10 @@ public class Animation {
 		
 		shader.updateTextures(frame.board.activeLayersPalette() , frame.board.indexTexture());
 		shader.activate();
-		frame.board.draw();
+		frame.board.draw(null);
+		
+		//reupload the camera's original matrices after resetting the zoom to the original zoom.
+		shader.updatePassVariables(camera.projection(), camera.viewTranslation());
 		
 		glDisable(GL_SCISSOR_TEST);
 		
@@ -547,11 +585,8 @@ public class Animation {
 	}
 	
 	private void validateIndex(final int index) {
-		
-		specify(
-			(frames.size() > 0 && index >= 0 && index < frames.size()) || (frames.size() == 0 && index == 0) , 
-			index + " is an out of bounds index."
-		);
+	
+		Objects.checkIndex(index, frames.size() + 1);
 		
 	}
 		
@@ -571,7 +606,7 @@ public class Animation {
 	 * 
 	 * @param time — a time for default frames
 	 */
-	public void setFrameTime(float time) {
+	public void setTime(float time) {
 		
 		swapTime.set(time);
 		
@@ -588,6 +623,74 @@ public class Animation {
 		
 	}	
 	
+	/**
+	 * Sets the frame at {@code frameIndex}'s time value to {@code time}. This controls the number of milliseconds that frame will last.
+	 * 
+	 * @param frameIndex index of a frame whose time is to be set
+	 * @param time time to set for the frame at {@code frameIndex}
+	 * @throws IndexOutOfBoundsException if {@code frameIndex} is not a valid frame index for this animation.
+	 * @throws IllegalArgumentException if {@code time} is negative.
+	 */
+	public void setFrameTime(int frameIndex , float time) {
+		
+		if(time < 0) throw new IllegalArgumentException(time + " is invalid as a time value.");
+		
+		if(time == defaultSwapTime().get()) frames.get(frameIndex).time = this.swapTime;
+		else frames.get(frameIndex).time.set(time);
+		
+	}
+	
+	/**
+	 * Sets the frame at {@code frameIndex}'s updates value to {@code updates}. This controls the number of frames/updates that frame will last. 
+	 * 
+	 * @param frameIndex index of a frame whose time is to be set
+	 * @param updates new number of updates the frame at {@code frameIndex} will last
+	 * @throws IndexOutOfBoundsException if {@code frameIndex} is not a valid frame index for this animation.
+	 * @throws IllegalArgumentException if {@code updates} is negative.
+	 */
+	public void setFrameUpdates(int frameIndex , int updates) {
+
+		if(updates < 0) throw new IllegalArgumentException(updates + " is invalid as an updates value.");
+	
+		if(updates == swapOnUpdates.intValue()) frames.get(frameIndex).frames = this.swapOnUpdates;
+		else frames.get(frameIndex).frames.set(updates);
+	
+	}
+	
+	/**
+	 * Sets the frame at {@code frameIndex}'s time value container to equal {@code timeContainer}. Changes to the refereced value in {@code timeContainer}
+	 * will affect the frame at {@code frameIndex}.
+	 * 
+	 * @param frameIndex index of a frame whose time is to be set
+	 * @param timeContainer container for a time value for the frame at {@code frameIndex}
+	 * @throws IndexOutOfBoundsException if {@code frameIndex} is not a valid frame index for this animation.
+	 * @throws NullPointerException if {@code timeContainer} is <code>null</code>.
+	 */
+	public void setFrameTime(int frameIndex , FloatReference timeContainer) {
+		
+		Objects.requireNonNull(timeContainer);
+		
+		frames.get(frameIndex).time = timeContainer;
+		
+	}
+
+	/**
+	 * Sets the frame at {@code frameIndex}'s update value container to equal {@code updatesContainer}. Changes to the refereced value in 
+	 * {@code updatesContainer} will affect the frame at {@code frameIndex}.
+	 * 
+	 * @param frameIndex index of a frame whose update is to be set
+	 * @param timeContainer container for a frames/updates value for the animation frame at {@code frameIndex}
+	 * @throws IndexOutOfBoundsException if {@code frameIndex} is not a valid frame index for this animation.
+	 * @throws NullPointerException if {@code updatesContainer} is <code>null</code>.
+	 */
+	public void setFrameUpdates(int frameIndex , CSRefInt updatesContainer) {
+		
+		Objects.requireNonNull(updatesContainer);
+		
+		frames.get(frameIndex).frames = updatesContainer;
+				
+	}
+	
 	int getTotalWidth() {
 		
 		return frameWidth() * numberFrames();
@@ -595,21 +698,21 @@ public class Animation {
 	}
 	
 	/**
-	 * Returns the index of an animation frame whose artboard is {@code artboard}.
+	 * Returns the index of an animation frame whose artboard is {@code artboard}, or {@literal -1} if the given artboard is not in this animation.
 	 * 
 	 * @param artboard — an artboard
-	 * @return Index of an animation frame whose artboard is {@code artboard}.
+	 * @return Index of an animation frame whose artboard is {@code artboard}, or {@literal -1} if it was not found.
 	 */
 	public int indexOf(Artboard artboard) {
 
 		for(int i = 0 ; i < frames.size() ; i++) if(frames.get(i).board == artboard) return i;
-		throw new IllegalArgumentException("Artboard not found in this animation.");
+		return -1;
 		
 	}
 	
 	private AnimationFrame newFrame(Artboard frame) {
 		
-		return new AnimationFrame(frame , swapOnUpdates , swapTime , () -> defaultSwapType);
+		return new AnimationFrame(frame , swapOnUpdates , swapTime , this::defaultSwapType);
 		
 	}
 	

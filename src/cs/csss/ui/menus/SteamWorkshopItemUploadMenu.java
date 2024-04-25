@@ -125,7 +125,7 @@ public class SteamWorkshopItemUploadMenu extends EditWorkshopItemMenu{
 		} catch(Exception e) {
 			
 			e.printStackTrace();
-			Logging.syserr(path + " is not a filepath to a png.");
+			Logging.syserrln(path + " is not a filepath to a png.");
 			previewImageFilePath = null;
 			uiFileName = null;
 			

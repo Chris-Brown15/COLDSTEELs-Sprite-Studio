@@ -3,7 +3,7 @@ package cs.csss.editor.event;
 import cs.core.utils.ShutDown;
 
 /**
- * Used to shut down events that are {@code instanceof ShutDown}.
+ * Used to shut down events that are instances of {@link CSSSMemoryEvent}.
  */
 public class ShutDownEventEvent extends CSSSEvent {
 
@@ -12,12 +12,11 @@ public class ShutDownEventEvent extends CSSSEvent {
 	/**
 	 * Creates an shut down event event.
 	 * 
-	 * @param isRenderEvent — {@code true} if this is a render event, which ususally means that the event being shut down is a render event
-	 * @param shutDownThis — {@code ShutDown} cast to the event being shutdown
+	 * @param shutDownThis event to shut down
 	 */
-	public ShutDownEventEvent(boolean isRenderEvent , ShutDown shutDownThis) {
+	public ShutDownEventEvent(CSSSMemoryEvent shutDownThis) {
 
-		super(isRenderEvent, true);
+		super(shutDownThis.isRenderEvent, true);
 		this.shutDownThis = shutDownThis;
 		
 	}
@@ -28,6 +27,10 @@ public class ShutDownEventEvent extends CSSSEvent {
 
 	}
 
-	@Override public void undo() {}
+	@Override public void undo() {
+		
+		throw new UnsupportedOperationException("Cannot undo a memory shut down.");
+		
+	}
 
 }

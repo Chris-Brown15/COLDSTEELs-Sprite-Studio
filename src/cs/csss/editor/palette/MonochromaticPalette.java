@@ -141,7 +141,7 @@ public final class MonochromaticPalette extends ColorPalette {
 		float blue = (source.ub() / valueScale);
 		float alpha = (source.ua() / valueScale);
 
-		palette[palette.length - 1] = ChannelBuffer.asChannelStore(source);
+		palette[palette.length - 1] = ChannelBuffer.asChannelBuffer(source);
 		
 		for(int i = 0 ; i < palette.length - 1 ; i++) palette[i].set(
 			(byte)(i * red) , 

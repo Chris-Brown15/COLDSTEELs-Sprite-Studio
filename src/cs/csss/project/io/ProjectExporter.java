@@ -1,17 +1,24 @@
 package cs.csss.project.io;
 
 import static org.lwjgl.opengl.GL11.GL_RGBA;
+import static org.lwjgl.opengl.GL11.GL_COLOR_CLEAR_VALUE;
 import static org.lwjgl.opengl.GL11C.glClearColor;
 import static org.lwjgl.opengl.GL11C.glViewport;
+import static org.lwjgl.opengl.GL11C.glGetFloatv;
 import static org.lwjgl.system.MemoryUtil.memFree;
 import static cs.csss.utils.NumberUtils.nearestGreaterOrEqualPowerOfTwo;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.joml.Vector4f;
+import org.lwjgl.system.MemoryStack;
+
 import cs.core.graphics.CSOrthographicCamera;
 import cs.core.graphics.CSStandardRenderer;
 import cs.core.utils.Lambda;
@@ -132,6 +139,8 @@ import cs.csss.utils.ByteBufferUtils;
 	
 	private final NanoVG nanoVG;
 	
+	private Vector4f previousClearColor = new Vector4f();
+	
 	/**
 	 * Creates a project exporter which will export a project by the given parameters.
 	 * 
@@ -187,13 +196,21 @@ import cs.csss.utils.ByteBufferUtils;
 		this.nanoVG = nanoVG;		
 		
 		framebuffer = renderer.make(() -> {
+	
+			try(MemoryStack stack = MemoryStack.stackPush()) {
+
+				FloatBuffer colors = stack.mallocFloat(4);				
+				glGetFloatv(GL_COLOR_CLEAR_VALUE , colors);
+				previousClearColor.set(colors);
+				
+			}
 			
 			Framebuffer newFramebuffer = new Framebuffer();
 			newFramebuffer.initialize();
 			return newFramebuffer;
 			
 		}).get();
-	
+			
 		ProjectSizeAndPositions exportInfo = project.getProjectSizeAndPositions();
 
 		if(powerOfTwoSizes) { 
@@ -260,7 +277,7 @@ import cs.csss.utils.ByteBufferUtils;
 			project.arrangeArtboards();
 
 			glViewport(0 , 0 , windowSize[0] , windowSize[1]);
-			glClearColor(0.15f , 0.15f , 0.15f , 1.0f);
+			glClearColor(previousClearColor.x , previousClearColor.y , previousClearColor.z , previousClearColor.w);
 			
 		});
 				
@@ -347,7 +364,7 @@ import cs.csss.utils.ByteBufferUtils;
 		//once all tasks have completed, free the downloaded memory
 		Engine.THE_TEMPORAL.onTrue(() -> finishedExporters.get() == exporters.size() , () -> {
 		
-			Logging.sysDebug("Finished exporting");
+			Logging.sysDebugln("Finished exporting");
 			memFree(exportBuffer);
 		
 		});

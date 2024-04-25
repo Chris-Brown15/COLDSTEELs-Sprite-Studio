@@ -21,22 +21,15 @@ class CursorDragManager {
 	
 	private CursorDragState cursorDragState = CursorDragState.NOT_DRAGGING;
 	
-	private final Engine engine;
-
 	private int currentDragFrame = 0;
 	
-	CursorDragManager(Engine engine) {
-
-		this.engine = engine;
-		
-	}
+	CursorDragManager() {}
 
 	/**
 	 * Sets the previous cursor coordinates.
 	 */
-	void update() {
-
-		float[] cursorCoords = engine.getCursorWorldCoords();
+	void update(float[] cursorCoords) {
+		
 		previousCursorX = cursorCoords[0];
 		previousCursorY = cursorCoords[1];
 		

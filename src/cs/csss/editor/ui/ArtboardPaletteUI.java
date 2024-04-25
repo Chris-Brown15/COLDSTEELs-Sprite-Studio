@@ -3,9 +3,13 @@
  */
 package cs.csss.editor.ui;
 
+import static cs.core.graphics.StandardRendererConstants.*;
+
 import static cs.core.ui.CSUIConstants.*;
 import static org.lwjgl.nuklear.Nuklear.nk_window_get_content_region;
 import static org.lwjgl.opengl.GL11C.GL_SCISSOR_TEST;
+import static org.lwjgl.opengl.GL11C.GL_UNSIGNED_BYTE;
+import static org.lwjgl.opengl.GL11C.GL_RGBA;
 import static org.lwjgl.opengl.GL11C.glDisable;
 import static org.lwjgl.opengl.GL11C.glEnable;
 import static org.lwjgl.opengl.GL11C.glScissor;
@@ -17,6 +21,8 @@ import cs.core.utils.ShutDown;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
 import cs.csss.engine.CSSSCamera;
+import cs.csss.misc.graphcs.framebuffer.Framebuffer;
+import cs.csss.misc.graphcs.framebuffer.FramebufferTexture;
 import cs.csss.project.ArtboardPalette;
 import cs.csss.ui.elements.FullAccessCSUI;
 
@@ -35,10 +41,10 @@ public class ArtboardPaletteUI implements ShutDown {
 	private float zoom = 1.0f , xTransform , yTransform;
 	private boolean hiding = true;
 	
-	/**
-	 * The camera used to render the palette in this UI.
-	 */
-	public CSSSCamera camera;
+	private CSSSCamera camera;
+	
+	private Framebuffer paletteFramebuffer = new Framebuffer();
+	private FramebufferTexture paletteFramebufferRenderTexture = new FramebufferTexture();
 	
 	/**
 	 * Creates a new artboard palette UI.
@@ -60,6 +66,8 @@ public class ArtboardPaletteUI implements ShutDown {
 		CSDynamicRow groupRow = ui.new CSDynamicRow(0.75f);
 		CSGroup paletteGroup = groupRow.new CSGroup("UNSEEN");
 		paletteGroup.ui.options |= UI_BORDERED|UI_UNSCROLLABLE;
+//		paletteGroup.ui.new CSDynamicRow(1.0f).new CSUIImage(paletteFramebufferRenderTexture);
+		
 		
 		//used to resize the group the palette is rendered in when the window is changed.
 		ui.attachedLayout((context , stack) -> {
@@ -107,6 +115,8 @@ public class ArtboardPaletteUI implements ShutDown {
 	 */
 	@RenderThreadOnly public void renderPaletteInUI(ArtboardPalette palette , int screenHeight) {
 
+//		paletteFramebuffer.activate();
+		
 		float midX = camera.XscreenCoordinateToWorldCoordinate(midX());
 		float midY = camera.YscreenCoordinateToWorldCoordinate(midY());
 		
@@ -241,6 +251,36 @@ public class ArtboardPaletteUI implements ShutDown {
 	public boolean inBounds(float x , float y) {
 		
 		return x >= positions[0] && x < positions[0] + dimensions[0] && y >= positions[1] && y < positions[1] + dimensions[1];
+		
+	}
+	
+	@RenderThreadOnly public void initializeFramebuffer() {
+
+		paletteFramebuffer.initialize();
+		
+		paletteFramebufferRenderTexture.initialize(
+			(int)dimensions[0] , 
+			(int)dimensions[1] , 
+			4 , 
+			GL_RGBA ,
+			GL_UNSIGNED_BYTE , 
+			MIN_FILTER_NEAREST|MAG_FILTER_NEAREST
+		);
+		
+		paletteFramebuffer.addColorAttachment(paletteFramebufferRenderTexture);
+		
+	}
+	
+	public void onFramebufferResize(int newWidth , int newHeight) {
+		
+		camera.resetProjection(newWidth, newHeight);
+		
+		
+	}
+	
+	public CSSSCamera camera() {
+		
+		return camera;
 		
 	}
 	

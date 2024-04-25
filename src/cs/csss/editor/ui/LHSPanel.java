@@ -5,8 +5,10 @@ import static cs.csss.ui.utils.UIUtils.toolTip;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
 import java.util.function.Function;
 
 import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
@@ -23,10 +25,12 @@ import cs.core.ui.CSNuklear.CSUI.CSLayout;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSButton;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSColorPicker;
 import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
+import cs.core.ui.CSNuklear.CSUI.CSRow;
 import cs.csss.editor.DebugDisabledException;
 import cs.csss.editor.Editor;
 import cs.csss.editor.brush.CSSSBrush;
 import cs.csss.editor.brush.CSSSModifyingBrush;
+import cs.csss.editor.brush.CSSSObjectBrush;
 import cs.csss.editor.palette.ColorPalette;
 import cs.csss.engine.ChannelBuffer;
 import cs.csss.engine.ColorPixel;
@@ -34,6 +38,7 @@ import cs.csss.engine.Engine;
 import cs.csss.engine.Logging;
 import cs.csss.project.Artboard;
 import cs.csss.project.CSSSProject;
+import cs.csss.ui.elements.CSSpacer;
 import cs.csss.ui.menus.DialogueInputBox;
 import cs.core.ui.CSNuklear.CSUserInterface;
 import cs.core.ui.prefabs.InputBox;
@@ -77,21 +82,21 @@ public class LHSPanel {
 
 			CSDynamicRow rgbaColorRow = ui.new CSDynamicRow(200);
 			CSDynamicRow rgbColorRow = ui.new CSDynamicRow(200);
+			CSDynamicRow grayColorRow = ui.new CSDynamicRow(200);
 			
 			rgbaChooser = rgbaColorRow.new CSColorPicker(RGBA);
 			rgbChooser = rgbColorRow.new CSColorPicker(RGB);
-			twoDColor = new TwoChannelColorPicker(nuklear.context());
+			twoDColor = new TwoChannelColorPicker(nuklear.context() , grayColorRow);
 			
 			rgbaColorRow.doLayout = () -> channels() == 4;
 			rgbColorRow.doLayout = () -> channels() == 3;
-			twoDColor.doLayout = () -> channels() <= 2;
+			grayColorRow.doLayout = () -> channels() <= 2;
 			
 			ui.attachedLayout((context , stack) -> {
 				
 				int channels = channels();
 				
 				twoDColor.hasAlpha = channels == 2;
-				twoDColor.layout();
 				colors(currentColorBuffer);
 				
 				if(channels >= 3) {
@@ -180,7 +185,7 @@ public class LHSPanel {
 
 						} catch(Exception e) {
 							
-							Logging.sysDebug("Color Palette generate colors failed");
+							Logging.sysDebugln("Color Palette generate colors failed");
 							e.printStackTrace();
 							continue;
 							
@@ -242,6 +247,31 @@ public class LHSPanel {
 				CSRadio newRadio = row.new CSRadio(uiText , () -> editor.currentBrush() == finalIter , () -> editor.setBrushTo(finalIter));	
 				toolTip(newRadio , iter.toolTip);
 				
+				if(finalIter instanceof CSSSObjectBrush<?> asObjectBrush) {
+					
+					Set<String> objectNames = asObjectBrush.objectNames();
+					LinkedList<CSRadio> brushOptionsList = new LinkedList<>();
+					objectNames.forEach(string -> {
+						
+						CSRow itemRow = ui.new CSRow(30) ; itemRow.doLayout = () -> editor.currentBrush() == finalIter;
+						itemRow.pushWidth(0.15f);
+						itemRow.pushWidth(0.77f);
+						CSSpacer spacer = new CSSpacer(itemRow , nuklear.context());
+						itemRow.add(spacer);
+						CSRadio option = itemRow.new CSRadio(
+							string , 
+							asObjectBrush.activeDescriptorName().equals(string) , 
+							() -> asObjectBrush.activeDescriptor(string)
+						);
+							
+						brushOptionsList.add(option);
+						
+					});
+					
+					CSRadio.groupAll(brushOptionsList.toArray(CSRadio[]::new));
+					
+				}
+				
 			}
 			
 			//script brushes next
@@ -268,7 +298,7 @@ public class LHSPanel {
 				() -> editor.setBrushTo(Editor.theSelectingScriptBrush2()));
 
 			selectingBrushRow.new CSButton("Select" , () -> editor.startSelectSelectingScriptBrush2(scriptSelectingBrushRadio));
-			
+
 			//this is a slider that lets you modify the brush radius if the brush is a modifying brush
 			ui.attachedLayout((context , stack) -> {
 							
@@ -291,7 +321,7 @@ public class LHSPanel {
 				for(int i = 0 ; i < previousFrameColorBuffer.length ; i++) previousFrameColorBuffer[i] = currentColorBuffer[i];
 				
 			});
-				
+						
 		});
 
 		if(Engine.isDebug()) {
@@ -514,7 +544,7 @@ public class LHSPanel {
 	
 	private NkColor colorForCurrentChannels(ColorPixel source , MemoryStack stack) {
 		
-		if(source == null) { 
+		if(source == null) {
 			
 			byte zero = (byte)0;
 			return NkColor.malloc(stack).set(zero , zero , zero , zero);
@@ -525,7 +555,7 @@ public class LHSPanel {
 		byte max = (byte) 0xff;
 		return switch(channels) {
 			case 1 -> NkColor.malloc(stack).set(source.r() , source.r() , source.r() , max);
-			case 2 -> NkColor.malloc(stack).set(source.r() , source.r() , source.r() , source.a());
+			case 2 -> NkColor.malloc(stack).set(source.r() , source.r() , source.r() , source.g());
 			case 3 -> NkColor.malloc(stack).set(source.r() , source.g() , source.b() , max);
 			case 4 -> NkColor.malloc(stack).set(source.r() , source.g() , source.b() , source.a());
 			default -> throw new IllegalArgumentException("Unexpected value: " + channels);
@@ -571,7 +601,13 @@ public class LHSPanel {
 				
 				switch(channels) {
 					case 1 -> twoDColor.gray = (short) red;
-					case 2 -> twoDColor.set((short)red , (short) green);
+					case 2 -> { 
+						
+						twoDColor.gray = (short)red; 
+						twoDColor.alpha = (short)green;
+						
+					}
+					
 					default -> rgbPicker().color(red / 255f, green / 255f , blue / 255f , alpha / 255f);					
 				}
 				

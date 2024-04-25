@@ -6,7 +6,7 @@ import cs.core.utils.CSRefInt;
 import cs.csss.utils.FloatReference;
 
 /**
- * Class for singlular animation frames
+ * Class for singlular animation frames.
  */
 public class AnimationFrame {
 	
@@ -103,6 +103,28 @@ public class AnimationFrame {
 	public Artboard board() {
 		
 		return board;
+		
+	}
+	
+	/**
+	 * Returns the container for the number of updates this animation frame has set. 
+	 * 
+	 * @return Container for updates for this frame.
+	 */
+	public CSRefInt updatesContainer() {
+		
+		return frames;
+		
+	}
+	
+	/**
+	 * Returns the container for the amount of time this animation frame lasts.
+	 * 
+	 * @return Container for the amount of time this frame lasts.
+	 */
+	public FloatReference timeContainer() {
+		
+		return time;
 		
 	}
 	

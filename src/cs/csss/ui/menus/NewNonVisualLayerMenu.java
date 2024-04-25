@@ -104,7 +104,7 @@ public class NewNonVisualLayerMenu extends Dialogue {
 	 */
 	public boolean canCreate() {
 		
-		return channels != -1 && !name.equals("");
+		return channels != -1 && name != null && !name.equals("");
 		
 	}
 	

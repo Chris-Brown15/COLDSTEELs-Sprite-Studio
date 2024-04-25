@@ -8,7 +8,6 @@ import cs.csss.engine.LookupPixel;
 import cs.csss.engine.Position;
 import cs.csss.project.Artboard;
 import cs.csss.project.utils.Artboards;
-import cs.csss.utils.ByteBufferUtils.CorrectedParameters;
 import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 
 /**
@@ -22,22 +21,28 @@ public class CopyArtboardRegionEvent extends CSSSEvent {
 		originalRegion = null ,
 		newRegionPreviousContents;
 	
-	private CorrectedParameters region;
+	private CorrectedResult region;
 	
+	/**
+	 * Copies a subregion of an artboard onto itself.
+	 * 
+	 * @param artboard source artboard
+	 * @param render render representing the region to copy
+	 */
 	public CopyArtboardRegionEvent(Artboard artboard , SelectionAreaRender render) {
 		
 		super(true , false);
 		this.artboard = artboard;
 		Position position = render.positions;
-		CorrectedResult corrected = Artboards.worldCoordinatesToCorrectArtboardCoordinates(
+		
+		region = Artboards.worldCoordinatesToCorrectArtboardCoordinates(
 			artboard, 
-			(int)render.positions.leftX(), 
-			(int)render.positions.bottomY(), 
+			(int)position.leftX(), 
+			(int)position.bottomY(), 
 			position.width(), 
 			position.height()
 		);
 			
-		region = corrected.params();
 		int[] originalPositions = artboard.worldToPixelIndices(render.startingLeftX , render.startingBottomY);
 		originalRegion = artboard.getRegionOfLayerPixels(originalPositions[0] , originalPositions[1] , render.width , render.height);
 		newRegionPreviousContents = artboard.getRegionOfLayerPixels(region);
@@ -51,7 +56,7 @@ public class CopyArtboardRegionEvent extends CSSSEvent {
 	}
 
 	@Override public void undo() {
-
+		
 		artboard.removePixels(region.leftX() , region.bottomY() , region.width() , region.height());
 		artboard.putColorsInImage(region, newRegionPreviousContents);
 				

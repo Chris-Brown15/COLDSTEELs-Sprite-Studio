@@ -2,28 +2,23 @@ package cs.csss.editor.event;
 
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.SelectionAreaRender;
+import cs.csss.engine.LookupPixel;
+import cs.csss.engine.Position;
 import cs.csss.project.Artboard;
-import cs.csss.project.LayerPixel;
+import cs.csss.project.utils.Artboards;
+import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 
 /**
  * Event for moving a region of an artboard from one place to another.
  */
 @RenderThreadOnly public class MoveArtboardRegionEvent extends CSSSEvent {
 
-	private final Artboard current;
-	private final SelectionAreaRender render;
-	private final int 
-		startingX ,
-		startingY ,
-		startingXArtboardIndex ,
-		startingYArtboardIndex ,
-		endingXArtboardIndex ,
-		endingYArtboardIndex ,
-		width ,
-		height;
+	private final Artboard artboard;
+	private final CorrectedResult newPosition;
 	
-	private final LayerPixel[][] regionContents , previousRegionContents;
+	private final LookupPixel[][] contentsOfMovedRegion , previousContentsOfMovedToRegion;
 	
+	int movedRegionX , movedRegionY , width , height;
 	
 	/**
 	 * Creates an artboard region move event.
@@ -35,44 +30,46 @@ import cs.csss.project.LayerPixel;
 		
 		super(true , false);
 		
-		this.render = render;
-		this.width = render.width;
-		this.height = render.height;
+		this.artboard = current;
+
+		Position position = render.positions;		
 		
-		this.current = current;
+		int[] renderStartingPositionAsArtboardCoords = current.worldToPixelIndices(render.startingLeftX , render.startingBottomY);
+		movedRegionX = renderStartingPositionAsArtboardCoords[0];
+		movedRegionY = renderStartingPositionAsArtboardCoords[1];
+		width = render.width;
+		height = render.height;
 				
-		this.startingX = render.startingLeftX;
-		this.startingY = render.startingBottomY;
+		this.contentsOfMovedRegion = current.getRegionOfLayerPixels(movedRegionX, movedRegionY, width, height);
 		
-		int[] indices = current.worldToPixelIndices(startingX , startingY);
-		startingXArtboardIndex = indices[0];
-		startingYArtboardIndex = indices[1];
+		newPosition = Artboards.worldCoordinatesToCorrectArtboardCoordinates(
+			current, 
+			(int)position.leftX(), 
+			(int)position.bottomY(), 
+			position.width(), 
+			position.height()
+		);
 		
-		int endingX = (int)render.positions.leftX();
-		int endingY = (int)render.positions.bottomY();
-		
-		this.regionContents = render.regionContents();
-
-		indices = current.worldToPixelIndices(endingX , endingY);
-		endingXArtboardIndex = indices[0];
-		endingYArtboardIndex = indices[1];		
-
-		previousRegionContents = current.getRegionOfLayerPixels(endingXArtboardIndex , endingYArtboardIndex , width , height);
+		previousContentsOfMovedToRegion = current.getRegionOfLayerPixels(
+			newPosition.leftX() , 
+			newPosition.bottomY() , 
+			newPosition.width() , 
+			newPosition.height()
+		);
 		
 	}
 
 	@Override public void _do() {
 		
-		render.removeSectionFromArtboard(current , startingX , startingY);
-		current.putColorsInImage(endingXArtboardIndex, endingYArtboardIndex, width, height, regionContents);
-						
+		artboard.removePixels(movedRegionX, movedRegionY, width, height);
+		artboard.replace(newPosition , contentsOfMovedRegion);
+
 	}
 
 	@Override public void undo() {
 
-		current.putColorsInImage(startingXArtboardIndex, startingYArtboardIndex, width, height, regionContents);
-		current.removePixels(endingXArtboardIndex, endingYArtboardIndex, width, height);
-		current.putColorsInImage(endingXArtboardIndex, endingYArtboardIndex, width, height, previousRegionContents);		
+		artboard.putColorsInImage(movedRegionX, movedRegionY , width , height , contentsOfMovedRegion);
+		artboard.replace(newPosition , previousContentsOfMovedToRegion);		
 		
 	}
 	

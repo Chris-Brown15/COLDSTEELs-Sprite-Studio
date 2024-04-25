@@ -1,5 +1,7 @@
 package cs.csss.project.io;
 
+import static cs.csss.engine.Logging.*;
+
 import static cs.core.utils.CSUtils.specify;
 
 import static org.lwjgl.system.MemoryUtil.memFree;
@@ -12,10 +14,9 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Objects;
 
 import cs.core.utils.CSRefInt;
-import cs.csss.engine.Logging;
-import cs.csss.misc.files.CSFile;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.project.AnimationFrame;
 import cs.csss.project.Artboard;
@@ -44,39 +45,52 @@ import cs.csss.project.VisualLayer;
  */
 public class CTSPFile {
 	
-	private static final CSFolder projectRoot = CSFolder.getRoot("data").getOrCreateSubdirectory("projects");
-	
-	public static final String FILE_EXTENSION = ".ctsp";
-
 	/**
-	 * Returns whether a project of the given name is found in the {@code "data/projects/"} folder. The given file may or may not end in 
-	 * {@link CTSPFile#FILE_EXTENSION CTSPFile.FILE_EXTENSION}, either is valid.
+	 * The CSFolder project files are stored in.
+	 */
+	public static final CSFolder PROJECT_ROOT = CSFolder.getRoot("data").getOrCreateSubdirectory("projects");
+	
+	/**
+	 * Extension used by this class's writer.
+	 */
+	public static final String DEFAULT_FILE_EXTENSION = ".ctsp";
+	
+	/**
+	 * Returns whether a file is found at the given absolute file path. 
 	 * 
-	 * @param projectName — the name of a prospective project file.
+	 * @param projectName name of a project to check for
 	 * @return {@code true} if a file exists with the given name.
 	 */
 	public static boolean projectExists(String projectName) {
 		
-		if(!projectName.endsWith(FILE_EXTENSION)) projectName += FILE_EXTENSION;
-		return Files.exists(Paths.get(projectRoot.getRealPath() + CSFolder.separator + projectName));
+		return projectExists(projectName , DEFAULT_FILE_EXTENSION);
 		
 	}
 
 	/**
-	 * name of a ctsp file + FILE_EXTENSION
+	 * Returns whether a file is found at the given absolute file path. 
+	 * 
+	 * @param projectName name of a project to check for
+	 * @param extension the extension for the file to check for
+	 * @return {@code true} if a file exists with the given name.
 	 */
-	private final String fullFileName;
-	
+	public static boolean projectExists(String projectName , String extension) {
+		
+		String filepathSansExtension = PROJECT_ROOT.getRealPath() + CSFolder.separator + projectName;
+		return Files.exists(Paths.get(filepathSansExtension + extension));
+		
+	}
+
 	/**
 	 * Project to write, only present when the write constructor was called.
 	 */
-	private final CSSSProject project; 
+	protected final CSSSProject project; 
 	
 	/*
 	 * Data read from a file, available upon reading a ctsp file.
 	 */
 	
-	private String projectName;
+	private String projectName , fileExtension = DEFAULT_FILE_EXTENSION;
 	private byte channels;
 	private int numberSourceArtboards , numberVisualLayers , numberNonVisualLayers , numberAnimations;
 	
@@ -95,20 +109,58 @@ public class CTSPFile {
 	public CTSPFile(CSSSProject project , String saveAs) {
 		
 		this.project = project;
-		this.fullFileName = saveAs + FILE_EXTENSION;
+		this.projectName = saveAs;
 		
+		
+	}
+	
+	/**
+	 * Write constructor for a ctsp file allowing for specifying a different file extension than {@link #DEFAULT_FILE_EXTENSION}. 
+	 * 
+	 * @param project project to save
+	 * @param saveAs a name for the file to save
+	 * @param overrideFileExtension file extension for the resulting written file
+	 */
+	public CTSPFile(CSSSProject project , String saveAs , String overrideFileExtension) {
+		
+		Objects.requireNonNull(project);
+		Objects.requireNonNull(saveAs);
+		Objects.requireNonNull(overrideFileExtension);
+		
+		this.project = project;
+		this.projectName = saveAs;
+		this.fileExtension = overrideFileExtension;
 		
 	}
 	
 	/**
 	 * Read constructor for a ctsp file.
 	 * 
-	 * @param fileName — a name for the file to save
+	 * @param fileName — a name for the file to load
 	 */ 
 	public CTSPFile(String fileName) {
 		
+		Objects.requireNonNull(fileName);
 		project = null;
-		fullFileName = fileName;
+		projectName = fileName;
+		
+	}
+	
+	/**
+	 * Read constructor for a ctsp file allowing for specifying a different file extension than {@link #DEFAULT_FILE_EXTENSION}.
+	 * 
+	 * @param fileName a name for the file to load
+	 * @param overrideFileExtension file extension for the file to read
+	 */
+	public CTSPFile(String fileName , String overrideFileExtension) {
+		
+		project = null;
+		
+		Objects.requireNonNull(fileName);
+		Objects.requireNonNull(overrideFileExtension);
+		
+		projectName = fileName;
+		this.fileExtension = overrideFileExtension;
 		
 	}
 	
@@ -119,25 +171,37 @@ public class CTSPFile {
 	 */
 	public void write() throws IOException {
 		
-		CSFile.makeFile(projectRoot, fullFileName);
-		
-		try(FileOutputStream writer = new FileOutputStream(projectRoot.getRealPath() + CSFolder.separator + fullFileName)) {
+		try(FileOutputStream writer = new FileOutputStream(fileName())) {
+
+			write(writer);
 			
-			putString(fullFileName.substring(0, fullFileName.indexOf(FILE_EXTENSION)) , writer);
-			putByte((byte) project.channelsPerPixel() , writer);
-			putInt(project.getNumberNonCopiedArtboards() , writer);
-			putInt(project.numberVisualLayers() , writer);
-			putInt(project.numberNonVisualLayers() , writer);
-			putInt(project.numberAnimations() , writer);
-			writePaletteChunks(writer);
-			putStringArray(visualLayerNamesToArray() , writer);
-			writeNonVisualLayers(writer);
-			writeArtboardChunks(writer);
-			writeAnimationChunks(writer);
+			writer.flush();
 			
 		}
 		
-		Logging.sysDebug("File Write Complete");
+	}
+	
+	/**
+	 * Uses the given writer to write the contents of a project to disk. The writer is not closed by this method.
+	 * 
+	 * @param writer Writer to write with 
+	 * @throws IOException if an exception occurs during writing.
+	 */
+	public void write(FileOutputStream writer) throws IOException {
+		
+		putString(projectName , writer);
+		putByte((byte) project.channelsPerPixel() , writer);
+		putInt(project.getNumberNonCopiedArtboards() , writer);
+		putInt(project.numberVisualLayers() , writer);
+		putInt(project.numberNonVisualLayers() , writer);
+		putInt(project.numberAnimations() , writer);
+		writePaletteChunks(writer);
+		putStringArray(visualLayerNamesToArray() , writer);
+		writeNonVisualLayers(writer);
+		writeArtboardChunks(writer);
+		writeAnimationChunks(writer);
+
+		sysDebugln("File Write Complete");
 		
 	}
 	
@@ -148,33 +212,53 @@ public class CTSPFile {
 	 */
 	public void read() throws IOException {
 		
-		specify(projectExists(fullFileName) , "File does not exist.");
+		specify(projectExists(projectName) , "File does not exist: \n" + projectName + DEFAULT_FILE_EXTENSION);
 		
-		try(FileInputStream reader = new FileInputStream(projectRoot.getRealPath() + CSFolder.separator + fullFileName)) {
-			
-			projectName = getString(reader);
-			channels = getByte(reader);
-			numberSourceArtboards = getInt(reader);
-			numberVisualLayers = getInt(reader);
-			numberNonVisualLayers = getInt(reader);
-			numberAnimations = getInt(reader);
-			palettes = readPaletteChunks(reader);
-			
-			visualLayerNames = getStringArray(reader);
-			nonvisualLayers = readNonVisualLayers(numberNonVisualLayers, reader);
-			artboards = readArtboards(numberSourceArtboards , numberVisualLayers , numberNonVisualLayers , reader);
-			animations = readAnimationChunks(numberAnimations , reader);
-			
+		try(FileInputStream reader = new FileInputStream(fileName())) {
+
+			read(reader);
 			
 		}
 		
-		Logging.sysDebug("File Read Complete");
+		sysDebugln("File Read Complete");
+		
+	}
+
+	/**
+	 * Uses an existing reader to read the contents of a CTSP file from disk. The reader is not closed by this method.
+	 * 
+	 * @param reader reader to read a project file with
+	 * @throws IOException if an exception occurs during reading.
+	 */
+	public void read(FileInputStream reader) throws IOException {
+
+		sysDebugln("Reading" , fileName());
+		
+		projectName = getString(reader);
+		channels = getByte(reader);
+		numberSourceArtboards = getInt(reader);
+		numberVisualLayers = getInt(reader);
+		numberNonVisualLayers = getInt(reader);
+		numberAnimations = getInt(reader);
+		palettes = readPaletteChunks(reader);
+		
+		visualLayerNames = getStringArray(reader);
+		nonvisualLayers = readNonVisualLayers(numberNonVisualLayers, reader);
+		artboards = readArtboards(numberSourceArtboards , numberVisualLayers , numberNonVisualLayers , reader);
+		animations = readAnimationChunks(numberAnimations , reader);
+		
 		
 	}
 	
 	/* helper methods */
 	
-	private void writePaletteChunks(FileOutputStream writer) throws IOException {
+	/**
+	 * Writes the five paleets of the project.
+	 * 
+	 * @param writer writer to write with
+	 * @throws IOException if an exception occurs during writing.
+	 */
+	protected void writePaletteChunks(FileOutputStream writer) throws IOException {
 		
 		writePalette(project.visualPalette() , writer);
 		writePalette(project.getNonVisualPaletteBySize(1) , writer);
@@ -186,12 +270,11 @@ public class CTSPFile {
 	
 	private void writePalette(ArtboardPalette palette , FileOutputStream writer) throws IOException {
 		
-		int 
-			width = palette.width() ,
-			height = palette.height() ,
-			col = palette.currentCol() ,
-			row = palette.currentRow() ,
-			channels = palette.channelsPerPixel();
+		int width = palette.width();
+		int height = palette.height();
+		int col = palette.currentCol();
+		int row = palette.currentRow();
+		int channels = palette.channelsPerPixel();
 		
 		putInt(width , writer);
 		putInt(height , writer);
@@ -206,7 +289,14 @@ public class CTSPFile {
 		
 	}
 	
-	private PaletteChunk[] readPaletteChunks(FileInputStream reader) throws IOException {
+	/**
+	 * Reads the five palette chunks from the given reader and returns an array containing them.
+	 * 
+	 * @param reader reader to read with 
+	 * @return Array containing the five palettes of the project.
+	 * @throws IOException if an exception occurs during reading.
+	 */
+	protected PaletteChunk[] readPaletteChunks(FileInputStream reader) throws IOException {
 		
 		return new PaletteChunk[] {
 			readPaletteChunk(reader) , 
@@ -224,7 +314,12 @@ public class CTSPFile {
 		
 	}
 	
-	private String[] visualLayerNamesToArray() {
+	/**
+	 * Stores the names of the visual layer prototypes of the project in the resulting array for writing. 
+	 * 
+	 * @return Array containing the names of the visual layers of this project.
+	 */
+	protected String[] visualLayerNamesToArray() {
 		
 		String[] names = new String[project.numberVisualLayers()];
 		CSRefInt i = new CSRefInt(0);
@@ -239,7 +334,12 @@ public class CTSPFile {
 		
 	}
 	
-	private void writeNonVisualLayers(FileOutputStream writer) {
+	/**
+	 * Writes each nonvisual layer of the project with {@code writer}. 
+	 * 
+	 * @param writer the writer to write with
+	 */
+	protected void writeNonVisualLayers(FileOutputStream writer) {
 
 		project.forEachNonVisualLayerPrototype(prototype -> {
 			
@@ -259,7 +359,15 @@ public class CTSPFile {
 				
 	}
 	
-	private NonVisualLayerChunk[] readNonVisualLayers(int numberNonVisualLayers , FileInputStream reader) throws IOException {
+	/**
+	 * Reads the nonvisual layers with {@code reader}, storing the result in the returned array.
+	 * 
+	 * @param numberNonVisualLayers number of non visual layer chunks to load
+	 * @param reader reader to read chunks with
+	 * @return Array containing the loaded chunks.
+	 * @throws IOException if an exception occurs during reading.
+	 */
+	protected NonVisualLayerChunk[] readNonVisualLayers(int numberNonVisualLayers , FileInputStream reader) throws IOException {
 		
 		NonVisualLayerChunk[] nvls = new NonVisualLayerChunk[numberNonVisualLayers];		
 		for(int i = 0 ; i < numberNonVisualLayers ; i++) nvls[i] = new NonVisualLayerChunk(getString(reader) , getByte(reader));		
@@ -267,7 +375,12 @@ public class CTSPFile {
 		
 	}
 
-	private void writeArtboardChunks(FileOutputStream writer) {
+	/**
+	 * Writes all artboard chunks with {@code writer}. 
+	 * 
+	 * @param writer writer to write chunks with
+	 */
+	protected void writeArtboardChunks(FileOutputStream writer) {
 		
 		project.forEachNonShallowCopiedArtboard(artboard -> {
 			
@@ -292,7 +405,14 @@ public class CTSPFile {
 		
 	}
 
-	private void writeVisualLayerChunks(Artboard artboard , FileOutputStream writer) throws IOException {
+	/**
+	 * Writes visual layer chunks to disk.
+	 * 
+	 * @param artboard artboard whose visual layers are being written
+	 * @param writer writer to write with
+	 * @throws IOException if an exception occurs during writing.
+	 */
+	protected void writeVisualLayerChunks(Artboard artboard , FileOutputStream writer) throws IOException {
 		
 		var iter = artboard.visualLayers();
 		while(iter.hasNext()) {
@@ -307,7 +427,14 @@ public class CTSPFile {
 		
 	}
 
-	private void writeNonVisualLayerChunks(Artboard artboard , FileOutputStream writer) throws IOException {
+	/**
+	 * Writes nonvisual layer chunks to disk.
+	 * 
+	 * @param artboard artboard whose nonvisual layers are being written
+	 * @param writer writer to write with
+	 * @throws IOException if an exception occurs during writing.
+	 */
+	protected void writeNonVisualLayerChunks(Artboard artboard , FileOutputStream writer) throws IOException {
 		
 		var iter = artboard.nonVisualLayers();
 		while(iter.hasNext()) {
@@ -342,7 +469,17 @@ public class CTSPFile {
 		
 	}
 	
-	private ArtboardChunk[] readArtboards(
+	/**
+	 * Reads the artboard chunks from disk.
+	 * 
+	 * @param numberArtboards number of artboards to laod
+	 * @param numberVisualLayers number of visual layers to load
+	 * @param numberNonVisualLayers number of nonvisual layers to load
+	 * @param reader reader to read with
+	 * @return Array of artboard chunks
+	 * @throws IOException if an exception occurs during reading.
+	 */
+	protected ArtboardChunk[] readArtboards(
 		int numberArtboards , 
 		int numberVisualLayers , 
 		int numberNonVisualLayers , 
@@ -428,7 +565,12 @@ public class CTSPFile {
 		
 	}
 	
-	private void writeAnimationChunks(FileOutputStream writer) {
+	/**
+	 * Writes animation chunks for this project with {@code writer}.
+	 * 
+	 * @param writer writer to write animation chunks with
+	 */
+	protected void writeAnimationChunks(FileOutputStream writer) {
 		
 		project.forEachAnimation(animation -> {
 			
@@ -465,7 +607,15 @@ public class CTSPFile {
 		
 	}
 	
-	private AnimationChunk[] readAnimationChunks(int numberAnimations , FileInputStream reader) throws IOException {
+	/**
+	 * Reads animation frame chunks.
+	 * 
+	 * @param numberAnimations number of animation chunks to load
+	 * @param reader reader for reading animation chunks
+	 * @return Array containing the loaded animation chunks.
+	 * @throws IOException if an exception occurs during animation chunk loading.
+	 */
+	protected AnimationChunk[] readAnimationChunks(int numberAnimations , FileInputStream reader) throws IOException {
 		
 		AnimationChunk[] animations = new AnimationChunk[numberAnimations];
 		for(int i = 0 ; i < animations.length ; i++) {
@@ -586,8 +736,22 @@ public class CTSPFile {
 		return nonvisualLayers;
 		
 	}
+
+	/**
+	 * Returns a string containing a valid file path to open for reading or writing.
+	 * 
+	 * @return Filepath to a file to open for reading or writing.
+	 */
+	protected String fileName() {
+		
+		return PROJECT_ROOT.getRealPath() + CSFolder.separator + projectName + fileExtension;
+		
+	}
 	
-	private void verifyReadValid() {
+	/**
+	 * Ensures that a call to {@link #read()} has succeeded.
+	 */
+	protected void verifyReadValid() {
 
 		specify(project == null && projectName != null , "Read constructor was not called or read() was not called");
 		

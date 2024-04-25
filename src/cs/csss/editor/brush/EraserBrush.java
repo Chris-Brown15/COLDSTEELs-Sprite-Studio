@@ -29,7 +29,7 @@ import cs.csss.project.Artboard;
 	
 	@Override public boolean canUse(Artboard artboard, Editor editor, int xIndex, int yIndex) {
 		
-		if(!super.canUse(artboard, editor, xIndex, yIndex)) return false;
+		if(!super.canUse(artboard, editor, xIndex, yIndex) || !editor.cursorInBoundsForBrush()) return false;
 		
 		int[] region = centerAroundRadius(xIndex, yIndex, artboard.width(), artboard.height());
 		for(int row = 0 ; row < region[3] ; row++) for(int col = 0 ; col < region[2] ; col++) {

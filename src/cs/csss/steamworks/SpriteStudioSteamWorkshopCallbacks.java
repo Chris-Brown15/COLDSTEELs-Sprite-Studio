@@ -86,16 +86,16 @@ public class SpriteStudioSteamWorkshopCallbacks implements SteamUGCCallback {
 						
 		}
 		
-		Logging.sysDebug("Query to Steam Workshop User Creations Length: " + allDetails.length);
-		Logging.sysDebug("Query Results:");
-		for(SteamUGCDetails x : allDetails) Logging.sysDebug("\t" + SteamAPIHelper.steamUGCDetailsDetailedString(x));
+		Logging.sysDebugln("Query to Steam Workshop User Creations Length: " + allDetails.length);
+		Logging.sysDebugln("Query Results:");
+		for(SteamUGCDetails x : allDetails) Logging.sysDebugln("\t" + SteamAPIHelper.steamUGCDetailsDetailedString(x));
 		WorkshopUploadHelper.acceptLastQueryForUGC(allDetails);
 		
 	}
 
 	@Override public void onSubscribeItem(SteamPublishedFileID publishedFileID, SteamResult result) {
 
-		Logging.sysDebug("Item Subscribed Result: " + result.name().toLowerCase());
+		Logging.sysDebugln("Item Subscribed Result: " + result.name().toLowerCase());
 		if(result != SteamResult.OK) {
 		
 			engine.newNotificationBox(
@@ -116,7 +116,7 @@ public class SpriteStudioSteamWorkshopCallbacks implements SteamUGCCallback {
 
 	@Override public void onUnsubscribeItem(SteamPublishedFileID publishedFileID, SteamResult result) {
 
-		Logging.sysDebug("Item Unsubscribed Result: " + result.name().toLowerCase());
+		Logging.sysDebugln("Item Unsubscribed Result: " + result.name().toLowerCase());
 				
 	}
 

@@ -8,6 +8,7 @@ import java.nio.ByteBuffer;
 
 import cs.core.utils.ShutDown;
 import cs.core.utils.files.CSGraphic;
+import cs.csss.engine.ColorPixel;
 
 public class FlexableGraphic implements CSGraphic , ShutDown {
 
@@ -60,6 +61,24 @@ public class FlexableGraphic implements CSGraphic , ShutDown {
 		imageData = memAlloc(width * height * (channelsPerPixel * bytesPerChannel));
 		
 		initializeImagePointer(defaultChannelValues);
+		
+	}
+	
+	public FlexableGraphic(int width , int height , int channelsPerPixel , ColorPixel values) {
+		
+		if(width <= 0) throw new IllegalArgumentException("Width is not positive: " + width);
+		if(height <= 0) throw new IllegalArgumentException("Height is not positive: " + height);		
+		if(channelsPerPixel <= 0) throw new IllegalArgumentException("Channels per pixel is not positive.");
+		
+		this.width = width;
+		this.height = height;
+		this.bytesPerChannel = 1;
+		this.channelsPerPixel = channelsPerPixel;
+
+		imageData = memAlloc(width * height * (channelsPerPixel * bytesPerChannel));
+		Number[] defaultValues = new Number[channelsPerPixel];
+		for(int i = 0 ; i < channelsPerPixel ; i++) defaultValues[i] = values.i(i);
+		initializeImagePointer(defaultValues);
 		
 	}
 

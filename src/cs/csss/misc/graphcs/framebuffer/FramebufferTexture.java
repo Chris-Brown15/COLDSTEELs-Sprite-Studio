@@ -38,17 +38,14 @@ import java.nio.ByteBuffer;
 import cs.core.graphics.CSTexture;
 
 /**
- * Texture implementation for use with {@link cs.csss.misc.graphics.framebuffer.Framebuffer Framebuffer}. Use this class's initialize method to allocate an uninitialized texture memory for the 
- * framebuffer to write to.
+ * Texture implementation for use with {@link cs.csss.misc.graphics.framebuffer.Framebuffer Framebuffer}. Use this class's initialize method to 
+ * allocate an uninitialized texture memory for the framebuffer to write to.
  * 
  * @author Chris Brown
  */
 public class FramebufferTexture extends CSTexture implements FramebufferAttachment {
 	
-	private int 
-		width ,
-		height ,
-		channels;
+	private int width , height , channels;
 	
 	/**
 	 * Initializes this texture so it allocates memory to write and read from but does not initialize the memory itself.

@@ -32,12 +32,13 @@ public class SelectionAreaBounder {
 			.lineTo(LX, BY)
 			.lineTo(LX, TY)
 			.lineTo(RX, TY)
-			.stroke();
+			.stroke()
+			.closePath();
 		
 	}
 	
 	/**
-	 * Translates thsi bounding box by the given translation amounts.
+	 * Translates this bounding box by the given translation amounts.
 	 * 
 	 * @param x — x translation amount
 	 * @param y — y translation amount

@@ -16,7 +16,6 @@ import cs.csss.project.IndexPixel;
 import cs.csss.project.LayerPixel;
 import cs.csss.project.utils.Artboards;
 import cs.csss.utils.ByteBufferUtils;
-import cs.csss.utils.ByteBufferUtils.CorrectedParameters;
 import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 
 /**
@@ -84,12 +83,12 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 			scaledWorldHeight			
 		);
 	
-		Objects.requireNonNull(corrected) ; CorrectedParameters params = corrected.params();
+		Objects.requireNonNull(corrected) ; 
 		
-		this.scaledLeftX = params.leftX();
-		this.scaledBottomY = params.bottomY();
-		this.scaledWidth = params.width();
-		this.scaledHeight = params.height();
+		this.scaledLeftX = corrected.leftX();
+		this.scaledBottomY = corrected.bottomY();
+		this.scaledWidth = corrected.width();
+		this.scaledHeight = corrected.height();
 		
 		scaledUp = scaledWorldWidth > originalWidth;
 
