@@ -7,8 +7,8 @@ import java.util.function.Consumer;
 
 import org.lwjgl.nuklear.NkPluginFilter;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.prefabs.InputBox;
+import sc.core.ui.SCNuklear;
+import sc.core.ui.prefabs.SCBasicInputBox;
 
 /**
  * 
@@ -16,7 +16,7 @@ import cs.core.ui.prefabs.InputBox;
 public class DialogueInputBox extends Dialogue {
 
 	public DialogueInputBox(
-		CSNuklear nuklear , 
+		SCNuklear nuklear , 
 		String displayName , 
 		float xRatio , 
 		float yRatio , 
@@ -25,12 +25,14 @@ public class DialogueInputBox extends Dialogue {
 		Consumer<String> onEnter		
 	) {
 		
-		new InputBox(nuklear , displayName , xRatio , yRatio , maxCharacters , filter , input -> {
+		SCBasicInputBox box = new SCBasicInputBox(nuklear , displayName , null, null , filter , input -> {
 			
 			onFinish();
 			onEnter.accept(input);
 			
-		});
+		} , maxCharacters);
+		
+		box.ui.positioner.xRatio(xRatio).yRatio(yRatio);
 		
 	}
 

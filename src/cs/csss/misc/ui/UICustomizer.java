@@ -2,7 +2,7 @@ package cs.csss.misc.ui;
 
 import static org.lwjgl.opengl.GL30C.glClearColor;
 
-import static cs.core.ui.CSUIConstants.*;
+import static sc.core.ui.SCUIConstants.*;
 
 import static cs.csss.misc.utils.SCBits.*;
 
@@ -45,16 +45,15 @@ import org.lwjgl.nuklear.NkStyleWindowHeader;
 import org.lwjgl.nuklear.NkVec2;
 import org.lwjgl.system.MemoryStack;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUserInterface;
-import cs.core.utils.CSUtils;
-import cs.core.utils.ShutDown;
 import cs.csss.editor.Editor;
 import cs.csss.engine.UITheme;
 import cs.csss.ui.menus.Dialogue;
+import sc.core.SCShutDown;
+import sc.core.ui.SCElements.SCUI.SCDynamicRow;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
 
-public class UICustomizer extends Dialogue implements ShutDown {
+public class UICustomizer extends Dialogue implements SCShutDown {
 
 	private static boolean isOpen = false;
 	private static UICustomizer openCustomizer = null;
@@ -70,8 +69,8 @@ public class UICustomizer extends Dialogue implements ShutDown {
 	
 	private final Editor editor;
 	
-	private final CSNuklear nuklear;
-	private final CSUserInterface modifierUI;
+	private final SCNuklear nuklear;
+	private final SCUserInterface modifierUI;
 	private final SetStyleBeforeBeginUI viewChangesUI;
 	
 	private boolean isFreed = false;
@@ -108,7 +107,12 @@ public class UICustomizer extends Dialogue implements ShutDown {
 	private ByteBuffer radioButton = memCalloc(1);
 	private ByteBuffer checkbox = memCalloc(1);
 	
-	public UICustomizer(CSNuklear nuklear , Editor editor , LinkedList<NkColor> uiPaletteColors , NkColor windowBackgroundDefaultColor) {
+	public UICustomizer(
+		SCNuklear nuklear , 
+		Editor editor , 
+		LinkedList<NkColor> uiPaletteColors , 
+		NkColor windowBackgroundDefaultColor
+	) {
 
 		if(isOpen) throw new IllegalStateException("Cannot have more than one styler open at a time.");
 		isOpen = true;
@@ -126,677 +130,686 @@ public class UICustomizer extends Dialogue implements ShutDown {
 		if(windowBackgroundDefaultColor != null) this.windowColor.set(windowBackgroundDefaultColor);
 		else windowColor.set((byte)(255 * .15f) , (byte)(255 * .15f) , (byte)(255 * .15f) , (byte)-1);
 		
-		modifierUI = nuklear.new CSUserInterface("UI Customizer" , 550 , 80 , 400 , 730);
-		modifierUI.options = UI_TITLED|UI_BORDERED;
-		modifierUI.setDimensions(550 , 80 , 400 , 730);
-				
-		viewChangesUI = new SetStyleBeforeBeginUI(nuklear , "Change Viewer" , 955 , 80 , 400 , 730 , customStyle);
-		viewChangesUI.setDimensions(955 , 80 , 400 , 730);
-		viewChangesUI.options = UI_TITLED|UI_BORDERED;
-
-		modifierUI.attachedLayout((context , stack) -> {
-			
-			nk_layout_row_dynamic(context , 40 , 1);
-			nk_text(context , "UI Color Palette Creator" , TEXT_MIDDLE|TEXT_CENTERED);
-			
-			nk_layout_row_dynamic(context , 100 , 1);
-			nk_color_pick(context , colorPicker , NK_RGBA);
-			
-			NkPluginFilterI filter = editor.colorInputsAreHex() ? CSNuklear.HEX_FILTER : CSNuklear.DECIMAL_FILTER;
-			
-			nk_layout_row_begin(context , NK_DYNAMIC , 30 , 2);
-			
-			nk_layout_row_push(context , 0.3f);
-			nk_text(context , "Red Channel" , TEXT_LEFT|TEXT_MIDDLE);			
-			nk_layout_row_push(context , 0.7f);			
-			nk_edit_string(context , EDIT_FIELD , redChannelText , redChannelTextLength , 4 , filter);		
-			nk_layout_row_end(context);
-			
-			nk_layout_row_begin(context , NK_DYNAMIC , 30 , 2);			
-			nk_layout_row_push(context , 0.3f);
-			nk_text(context , "Green Channel" , TEXT_LEFT|TEXT_MIDDLE);			
-			nk_layout_row_push(context , 0.7f);			
-			nk_edit_string(context , EDIT_FIELD , greenChannelText , greenChannelTextLength , 4 , filter);		
-			nk_layout_row_end(context);
-			
-			nk_layout_row_begin(context , NK_DYNAMIC , 30 , 2);			
-			nk_layout_row_push(context , 0.3f);
-			nk_text(context , "Blue Channel" , TEXT_LEFT|TEXT_MIDDLE);			
-			nk_layout_row_push(context , 0.7f);			
-			nk_edit_string(context , EDIT_FIELD , blueChannelText , blueChannelTextLength , 4 , filter);		
-			nk_layout_row_end(context);
-			
-			nk_layout_row_begin(context , NK_DYNAMIC , 30 , 2);			
-			nk_layout_row_push(context , 0.3f);
-			nk_text(context , "Alpha Channel" , TEXT_LEFT|TEXT_MIDDLE);			
-			nk_layout_row_push(context , 0.7f);			
-			nk_edit_string(context , EDIT_FIELD , alphaChannelText , alphaChannelTextLength , 4 , filter);		
-			nk_layout_row_end(context);
-				
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_button_text(context , "Add Inputs to UI Color Palette")) {
-				
-				if(
-					redChannelTextLength.get(0) > 0 && 
-					greenChannelTextLength.get(0) > 0 && 
-					blueChannelTextLength.get(0) > 0 && 
-					alphaChannelTextLength.get(0) > 0
-				) { 
-					
-					Function<String , Integer> parser = editor.colorInputsAreHex() ? 
-						string -> CSUtils.parseHexInt(string, 0, string.length()) : 
-						Integer::parseInt;
-					
-					addColorToPalette(
-						parser.apply(memUTF8(redChannelText , redChannelTextLength.get(0))).byteValue(), 
-						parser.apply(memUTF8(greenChannelText , greenChannelTextLength.get(0))).byteValue(), 
-						parser.apply(memUTF8(blueChannelText , blueChannelTextLength.get(0))).byteValue(), 
-						parser.apply(memUTF8(alphaChannelText , alphaChannelTextLength.get(0))).byteValue()
-					);
-				
-				}
-				
-			}
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_button_text(context , "Add Picker Color to UI Color Palette")) {
-			
-				addColorToPalette(
-					(byte)(colorPicker.r() * 255) ,
-					(byte)(colorPicker.g() * 255) ,
-					(byte)(colorPicker.b() * 255) ,
-					(byte)(colorPicker.a() * 255)  
-				);
-				
-			}				
-			
-			NkColor pressed = layoutUIPalette(context , null);
-			if(pressed != null) {
-				  
-				UIPaletteColors.remove(pressed);
-				pressed.free();
-				
-			}
-			
-//			/* WINDOW COLOR AND FONT */
-			/* WINDOW BACKGROUND */
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_combo_begin_text(context , "Window Background" , NkVec2.malloc(stack).set(modifierUI.interfaceWidth() , 300))) {
-				
-				boolean changed = colorPick(
-					context, 
-					windowColor, 
-					NkColor.malloc(stack).set((byte)(255 * 0.15f) , (byte)(255 * 0.15f) , (byte)(255 * 0.15f) , (byte)(255 * 1.0f)) ,
-					"Window Background Color"
-				);
-				
-				if(changed && showingWindowBackgroundColor) setClearColorToSelected();
-									
-				nk_combo_end(context);
-				
-			}
-			
-			/* TEXT STYLE */
-			
-			nk_layout_row_dynamic(context , 30 , 1);			
-			if(nk_combo_begin_text(context , "Text" , NkVec2.malloc(stack).set(modifierUI.interfaceWidth() , 300))) {
-				
-				colorPick(context , customStyle.text().color() , originalStyle.text().color() , "Text Color");	
-				
-				nk_layout_row_dynamic(context , 30 , 1);
-				vec2(context , customStyle.text().padding() , "Font X Padding" , "Font Y Padding");
-
-				nk_layout_row_dynamic(context , 30 , 1);
-				if(nk_button_text(context , "Reset to Defaults")) customStyle.text().set(originalStyle.text());
-				
-				nk_combo_end(context);
-				
-			}
-			
-			/* BUTTON STYLE */
-
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_combo_begin_text(context , "Button" , NkVec2.malloc(stack).set(modifierUI.interfaceWidth() , 300))) {
-				
-				buttonDesigner(context, customStyle.button(), originalStyle.button());
-
-				nk_combo_end(context);
-				
-			}
-			
-			/* MENU BUTTON STYLE */
-
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_combo_begin_text(context , "Menu Button" , NkVec2.malloc(stack).set(modifierUI.interfaceWidth() , 300))) {
-				
-				buttonDesigner(context , customStyle.menu_button() , originalStyle.menu_button());
-				
-				nk_combo_end(context);
-				
-			}
-			
-			/* TOGGLE */
-			
-			toggleDesigner(context , customStyle.option() , originalStyle.option() , "Toggle");
-
-			/* CHECKBOX */
-			
-			toggleDesigner(context , customStyle.checkbox() , originalStyle.checkbox() , "Checkbox" );
-			
-			/* SELECTABLE */
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_combo_begin_text(context , "Selectable" , NkVec2.malloc(stack).set(modifierUI.interfaceWidth() , 300))) {
-								
-				NkStyleSelectable selectableStyle = customStyle.selectable();
-				NkStyleSelectable original = originalStyle.selectable();
-				styleItem(context , selectableStyle.normal() 		 , original.normal() 				, "Normal");
-				styleItem(context , selectableStyle.hover() 		 , original.hover() 				, "Hover");
-				styleItem(context , selectableStyle.pressed() 		 , original.pressed() 				, "Pressed");
-				styleItem(context , selectableStyle.normal_active()  , original.normal_active() 		, "Active Normal");
-				styleItem(context , selectableStyle.hover_active() 	 , original.hover_active() 			, "Active Hover");
-				styleItem(context , selectableStyle.pressed_active() , original.pressed_active() 	, "Active Pressed");
-				
-				colorPick(context , selectableStyle.text_normal() , original.text_normal() , "Text Normal");
-				colorPick(context , selectableStyle.text_hover() , original.text_hover() , "Text Hover"); 
+		modifierUI = new SCUserInterface(nuklear , "UI Customizer" , 550 , 80 , 400 , 730);
+		modifierUI.flags = UI_TITLED|UI_BORDERED;
+		modifierUI.positioner.leftX(550).topY(80).width(400).height(700);
 		
-				colorPick(context, selectableStyle.text_pressed() , original.text_pressed() , "Text Pressed");     
-				colorPick(context, selectableStyle.text_normal_active() , original.text_normal_active() , "Text Active Normal");
-	
-				colorPick(context, selectableStyle.text_hover_active() , original.text_hover_active() , "Text Active Hover");  
-				colorPick(context, selectableStyle.text_pressed_active() , original.text_pressed_active() , "Text Active Pressed");		
-				
-				selectableStyle.text_alignment(textFlags(context, selectableStyle.text_alignment()));
-				selectableStyle.rounding(setFloat(context, selectableStyle.rounding(), "Rounding"));
-				
-				vec2(context, selectableStyle.padding(), "X Padding", "Y Padding");
-				vec2(context, selectableStyle.touch_padding(), "X Touch Padding", "Y Touch Padding");
-				vec2(context, selectableStyle.image_padding(), "X Image Padding", "Y Image Padding");
-				
-				nk_layout_row_dynamic(context , 30 , 1);
-				if(nk_button_text(context , "Reset to Defaults")) selectableStyle.set(original);
-				
-				nk_combo_end(context);
-				
-			}
+		viewChangesUI = new SetStyleBeforeBeginUI(nuklear , "Change Viewer" , 955 , 80 , 400 , 730 , customStyle);		
+		modifierUI.positioner.leftX(955).topY(80).width(400).height(730);
+		viewChangesUI.flags = UI_TITLED|UI_BORDERED;
+
+		modifierUI.attachedLayout((context) -> {
 			
-			/* SLIDER */
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_combo_begin_text(context , "Slider" , nk_vec2(modifierUI.interfaceWidth() , 300 , NkVec2.malloc(stack)))) {
-				
-				NkStyleSlider sliderStyle = customStyle.slider();
-				NkStyleSlider original = originalStyle.slider();
-				
-				styleItem(context , sliderStyle.normal() , original.normal() , "Normal");
-				styleItem(context , sliderStyle.hover() , original.hover() , "Hover");
-				styleItem(context , sliderStyle.active() , original.active() , "Active");
-					
-				colorPick(context, sliderStyle.border_color() , original.border_color() , "Border Color");    
-				colorPick(context, sliderStyle.bar_normal() , original.bar_normal() , "Bar Normal"); 
-				
-				colorPick(context, sliderStyle.bar_hover() , original.bar_hover() , "Bar Hovered"); 
-				colorPick(context, sliderStyle.bar_active() , original.bar_active() , "Bar Active");
-				colorPick(context , sliderStyle.bar_filled() , original.bar_filled() , "Bar Filled");
-				
-				styleItem(context , sliderStyle.cursor_normal() , original.cursor_normal() , "Cursor Normal");
-				styleItem(context , sliderStyle.cursor_hover() , original.cursor_hover() , "Cursor Hover");
-				styleItem(context , sliderStyle.cursor_active() , original.cursor_active() , "Cursor Active");
-				
-				sliderStyle.border(setFloat(context, sliderStyle.border(), "Border"));
-				sliderStyle.rounding(setFloat(context, sliderStyle.rounding(), "Rounding"));
-				sliderStyle.bar_height(setFloat(context, sliderStyle.bar_height(), "Bar Height"));
-				
-				vec2(context , sliderStyle.padding() , "X Padding" , "Y Padding");
-				vec2(context , sliderStyle.spacing() , "X Spacing" , "Y Spacing");
-				vec2(context , sliderStyle.cursor_size() , "Cursor Radius" , "UNUSED");
-				
-				sliderStyle.show_buttons(setInt(context , "Show Buttons" , sliderStyle.show_buttons()));
+			try(MemoryStack stack = MemoryStack.stackPush()) {
+
 				
 				nk_layout_row_dynamic(context , 40 , 1);
-				nk_text(context , "Increase Button" , TEXT_CENTERED|TEXT_MIDDLE);
+				nk_text(context , "UI Color Palette Creator" , TEXT_MIDDLE|TEXT_CENTERED);
 				
-				buttonDesigner(context, sliderStyle.inc_button(), original.inc_button());
-
-				nk_layout_row_dynamic(context , 20 , 1);
-				nk_text(context , "Decrease Button" , TEXT_CENTERED|TEXT_MIDDLE);
+				nk_layout_row_dynamic(context , 100 , 1);
+				nk_color_pick(context , colorPicker , NK_RGBA);
 				
-				buttonDesigner(context, sliderStyle.dec_button(), original.dec_button());
-								
-				sliderStyle.inc_symbol(symbol(context , "Increase Symbol" , sliderStyle.inc_symbol()));
-				sliderStyle.dec_symbol(symbol(context , "Decrease Symbol" , sliderStyle.dec_symbol()));
-
-				nk_layout_row_dynamic(context , 30 , 1);
-				if(nk_button_text(context , "Reset to Defaults")) sliderStyle.set(original);
+				NkPluginFilterI filter = editor.colorInputsAreHex() ? SCNuklear.HEX_FILTER : SCNuklear.DECIMAL_FILTER;
 				
-				nk_combo_end(context);
+				nk_layout_row_begin(context , NK_DYNAMIC , 30 , 2);
 				
-			}
-			
-			/* PROGRESS */
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_combo_begin_text(context , "Progress" , nk_vec2(modifierUI.interfaceWidth() , 300 , NkVec2.malloc(stack)))) {
-				
-				progressDesigner(context , customStyle.progress() , originalStyle.progress());
-				
-				nk_combo_end(context);
-				
-			}
-
-			/* PROPERTY */
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_combo_begin_text(context , "Property" , nk_vec2(modifierUI.interfaceWidth() , 300 , NkVec2.malloc(stack)))) {
-				
-				NkStyleProperty property = customStyle.property();
-				NkStyleProperty original = originalStyle.property();
-				styleItem(context , property.normal()  , original.normal(), "Normal");
-				styleItem(context , property.hover()   , original.hover() , "Hover");
-				styleItem(context , property.active()  , original.active(), "Active");
-				
-				colorPick(context , property.border_color() , original.border_color() , "Property Border");      
-				colorPick(context , property.label_normal() , original.label_normal() , "Property Label Normal"); 
-
-				colorPick(context , property.label_hover() , original.label_hover() , "Property Label Hover"); 
-				colorPick(context , property.label_active() , original.label_active() , "Property Label Active");
-				
-				property.sym_left(symbol(context , "Left Symbol" , property.sym_left()));
-				property.sym_right(symbol(context , "Right Symbol" , property.sym_right()));
-				
-				property.border(setFloat(context , property.border() , "Border"));
-				property.rounding(setFloat(context , property.rounding() , "Rounding"));
-				
-				vec2(context , property.padding() , "X Padding" , "Y Padding");
-				
-				nk_layout_row_dynamic(context , 40 , 1);
-				nk_text(context , "Text Input" , TEXT_CENTERED|TEXT_MIDDLE);
-				
-				editDesigner(context , property.edit() , original.edit() , false);
-				
-				nk_layout_row_dynamic(context , 20 , 1);
-				nk_text(context , "Increase Button" , TEXT_MIDDLE);				
-				buttonDesigner(context, property.inc_button() , original.inc_button());
-
-				nk_layout_row_dynamic(context , 20 , 1);
-				nk_text(context , "Decrease Button" , TEXT_MIDDLE);	
-				buttonDesigner(context, property.dec_button(), original.dec_button());
-
-				nk_layout_row_dynamic(context , 30 , 1);
-				if(nk_button_text(context , "Reset to Defaults")) property.set(original);
-				
-				nk_combo_end(context);
-				
-			}
-			
-			/* TEXT EDITOR */
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_combo_begin_text(context , "Text Editor" , nk_vec2(modifierUI.interfaceWidth() , 300 , NkVec2.malloc(stack)))) {
-				
-				editDesigner(context , customStyle.edit() , originalStyle.edit() , true);				
-				nk_combo_end(context);
-				
-			}
-			
-			/* CHART */
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_combo_begin_text(context , "Chart" , nk_vec2(modifierUI.interfaceWidth() , 300 , NkVec2.malloc(stack)))) {
-				
-				NkStyleChart chart = customStyle.chart();
-				NkStyleChart original = originalStyle.chart();
-				
-				styleItem(context , chart.background() , original.background() , "Background");				
-				colorPick(context , chart.border_color() , original.border_color() , "Border");				
-				colorPick(context , chart.selected_color() , original.selected_color() , "Selected Color");				
-				colorPick(context , chart.color() , original.color() , "Color");
-				
-				chart.border(setFloat(context , chart.border() , "Border"));
-				chart.rounding(setFloat(context , chart.rounding() , "Rounding"));
-				
-				vec2(context , chart.padding() , "X Padding" , "Y Padding");
-
-				nk_layout_row_dynamic(context , 30 , 1);
-				if(nk_button_text(context , "Reset to Defaults")) chart.set(original);
-					
-				nk_combo_end(context);
-				
-			}
-			
-			/* HORIZONTAL SCROLL */
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_combo_begin_text(context , "Horizontal Scroll" , nk_vec2(modifierUI.interfaceWidth() , 300 , NkVec2.malloc(stack)))) {
-				
-				NkStyleScrollbar horizontal = customStyle.scrollh();
-				scrollbarDesigner(context , horizontal , originalStyle.scrollh());
-				
-				nk_combo_end(context);
-				
-			}
-
-			/* VERTICAL SCROLL */
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_combo_begin_text(context , "Vertical Scroll" , nk_vec2(modifierUI.interfaceWidth() , 300 , NkVec2.malloc(stack)))) {
-				
-				NkStyleScrollbar vertical = customStyle.scrollv();
-				scrollbarDesigner(context , vertical , originalStyle.scrollv());
-				
-				nk_combo_end(context);
-				
-			}
-			
-			/* TAB */
-			//I Dont know what Element this applies to
-//			nk_layout_row_dynamic(context , 30 , 1);
-//			if(nk_combo_begin_text(context , "Tab" , nk_vec2(modifierUI.interfaceWidth() , 300 , NkVec2.malloc(stack)))) {
-//				
-//				NkStyleTab tab = customStyle.tab();
-//				NkStyleTab original = originalStyle.tab();
-//				
-//				styleItem(context , tab.background() , original.background() , "Background");				
-//				colorPick(context , tab.border_color() , original.border_color() , "Border");
-//				
-//				colorPick(context , tab.text() , original.text() , "Text");
-//				
-//				nk_layout_row_dynamic(context , 40 , 1);
-//				nk_text(context , "Maxmimize Button" , TEXT_MIDDLE|TEXT_CENTERED);
-//				
-//				buttonDesigner(context, tab.tab_maximize_button(), original.tab_maximize_button());
-//
-//				nk_layout_row_dynamic(context , 40 , 1);
-//				nk_text(context , "Minimize Button" , TEXT_MIDDLE|TEXT_CENTERED);
-//				
-//				buttonDesigner(context, tab.tab_minimize_button(), original.tab_minimize_button());
-//
-//				nk_layout_row_dynamic(context , 40 , 1);
-//				nk_text(context , "Node Maxmimize Button" , TEXT_MIDDLE|TEXT_CENTERED);
-//				
-//				buttonDesigner(context, tab.node_maximize_button(), original.node_maximize_button());
-//
-//				nk_layout_row_dynamic(context , 40 , 1);
-//				nk_text(context , "Node Minimize Button" , TEXT_MIDDLE|TEXT_CENTERED);
-//				
-//				buttonDesigner(context, tab.node_minimize_button(), original.node_minimize_button());
-//				
-//				tab.sym_maximize(symbol(context , "Maximize Symbol" , tab.sym_maximize()));
-//				tab.sym_minimize(symbol(context , "Minimize Symbol" , tab.sym_minimize()));
-//				
-//				tab.border(setFloat(context , tab.border() , "Border"));
-//				tab.rounding(setFloat(context , tab.rounding() , "Rounding"));
-//				tab.indent(setFloat(context , tab.indent() , "Indent"));
-//				
-//				vec2(context , tab.padding() , "X Padding" , "Y Padding");
-//				vec2(context , tab.spacing() , "X Spacing" , "Y Spacing");
-//
-//				nk_layout_row_dynamic(context , 30 , 1);
-//				if(nk_button_text(context , "Reset to Defaults")) tab.set(original);
-//			
-//				nk_combo_end(context);
-//				
-//			}
-			
-			/* COMBO */
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_combo_begin_text(context , "Combo" , nk_vec2(modifierUI.interfaceWidth() , 300 , NkVec2.malloc(stack)))) {
-				
-				NkStyleCombo combo = customStyle.combo();
-				NkStyleCombo original = originalStyle.combo();
-				
-				styleItem(context , combo.normal()  , original.normal(), "Normal");
-				styleItem(context , combo.hover()   , original.hover() , "Hover");
-				styleItem(context , combo.active()  , original.active(), "Active");			
-				
-				colorPick(context , combo.label_normal()  , original.label_normal()  , "Label Normal");
-				colorPick(context , combo.label_hover()   , original.label_hover()   , "Label Hover");
-				colorPick(context , combo.label_active()  , original.label_active()  , "Label Active");
-				colorPick(context , combo.symbol_normal() , original.symbol_normal() , "Symbol Normal");
-				colorPick(context , combo.symbol_hover()  , original.symbol_hover()  , "Symbol Hover");
-				colorPick(context , combo.symbol_active() , original.symbol_active() , "Symbol Active");
-				
-				nk_layout_row_dynamic(context , 40 , 1);
-				nk_text(context , "Combo Button" , TEXT_MIDDLE|TEXT_CENTERED);
-				
-				buttonDesigner(context, combo.button(), original.button());
-				
-				combo.sym_normal(symbol(context , "Symbol Normal" , combo.sym_normal()));
-				combo.sym_hover(symbol(context , "Symbol Hover" , combo.sym_hover()));
-				combo.sym_active(symbol(context , "Symbol Active" , combo.sym_active()));
-				
-				combo.border(setFloat(context , combo.border() , "Border"));
-				combo.rounding(setFloat(context , combo.rounding() , "Rounding"));
-				
-				vec2(context , combo.content_padding() , "X Content Padding" , "Y Content Padding");
-				vec2(context , combo.button_padding() , "X Button Padding" , "Y Button Padding");
-				vec2(context , combo.spacing() , "X Spacing" , "Y Spacing");
-
-				nk_layout_row_dynamic(context , 30 , 1);
-				if(nk_button_text(context , "Reset to Defaults")) combo.set(original);
-			
-				nk_combo_end(context);
-				
-			}
-
-			/* WINDOW */
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_combo_begin_text(context , "Window" , nk_vec2(modifierUI.interfaceWidth() , 300 , NkVec2.malloc(stack)))) {
-				
-				NkStyleWindow window = customStyle.window();
-				NkStyleWindow original = originalStyle.window();
-				NkStyleWindowHeader header = window.header();
-				NkStyleWindowHeader originalHeader = original.header();
-				
-				styleItem(context , header.normal()  , originalHeader.normal(), "Window Header Normal");
-				styleItem(context , header.hover()   , originalHeader.hover() , "Window Header Hover");
-				styleItem(context , header.active()  , originalHeader.active(), "Window Header Active");
-				
-				nk_layout_row_dynamic(context , 20 , 1);
-				nk_text(context , "Close Button" , TEXT_MIDDLE);
-				buttonDesigner(context, header.close_button(), originalHeader.close_button());
-
-				nk_layout_row_dynamic(context , 20 , 1);
-				nk_text(context , "Minimize Button" , TEXT_MIDDLE);
-				buttonDesigner(context, header.minimize_button(), originalHeader.minimize_button());
-				
-				header.close_symbol(symbol(context , "Close Symbol" , header.close_symbol()));			
-				header.minimize_symbol(symbol(context , "Minimize Symbol" , header.minimize_symbol()));
-				header.maximize_symbol(symbol(context , "Maximize Symbol" , header.maximize_symbol()));
-				
-				colorPick(context , header.label_normal() , originalHeader.label_normal() , "Text Normal");
-				colorPick(context , header.label_hover()  , originalHeader.label_hover()  , "Text Hover" );
-				colorPick(context , header.label_active() , originalHeader.label_active() , "Text Active");
-				
-				nk_layout_row_dynamic(context , 20 , 1);
-				nk_text(context , "Header Align" , TEXT_MIDDLE);
-				nk_layout_row_dynamic(context , 30 , 2);
-				if(nk_checkbox_text(context , "Header Left" , stack.bytes(header.align() == NK_HEADER_LEFT ? (byte)1 : 0))) {
-					
-					header.align(NK_HEADER_LEFT);
-					
-				}
-
-				if(nk_checkbox_text(context , "Header Right" , stack.bytes(header.align() == NK_HEADER_RIGHT ? (byte)1 : 0))) {
-					
-					header.align(NK_HEADER_RIGHT);
-					
-				}
-				
-				vec2(context , header.padding() , "Header X Padding" , "Header Y Padding");
-				vec2(context , header.label_padding() , "Header X Text Padding" , "Header Y Text Padding");
-				vec2(context , header.spacing() , "Header X Spacing" , "Header Y Spacing");
-				
-				styleItem(context , window.fixed_background() , original.fixed_background() , "Fixed Background");
-				
-				colorPick(context , window.background() , original.background() , "Background"); 
-				colorPick(context , window.border_color() , original.border_color() , "Border"); 
-			
-				colorPick(context , window.popup_border_color() , original.popup_border_color() , "Popup Border"); 
-				colorPick(context , window.combo_border_color() , original.combo_border_color() , "Combo Border"); 
-
-				colorPick(context , window.contextual_border_color() , original.contextual_border_color() , "Contextual Border"); 
-				colorPick(context , window.menu_border_color() , original.menu_border_color() , "Menu Border");       
-
-				colorPick(context , window.group_border_color() , original.group_border_color() , "Group Border");  
-				colorPick(context , window.tooltip_border_color() , original.tooltip_border_color() , "Tooltip Border");
-
-				styleItem(context , window.scaler() , original.scaler() , "Scale Tool");
-				
-				window.border(setFloat(context , window.border() , "Window Border"));
-				window.combo_border(setFloat(context , window.combo_border() , "Combo Border"));
-				window.contextual_border(setFloat(context , window.contextual_border() , "Contextual Border"));
-				window.menu_border(setFloat(context , window.menu_border() , "Menu Border"));
-				window.group_border(setFloat(context , window.group_border() , "Group Border"));
-				window.tooltip_border(setFloat(context , window.tooltip_border() , "Tooltip Border"));
-				window.popup_border(setFloat(context , window.popup_border() , "Popup Border"));
-				window.min_row_height_padding(setFloat(context , window.min_row_height_padding() , "Minimum Row Height Padding"));
-				window.rounding(setFloat(context , window.rounding() , "Rounding"));
-				
-				vec2(context , window.spacing() , "X Spacing" , "Y Spacing");
-				vec2(context , window.scrollbar_size() , "X Scrollbar Size" , "Y Scrollbar Size");
-				vec2(context , window.min_size() , "X Minimum Size" , "Y Minimum Size");
-				vec2(context , window.padding() , "X Padding" , "Y Padding");
-				vec2(context , window.group_padding() , "X Group Padding" , "Y Group Padding");
-				vec2(context , window.popup_padding() , "X Popup Padding" , "Y Popup Padding");
-				vec2(context , window.combo_padding() , "X Combo Padding" , "Y Combo Padding");
-				vec2(context , window.contextual_padding() , "X Contextual Padding" , "Y Contextual Padding");
-				vec2(context , window.menu_padding() , "X Menu Padding" , "Y Menu Padding");
-				vec2(context , window.tooltip_padding() , "X Tooltip Padding" , "Y Tooltip Padding");
-
-				nk_layout_row_dynamic(context , 30 , 1);
-				if(nk_button_text(context , "Reset to Defaults")) window.set(original);
-			
-				nk_combo_end(context);
-				
-			}
-
-		});
-		
-		viewChangesUI.attachedLayout((context , stack) -> {
-
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_checkbox_text(context , "Preview Window Background Color" , stack.bytes(showingWindowBackgroundColor ? (byte) 1 : 0))) {
-
-				showingWindowBackgroundColor = !showingWindowBackgroundColor;
-				
-				if(showingWindowBackgroundColor) setClearColorToSelected();
-				else editor.rendererPost(() -> glClearColor(.15f , .15f , .15f , 1.0f));
-				
-			}
-			
-			nk_layout_row_dynamic(context , 24 , 1);
-			nk_text_wrap(context , "Lorem Ipsum Dolor Sit Amet.");
-
-			nk_layout_row_dynamic(context , 30 , 1);
-			nk_button_text(context , "Lorem Ipsum Dolor Sit Amet.");
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_contextual_begin(
-				context , 
-				UI_TITLED|UI_BORDERED , 
-				nk_vec2(1000, 1000, NkVec2.malloc(stack)) , 
-				nk_rect(0, 0, 100, 100, NkRect.malloc(stack)))
-			) {
-	
-				nk_layout_row_dynamic(context , 30 , 1);
-				nk_contextual_item_text(context , "Lorem Ipsum Dolor Sit Amet." , TEXT_MIDDLE);
-				
-				nk_contextual_end(context);
-				
-			}
-
-			nk_layout_row_dynamic(context , 30 , 1);
-			nk_radio_text(context , "Lorem Ipsum Dolor Sit Amet." , radioButton);
-
-			nk_layout_row_dynamic(context , 30 , 1);
-			nk_checkbox_text(context , "Lorem Ipsum Dolor Sit Amet." , checkbox);
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			nk_selectable_text(context , "Lorem Ipsum Dolor Sit Amet." , TEXT_LEFT , stack.bytes((byte)0));
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			nk_slider_float(context , 0f , sliderValue , 100f , 1.0f);
-
-			nk_layout_row_dynamic(context , 30 , 1);
-			progressValue =  nk_prog(context , progressValue , 100 , false);
-
-			nk_layout_row_dynamic(context , 30 , 1);
-			nk_property_float(context , "Lorem Ipsum Dolor Sit Amet." , 0F , propertyValue , 100f , 1.0f , 2.0f);
-
-			nk_layout_row_dynamic(context , 60 , 1);
-			nk_edit_string(context , EDIT_FIELD|EDIT_MULTILINE , stringEditorMemory , stringEditorMemoryLength , 1024 , CSNuklear.NO_FILTER);
-
-			nk_layout_row_dynamic(context , 60 , 1);
-			nk_chart_begin(context , CHART_COLUMNS , 7 , 0f , 30f);
-			
-			nk_chart_push(context , 5f);
-			nk_chart_push(context , 12f);
-			nk_chart_push(context , 1f);
-			nk_chart_push(context , 20f);
-			nk_chart_push(context , 6f);
-			nk_chart_push(context , 17f);
-			nk_chart_push(context , 30f);
-			
-			nk_chart_end(context);
-			
-			nk_layout_row_dynamic(context , 120 , 1);
-			if(nk_group_begin(context , "Sliders" , UI_TITLED)) {
-				
-				nk_layout_row_begin(context , STATIC , 300 , 1);
-				nk_layout_row_push(context , 1000);
-				nk_spacer(context);
+				nk_layout_row_push(context , 0.3f);
+				nk_text(context , "Red Channel" , TEXT_LEFT|TEXT_MIDDLE);			
+				nk_layout_row_push(context , 0.7f);			
+				nk_edit_string(context , EDIT_FIELD , redChannelText , redChannelTextLength , 4 , filter);		
 				nk_layout_row_end(context);
-				nk_group_end(context);
 				
-			}
-
-//			nk_layout_row_dynamic(context , 60 , 1);
-//			if(nk_group_begin(context , "Group Tab" , UI_TITLED|UI_BORDERED)) nk_group_end(context);
-			
-			nk_layout_row_dynamic(context , 30 , 1);
-			if(nk_combo_begin_symbol_text(context , "Combo" , SYMBOL_TRIANGLE_DOWN , nk_vec2(300 , 200 , NkVec2.malloc(stack)))) {
-			
+				nk_layout_row_begin(context , NK_DYNAMIC , 30 , 2);			
+				nk_layout_row_push(context , 0.3f);
+				nk_text(context , "Green Channel" , TEXT_LEFT|TEXT_MIDDLE);			
+				nk_layout_row_push(context , 0.7f);			
+				nk_edit_string(context , EDIT_FIELD , greenChannelText , greenChannelTextLength , 4 , filter);		
+				nk_layout_row_end(context);
+				
+				nk_layout_row_begin(context , NK_DYNAMIC , 30 , 2);			
+				nk_layout_row_push(context , 0.3f);
+				nk_text(context , "Blue Channel" , TEXT_LEFT|TEXT_MIDDLE);			
+				nk_layout_row_push(context , 0.7f);			
+				nk_edit_string(context , EDIT_FIELD , blueChannelText , blueChannelTextLength , 4 , filter);		
+				nk_layout_row_end(context);
+				
+				nk_layout_row_begin(context , NK_DYNAMIC , 30 , 2);			
+				nk_layout_row_push(context , 0.3f);
+				nk_text(context , "Alpha Channel" , TEXT_LEFT|TEXT_MIDDLE);			
+				nk_layout_row_push(context , 0.7f);			
+				nk_edit_string(context , EDIT_FIELD , alphaChannelText , alphaChannelTextLength , 4 , filter);		
+				nk_layout_row_end(context);
+					
 				nk_layout_row_dynamic(context , 30 , 1);
-				nk_combo_item_text(context , "Option 1" , TEXT_MIDDLE);
-				
-				nk_layout_row_dynamic(context , 30 , 1);
-				nk_combo_item_symbol_text(context , SYMBOL_CIRCLE_OUTLINE , "Option 2" , TEXT_MIDDLE);
-				
-				nk_combo_end(context);
-				
-			}
-			
-			nk_layout_row_dynamic(context , 30 , 2);
-			nk_menubar_begin(context);
-			
-			if(nk_menu_begin_text(context , "Menu Option" , TEXT_LEFT , NkVec2.malloc(stack).set(200 , 200))) {
-				
-				nk_layout_row_dynamic(context , 30 , 1);
-				nk_text_wrap(context , "LOREM IPSUM");
-				nk_menu_end(context);
-				
-			}
-
-			if(nk_menu_begin_text(context , "Menu Option 2" , TEXT_LEFT , NkVec2.malloc(stack).set(200 , 200))) {
-				
-				nk_layout_row_dynamic(context , 30 , 1);
-				nk_text_wrap(context , "LOREM IPSUM");
-				nk_menu_end(context);
-				
-			}
-			
-			nk_menubar_end(context);
+				if(nk_button_text(context , "Add Inputs to UI Color Palette")) {
+					
+					if(
+						redChannelTextLength.get(0) > 0 && 
+						greenChannelTextLength.get(0) > 0 && 
+						blueChannelTextLength.get(0) > 0 && 
+						alphaChannelTextLength.get(0) > 0
+					) { 
 						
-			context.style().set(originalStyle);
+						Function<String , Integer> parser = editor.colorInputsAreHex() ? 
+							string -> Integer.parseInt(string, 16) : Integer::parseInt;
+						
+						addColorToPalette(
+							parser.apply(memUTF8(redChannelText , redChannelTextLength.get(0))).byteValue(), 
+							parser.apply(memUTF8(greenChannelText , greenChannelTextLength.get(0))).byteValue(), 
+							parser.apply(memUTF8(blueChannelText , blueChannelTextLength.get(0))).byteValue(), 
+							parser.apply(memUTF8(alphaChannelText , alphaChannelTextLength.get(0))).byteValue()
+						);
+					
+					}
+					
+				}
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_button_text(context , "Add Picker Color to UI Color Palette")) {
+				
+					addColorToPalette(
+						(byte)(colorPicker.r() * 255) ,
+						(byte)(colorPicker.g() * 255) ,
+						(byte)(colorPicker.b() * 255) ,
+						(byte)(colorPicker.a() * 255)  
+					);
+					
+				}				
+				
+				NkColor pressed = layoutUIPalette(context , null);
+				if(pressed != null) {
+					  
+					UIPaletteColors.remove(pressed);
+					pressed.free();
+					
+				}
+				
+//				/* WINDOW COLOR AND FONT */
+				/* WINDOW BACKGROUND */
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_combo_begin_text(context , "Window Background" , NkVec2.malloc(stack).set(modifierUI.positioner.width() , 300))) {
+					
+					boolean changed = colorPick(
+						context, 
+						windowColor, 
+						NkColor.malloc(stack).set((byte)(255 * 0.15f) , (byte)(255 * 0.15f) , (byte)(255 * 0.15f) , (byte)(255 * 1.0f)) ,
+						"Window Background Color"
+					);
+					
+					if(changed && showingWindowBackgroundColor) setClearColorToSelected();
+										
+					nk_combo_end(context);
+					
+				}
+				
+				/* TEXT STYLE */
+				
+				nk_layout_row_dynamic(context , 30 , 1);			
+				if(nk_combo_begin_text(context , "Text" , NkVec2.malloc(stack).set(modifierUI.positioner.width() , 300))) {
+					
+					colorPick(context , customStyle.text().color() , originalStyle.text().color() , "Text Color");	
+					
+					nk_layout_row_dynamic(context , 30 , 1);
+					vec2(context , customStyle.text().padding() , "Font X Padding" , "Font Y Padding");
 
+					nk_layout_row_dynamic(context , 30 , 1);
+					if(nk_button_text(context , "Reset to Defaults")) customStyle.text().set(originalStyle.text());
+					
+					nk_combo_end(context);
+					
+				}
+				
+				/* BUTTON STYLE */
+
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_combo_begin_text(context , "Button" , NkVec2.malloc(stack).set(modifierUI.positioner.width() , 300))) {
+					
+					buttonDesigner(context, customStyle.button(), originalStyle.button());
+
+					nk_combo_end(context);
+					
+				}
+				
+				/* MENU BUTTON STYLE */
+
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_combo_begin_text(context , "Menu Button" , NkVec2.malloc(stack).set(modifierUI.positioner.width() , 300))) {
+					
+					buttonDesigner(context , customStyle.menu_button() , originalStyle.menu_button());
+					
+					nk_combo_end(context);
+					
+				}
+				
+				/* TOGGLE */
+				
+				toggleDesigner(context , customStyle.option() , originalStyle.option() , "Toggle");
+
+				/* CHECKBOX */
+				
+				toggleDesigner(context , customStyle.checkbox() , originalStyle.checkbox() , "Checkbox" );
+				
+				/* SELECTABLE */
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_combo_begin_text(context , "Selectable" , NkVec2.malloc(stack).set(modifierUI.positioner.width() , 300))) {
+									
+					NkStyleSelectable selectableStyle = customStyle.selectable();
+					NkStyleSelectable original = originalStyle.selectable();
+					styleItem(context , selectableStyle.normal() 		 , original.normal() 				, "Normal");
+					styleItem(context , selectableStyle.hover() 		 , original.hover() 				, "Hover");
+					styleItem(context , selectableStyle.pressed() 		 , original.pressed() 				, "Pressed");
+					styleItem(context , selectableStyle.normal_active()  , original.normal_active() 		, "Active Normal");
+					styleItem(context , selectableStyle.hover_active() 	 , original.hover_active() 			, "Active Hover");
+					styleItem(context , selectableStyle.pressed_active() , original.pressed_active() 	, "Active Pressed");
+					
+					colorPick(context , selectableStyle.text_normal() , original.text_normal() , "Text Normal");
+					colorPick(context , selectableStyle.text_hover() , original.text_hover() , "Text Hover"); 
+			
+					colorPick(context, selectableStyle.text_pressed() , original.text_pressed() , "Text Pressed");     
+					colorPick(context, selectableStyle.text_normal_active() , original.text_normal_active() , "Text Active Normal");
+		
+					colorPick(context, selectableStyle.text_hover_active() , original.text_hover_active() , "Text Active Hover");  
+					colorPick(context, selectableStyle.text_pressed_active() , original.text_pressed_active() , "Text Active Pressed");		
+					
+					selectableStyle.text_alignment(textFlags(context, selectableStyle.text_alignment()));
+					selectableStyle.rounding(setFloat(context, selectableStyle.rounding(), "Rounding"));
+					
+					vec2(context, selectableStyle.padding(), "X Padding", "Y Padding");
+					vec2(context, selectableStyle.touch_padding(), "X Touch Padding", "Y Touch Padding");
+					vec2(context, selectableStyle.image_padding(), "X Image Padding", "Y Image Padding");
+					
+					nk_layout_row_dynamic(context , 30 , 1);
+					if(nk_button_text(context , "Reset to Defaults")) selectableStyle.set(original);
+					
+					nk_combo_end(context);
+					
+				}
+				
+				/* SLIDER */
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_combo_begin_text(context , "Slider" , nk_vec2(modifierUI.positioner.width() , 300 , NkVec2.malloc(stack)))) {
+					
+					NkStyleSlider sliderStyle = customStyle.slider();
+					NkStyleSlider original = originalStyle.slider();
+					
+					styleItem(context , sliderStyle.normal() , original.normal() , "Normal");
+					styleItem(context , sliderStyle.hover() , original.hover() , "Hover");
+					styleItem(context , sliderStyle.active() , original.active() , "Active");
+						
+					colorPick(context, sliderStyle.border_color() , original.border_color() , "Border Color");    
+					colorPick(context, sliderStyle.bar_normal() , original.bar_normal() , "Bar Normal"); 
+					
+					colorPick(context, sliderStyle.bar_hover() , original.bar_hover() , "Bar Hovered"); 
+					colorPick(context, sliderStyle.bar_active() , original.bar_active() , "Bar Active");
+					colorPick(context , sliderStyle.bar_filled() , original.bar_filled() , "Bar Filled");
+					
+					styleItem(context , sliderStyle.cursor_normal() , original.cursor_normal() , "Cursor Normal");
+					styleItem(context , sliderStyle.cursor_hover() , original.cursor_hover() , "Cursor Hover");
+					styleItem(context , sliderStyle.cursor_active() , original.cursor_active() , "Cursor Active");
+					
+					sliderStyle.border(setFloat(context, sliderStyle.border(), "Border"));
+					sliderStyle.rounding(setFloat(context, sliderStyle.rounding(), "Rounding"));
+					sliderStyle.bar_height(setFloat(context, sliderStyle.bar_height(), "Bar Height"));
+					
+					vec2(context , sliderStyle.padding() , "X Padding" , "Y Padding");
+					vec2(context , sliderStyle.spacing() , "X Spacing" , "Y Spacing");
+					vec2(context , sliderStyle.cursor_size() , "Cursor Radius" , "UNUSED");
+					
+					sliderStyle.show_buttons(setInt(context , "Show Buttons" , sliderStyle.show_buttons()));
+					
+					nk_layout_row_dynamic(context , 40 , 1);
+					nk_text(context , "Increase Button" , TEXT_CENTERED|TEXT_MIDDLE);
+					
+					buttonDesigner(context, sliderStyle.inc_button(), original.inc_button());
+
+					nk_layout_row_dynamic(context , 20 , 1);
+					nk_text(context , "Decrease Button" , TEXT_CENTERED|TEXT_MIDDLE);
+					
+					buttonDesigner(context, sliderStyle.dec_button(), original.dec_button());
+									
+					sliderStyle.inc_symbol(symbol(context , "Increase Symbol" , sliderStyle.inc_symbol()));
+					sliderStyle.dec_symbol(symbol(context , "Decrease Symbol" , sliderStyle.dec_symbol()));
+
+					nk_layout_row_dynamic(context , 30 , 1);
+					if(nk_button_text(context , "Reset to Defaults")) sliderStyle.set(original);
+					
+					nk_combo_end(context);
+					
+				}
+				
+				/* PROGRESS */
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_combo_begin_text(context , "Progress" , nk_vec2(modifierUI.positioner.width() , 300 , NkVec2.malloc(stack)))) {
+					
+					progressDesigner(context , customStyle.progress() , originalStyle.progress());
+					
+					nk_combo_end(context);
+					
+				}
+
+				/* PROPERTY */
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_combo_begin_text(context , "Property" , nk_vec2(modifierUI.positioner.width() , 300 , NkVec2.malloc(stack)))) {
+					
+					NkStyleProperty property = customStyle.property();
+					NkStyleProperty original = originalStyle.property();
+					styleItem(context , property.normal()  , original.normal(), "Normal");
+					styleItem(context , property.hover()   , original.hover() , "Hover");
+					styleItem(context , property.active()  , original.active(), "Active");
+					
+					colorPick(context , property.border_color() , original.border_color() , "Property Border");      
+					colorPick(context , property.label_normal() , original.label_normal() , "Property Label Normal"); 
+
+					colorPick(context , property.label_hover() , original.label_hover() , "Property Label Hover"); 
+					colorPick(context , property.label_active() , original.label_active() , "Property Label Active");
+					
+					property.sym_left(symbol(context , "Left Symbol" , property.sym_left()));
+					property.sym_right(symbol(context , "Right Symbol" , property.sym_right()));
+					
+					property.border(setFloat(context , property.border() , "Border"));
+					property.rounding(setFloat(context , property.rounding() , "Rounding"));
+					
+					vec2(context , property.padding() , "X Padding" , "Y Padding");
+					
+					nk_layout_row_dynamic(context , 40 , 1);
+					nk_text(context , "Text Input" , TEXT_CENTERED|TEXT_MIDDLE);
+					
+					editDesigner(context , property.edit() , original.edit() , false);
+					
+					nk_layout_row_dynamic(context , 20 , 1);
+					nk_text(context , "Increase Button" , TEXT_MIDDLE);				
+					buttonDesigner(context, property.inc_button() , original.inc_button());
+
+					nk_layout_row_dynamic(context , 20 , 1);
+					nk_text(context , "Decrease Button" , TEXT_MIDDLE);	
+					buttonDesigner(context, property.dec_button(), original.dec_button());
+
+					nk_layout_row_dynamic(context , 30 , 1);
+					if(nk_button_text(context , "Reset to Defaults")) property.set(original);
+					
+					nk_combo_end(context);
+					
+				}
+				
+				/* TEXT EDITOR */
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_combo_begin_text(context , "Text Editor" , nk_vec2(modifierUI.positioner.width() , 300 , NkVec2.malloc(stack)))) {
+					
+					editDesigner(context , customStyle.edit() , originalStyle.edit() , true);				
+					nk_combo_end(context);
+					
+				}
+				
+				/* CHART */
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_combo_begin_text(context , "Chart" , nk_vec2(modifierUI.positioner.width() , 300 , NkVec2.malloc(stack)))) {
+					
+					NkStyleChart chart = customStyle.chart();
+					NkStyleChart original = originalStyle.chart();
+					
+					styleItem(context , chart.background() , original.background() , "Background");				
+					colorPick(context , chart.border_color() , original.border_color() , "Border");				
+					colorPick(context , chart.selected_color() , original.selected_color() , "Selected Color");				
+					colorPick(context , chart.color() , original.color() , "Color");
+					
+					chart.border(setFloat(context , chart.border() , "Border"));
+					chart.rounding(setFloat(context , chart.rounding() , "Rounding"));
+					
+					vec2(context , chart.padding() , "X Padding" , "Y Padding");
+
+					nk_layout_row_dynamic(context , 30 , 1);
+					if(nk_button_text(context , "Reset to Defaults")) chart.set(original);
+						
+					nk_combo_end(context);
+					
+				}
+				
+				/* HORIZONTAL SCROLL */
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_combo_begin_text(context , "Horizontal Scroll" , nk_vec2(modifierUI.positioner.width() , 300 , NkVec2.malloc(stack)))) {
+					
+					NkStyleScrollbar horizontal = customStyle.scrollh();
+					scrollbarDesigner(context , horizontal , originalStyle.scrollh());
+					
+					nk_combo_end(context);
+					
+				}
+
+				/* VERTICAL SCROLL */
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_combo_begin_text(context , "Vertical Scroll" , nk_vec2(modifierUI.positioner.width() , 300 , NkVec2.malloc(stack)))) {
+					
+					NkStyleScrollbar vertical = customStyle.scrollv();
+					scrollbarDesigner(context , vertical , originalStyle.scrollv());
+					
+					nk_combo_end(context);
+					
+				}
+				
+				/* TAB */
+				//I Dont know what Element this applies to
+//				nk_layout_row_dynamic(context , 30 , 1);
+//				if(nk_combo_begin_text(context , "Tab" , nk_vec2(modifierUI.positioner.width() , 300 , NkVec2.malloc(stack)))) {
+//					
+//					NkStyleTab tab = customStyle.tab();
+//					NkStyleTab original = originalStyle.tab();
+//					
+//					styleItem(context , tab.background() , original.background() , "Background");				
+//					colorPick(context , tab.border_color() , original.border_color() , "Border");
+//					
+//					colorPick(context , tab.text() , original.text() , "Text");
+//					
+//					nk_layout_row_dynamic(context , 40 , 1);
+//					nk_text(context , "Maxmimize Button" , TEXT_MIDDLE|TEXT_CENTERED);
+//					
+//					buttonDesigner(context, tab.tab_maximize_button(), original.tab_maximize_button());
+	//
+//					nk_layout_row_dynamic(context , 40 , 1);
+//					nk_text(context , "Minimize Button" , TEXT_MIDDLE|TEXT_CENTERED);
+//					
+//					buttonDesigner(context, tab.tab_minimize_button(), original.tab_minimize_button());
+	//
+//					nk_layout_row_dynamic(context , 40 , 1);
+//					nk_text(context , "Node Maxmimize Button" , TEXT_MIDDLE|TEXT_CENTERED);
+//					
+//					buttonDesigner(context, tab.node_maximize_button(), original.node_maximize_button());
+	//
+//					nk_layout_row_dynamic(context , 40 , 1);
+//					nk_text(context , "Node Minimize Button" , TEXT_MIDDLE|TEXT_CENTERED);
+//					
+//					buttonDesigner(context, tab.node_minimize_button(), original.node_minimize_button());
+//					
+//					tab.sym_maximize(symbol(context , "Maximize Symbol" , tab.sym_maximize()));
+//					tab.sym_minimize(symbol(context , "Minimize Symbol" , tab.sym_minimize()));
+//					
+//					tab.border(setFloat(context , tab.border() , "Border"));
+//					tab.rounding(setFloat(context , tab.rounding() , "Rounding"));
+//					tab.indent(setFloat(context , tab.indent() , "Indent"));
+//					
+//					vec2(context , tab.padding() , "X Padding" , "Y Padding");
+//					vec2(context , tab.spacing() , "X Spacing" , "Y Spacing");
+	//
+//					nk_layout_row_dynamic(context , 30 , 1);
+//					if(nk_button_text(context , "Reset to Defaults")) tab.set(original);
+//				
+//					nk_combo_end(context);
+//					
+//				}
+				
+				/* COMBO */
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_combo_begin_text(context , "Combo" , nk_vec2(modifierUI.positioner.width() , 300 , NkVec2.malloc(stack)))) {
+					
+					NkStyleCombo combo = customStyle.combo();
+					NkStyleCombo original = originalStyle.combo();
+					
+					styleItem(context , combo.normal()  , original.normal(), "Normal");
+					styleItem(context , combo.hover()   , original.hover() , "Hover");
+					styleItem(context , combo.active()  , original.active(), "Active");			
+					
+					colorPick(context , combo.label_normal()  , original.label_normal()  , "Label Normal");
+					colorPick(context , combo.label_hover()   , original.label_hover()   , "Label Hover");
+					colorPick(context , combo.label_active()  , original.label_active()  , "Label Active");
+					colorPick(context , combo.symbol_normal() , original.symbol_normal() , "Symbol Normal");
+					colorPick(context , combo.symbol_hover()  , original.symbol_hover()  , "Symbol Hover");
+					colorPick(context , combo.symbol_active() , original.symbol_active() , "Symbol Active");
+					
+					nk_layout_row_dynamic(context , 40 , 1);
+					nk_text(context , "Combo Button" , TEXT_MIDDLE|TEXT_CENTERED);
+					
+					buttonDesigner(context, combo.button(), original.button());
+					
+					combo.sym_normal(symbol(context , "Symbol Normal" , combo.sym_normal()));
+					combo.sym_hover(symbol(context , "Symbol Hover" , combo.sym_hover()));
+					combo.sym_active(symbol(context , "Symbol Active" , combo.sym_active()));
+					
+					combo.border(setFloat(context , combo.border() , "Border"));
+					combo.rounding(setFloat(context , combo.rounding() , "Rounding"));
+					
+					vec2(context , combo.content_padding() , "X Content Padding" , "Y Content Padding");
+					vec2(context , combo.button_padding() , "X Button Padding" , "Y Button Padding");
+					vec2(context , combo.spacing() , "X Spacing" , "Y Spacing");
+
+					nk_layout_row_dynamic(context , 30 , 1);
+					if(nk_button_text(context , "Reset to Defaults")) combo.set(original);
+				
+					nk_combo_end(context);
+					
+				}
+
+				/* WINDOW */
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_combo_begin_text(context , "Window" , nk_vec2(modifierUI.positioner.width() , 300 , NkVec2.malloc(stack)))) {
+					
+					NkStyleWindow window = customStyle.window();
+					NkStyleWindow original = originalStyle.window();
+					NkStyleWindowHeader header = window.header();
+					NkStyleWindowHeader originalHeader = original.header();
+					
+					styleItem(context , header.normal()  , originalHeader.normal(), "Window Header Normal");
+					styleItem(context , header.hover()   , originalHeader.hover() , "Window Header Hover");
+					styleItem(context , header.active()  , originalHeader.active(), "Window Header Active");
+					
+					nk_layout_row_dynamic(context , 20 , 1);
+					nk_text(context , "Close Button" , TEXT_MIDDLE);
+					buttonDesigner(context, header.close_button(), originalHeader.close_button());
+
+					nk_layout_row_dynamic(context , 20 , 1);
+					nk_text(context , "Minimize Button" , TEXT_MIDDLE);
+					buttonDesigner(context, header.minimize_button(), originalHeader.minimize_button());
+					
+					header.close_symbol(symbol(context , "Close Symbol" , header.close_symbol()));			
+					header.minimize_symbol(symbol(context , "Minimize Symbol" , header.minimize_symbol()));
+					header.maximize_symbol(symbol(context , "Maximize Symbol" , header.maximize_symbol()));
+					
+					colorPick(context , header.label_normal() , originalHeader.label_normal() , "Text Normal");
+					colorPick(context , header.label_hover()  , originalHeader.label_hover()  , "Text Hover" );
+					colorPick(context , header.label_active() , originalHeader.label_active() , "Text Active");
+					
+					nk_layout_row_dynamic(context , 20 , 1);
+					nk_text(context , "Header Align" , TEXT_MIDDLE);
+					nk_layout_row_dynamic(context , 30 , 2);
+					if(nk_checkbox_text(context , "Header Left" , stack.bytes(header.align() == NK_HEADER_LEFT ? (byte)1 : 0))) {
+						
+						header.align(NK_HEADER_LEFT);
+						
+					}
+
+					if(nk_checkbox_text(context , "Header Right" , stack.bytes(header.align() == NK_HEADER_RIGHT ? (byte)1 : 0))) {
+						
+						header.align(NK_HEADER_RIGHT);
+						
+					}
+					
+					vec2(context , header.padding() , "Header X Padding" , "Header Y Padding");
+					vec2(context , header.label_padding() , "Header X Text Padding" , "Header Y Text Padding");
+					vec2(context , header.spacing() , "Header X Spacing" , "Header Y Spacing");
+					
+					styleItem(context , window.fixed_background() , original.fixed_background() , "Fixed Background");
+					
+					colorPick(context , window.background() , original.background() , "Background"); 
+					colorPick(context , window.border_color() , original.border_color() , "Border"); 
+				
+					colorPick(context , window.popup_border_color() , original.popup_border_color() , "Popup Border"); 
+					colorPick(context , window.combo_border_color() , original.combo_border_color() , "Combo Border"); 
+
+					colorPick(context , window.contextual_border_color() , original.contextual_border_color() , "Contextual Border"); 
+					colorPick(context , window.menu_border_color() , original.menu_border_color() , "Menu Border");       
+
+					colorPick(context , window.group_border_color() , original.group_border_color() , "Group Border");  
+					colorPick(context , window.tooltip_border_color() , original.tooltip_border_color() , "Tooltip Border");
+
+					styleItem(context , window.scaler() , original.scaler() , "Scale Tool");
+					
+					window.border(setFloat(context , window.border() , "Window Border"));
+					window.combo_border(setFloat(context , window.combo_border() , "Combo Border"));
+					window.contextual_border(setFloat(context , window.contextual_border() , "Contextual Border"));
+					window.menu_border(setFloat(context , window.menu_border() , "Menu Border"));
+					window.group_border(setFloat(context , window.group_border() , "Group Border"));
+					window.tooltip_border(setFloat(context , window.tooltip_border() , "Tooltip Border"));
+					window.popup_border(setFloat(context , window.popup_border() , "Popup Border"));
+					window.min_row_height_padding(setFloat(context , window.min_row_height_padding() , "Minimum Row Height Padding"));
+					window.rounding(setFloat(context , window.rounding() , "Rounding"));
+					
+					vec2(context , window.spacing() , "X Spacing" , "Y Spacing");
+					vec2(context , window.scrollbar_size() , "X Scrollbar Size" , "Y Scrollbar Size");
+					vec2(context , window.min_size() , "X Minimum Size" , "Y Minimum Size");
+					vec2(context , window.padding() , "X Padding" , "Y Padding");
+					vec2(context , window.group_padding() , "X Group Padding" , "Y Group Padding");
+					vec2(context , window.popup_padding() , "X Popup Padding" , "Y Popup Padding");
+					vec2(context , window.combo_padding() , "X Combo Padding" , "Y Combo Padding");
+					vec2(context , window.contextual_padding() , "X Contextual Padding" , "Y Contextual Padding");
+					vec2(context , window.menu_padding() , "X Menu Padding" , "Y Menu Padding");
+					vec2(context , window.tooltip_padding() , "X Tooltip Padding" , "Y Tooltip Padding");
+
+					nk_layout_row_dynamic(context , 30 , 1);
+					if(nk_button_text(context , "Reset to Defaults")) window.set(original);
+				
+					nk_combo_end(context);
+					
+				}
+
+			}
+			
+		});
+		
+		viewChangesUI.attachedLayout((context) -> {
+			
+			try(MemoryStack stack = MemoryStack.stackPush()) {
+
+
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_checkbox_text(context , "Preview Window Background Color" , stack.bytes(showingWindowBackgroundColor ? (byte) 1 : 0))) {
+
+					showingWindowBackgroundColor = !showingWindowBackgroundColor;
+					
+					if(showingWindowBackgroundColor) setClearColorToSelected();
+					else editor.rendererPost(() -> glClearColor(.15f , .15f , .15f , 1.0f));
+					
+				}
+				
+				nk_layout_row_dynamic(context , 24 , 1);
+				nk_text_wrap(context , "Lorem Ipsum Dolor Sit Amet.");
+
+				nk_layout_row_dynamic(context , 30 , 1);
+				nk_button_text(context , "Lorem Ipsum Dolor Sit Amet.");
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_contextual_begin(
+					context , 
+					UI_TITLED|UI_BORDERED , 
+					nk_vec2(1000, 1000, NkVec2.malloc(stack)) , 
+					nk_rect(0, 0, 100, 100, NkRect.malloc(stack)))
+				) {
+		
+					nk_layout_row_dynamic(context , 30 , 1);
+					nk_contextual_item_text(context , "Lorem Ipsum Dolor Sit Amet." , TEXT_MIDDLE);
+					
+					nk_contextual_end(context);
+					
+				}
+
+				nk_layout_row_dynamic(context , 30 , 1);
+				nk_radio_text(context , "Lorem Ipsum Dolor Sit Amet." , radioButton);
+
+				nk_layout_row_dynamic(context , 30 , 1);
+				nk_checkbox_text(context , "Lorem Ipsum Dolor Sit Amet." , checkbox);
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				nk_selectable_text(context , "Lorem Ipsum Dolor Sit Amet." , TEXT_LEFT , stack.bytes((byte)0));
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				nk_slider_float(context , 0f , sliderValue , 100f , 1.0f);
+
+				nk_layout_row_dynamic(context , 30 , 1);
+				progressValue =  nk_prog(context , progressValue , 100 , false);
+
+				nk_layout_row_dynamic(context , 30 , 1);
+				nk_property_float(context , "Lorem Ipsum Dolor Sit Amet." , 0F , propertyValue , 100f , 1.0f , 2.0f);
+
+				nk_layout_row_dynamic(context , 60 , 1);
+				nk_edit_string(context , EDIT_FIELD|EDIT_MULTILINE , stringEditorMemory , stringEditorMemoryLength , 1024 , SCNuklear.NO_FILTER);
+
+				nk_layout_row_dynamic(context , 60 , 1);
+				nk_chart_begin(context , CHART_COLUMNS , 7 , 0f , 30f);
+				
+				nk_chart_push(context , 5f);
+				nk_chart_push(context , 12f);
+				nk_chart_push(context , 1f);
+				nk_chart_push(context , 20f);
+				nk_chart_push(context , 6f);
+				nk_chart_push(context , 17f);
+				nk_chart_push(context , 30f);
+				
+				nk_chart_end(context);
+				
+				nk_layout_row_dynamic(context , 120 , 1);
+				if(nk_group_begin(context , "Sliders" , UI_TITLED)) {
+					
+					nk_layout_row_begin(context , STATIC , 300 , 1);
+					nk_layout_row_push(context , 1000);
+					nk_spacer(context);
+					nk_layout_row_end(context);
+					nk_group_end(context);
+					
+				}
+
+//				nk_layout_row_dynamic(context , 60 , 1);
+//				if(nk_group_begin(context , "Group Tab" , UI_TITLED|UI_BORDERED)) nk_group_end(context);
+				
+				nk_layout_row_dynamic(context , 30 , 1);
+				if(nk_combo_begin_symbol_text(context , "Combo" , NK_SYMBOL_TRIANGLE_DOWN , nk_vec2(300 , 200 , NkVec2.malloc(stack)))) {
+				
+					nk_layout_row_dynamic(context , 30 , 1);
+					nk_combo_item_text(context , "Option 1" , TEXT_MIDDLE);
+					
+					nk_layout_row_dynamic(context , 30 , 1);
+					nk_combo_item_symbol_text(context , NK_SYMBOL_CIRCLE_OUTLINE , "Option 2" , TEXT_MIDDLE);
+					
+					nk_combo_end(context);
+					
+				}
+				
+				nk_layout_row_dynamic(context , 30 , 2);
+				nk_menubar_begin(context);
+				
+				if(nk_menu_begin_text(context , "Menu Option" , TEXT_LEFT , NkVec2.malloc(stack).set(200 , 200))) {
+					
+					nk_layout_row_dynamic(context , 30 , 1);
+					nk_text_wrap(context , "LOREM IPSUM");
+					nk_menu_end(context);
+					
+				}
+
+				if(nk_menu_begin_text(context , "Menu Option 2" , TEXT_LEFT , NkVec2.malloc(stack).set(200 , 200))) {
+					
+					nk_layout_row_dynamic(context , 30 , 1);
+					nk_text_wrap(context , "LOREM IPSUM");
+					nk_menu_end(context);
+					
+				}
+				
+				nk_menubar_end(context);
+							
+				context.style().set(originalStyle);
+
+			}
+			
 		});
 				
-		CSDynamicRow finishRow = modifierUI.new CSDynamicRow();
-		finishRow.new CSButton("Finish" , () -> {
+		SCDynamicRow finishRow = modifierUI.new SCDynamicRow();
+		finishRow.new SCButton("Finish" , () -> {
 			
 			onFinish();
 			finished = true;
@@ -805,7 +818,7 @@ public class UICustomizer extends Dialogue implements ShutDown {
 			
 		});
 		
-		finishRow.new CSButton("Cancel" , () -> {
+		finishRow.new SCButton("Cancel" , () -> {
 			
 			shutDown();
 			onFinish();
@@ -867,7 +880,7 @@ public class UICustomizer extends Dialogue implements ShutDown {
 		
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 
-			if(nk_combo_begin_text(context , dropDownText , NkVec2.malloc(stack).set(modifierUI.interfaceWidth() , 300))) {
+			if(nk_combo_begin_text(context , dropDownText , NkVec2.malloc(stack).set(modifierUI.positioner.width() , 300))) {
 
 				styleItem(context, toggle.normal()		, original.normal()		, "Normal");				
 				styleItem(context, toggle.hover()		, original.hover()		, "Hover");
@@ -1272,10 +1285,10 @@ public class UICustomizer extends Dialogue implements ShutDown {
 	/**
 	 * Adds the given color to the UI palette if the color is not already in the palette.
 	 * 
-	 * @param r — red channel for the color
-	 * @param g — green channel for the color
-	 * @param b — blue channel for the color
-	 * @param a — alpha channel for the color
+	 * @param r ï¿½ red channel for the color
+	 * @param g ï¿½ green channel for the color
+	 * @param b ï¿½ blue channel for the color
+	 * @param a ï¿½ alpha channel for the color
 	 */
 	public void addColorToPalette(byte r , byte g, byte b , byte a) { 
 
@@ -1294,7 +1307,7 @@ public class UICustomizer extends Dialogue implements ShutDown {
 	/**
 	 * Adds the given color to the UI palette if it is not already present.
 	 * 
-	 * @param color — {@link NkColor} struct to add
+	 * @param color ï¿½ {@link NkColor} struct to add
 	 */
 	public void addColorToPalette(NkColor color) {
 		

@@ -1,7 +1,5 @@
 package cs.csss.engine;
 
-import static cs.core.utils.CSUtils.require;
-
 import java.nio.ByteBuffer;
 
 /**
@@ -17,13 +15,13 @@ public interface ColorPixel extends Pixel {
 	/**
 	 * Stores {@code pixel} in this buffer. the number of channel values put is {@code pixelSizeBytes}. 
 	 * 
-	 * @param buffer — buffer to write to 
-	 * @param pixel — a pixel to store in the buffer
-	 * @param pixelSizeBytes — number of bytes {@code pixel} contains
+	 * @param buffer buffer to write to 
+	 * @param pixel a pixel to store in the buffer
+	 * @param pixelSizeBytes number of bytes {@code pixel} contains
 	 */
 	public static void buffer(ByteBuffer buffer , ColorPixel pixel , int pixelSizeBytes) {
 		
-		require(buffer.remaining() >= pixelSizeBytes);
+		assert(buffer.remaining() >= pixelSizeBytes);
 		
 		switch(pixelSizeBytes) {
 			case 1 -> buffer.put(pixel.r());			
@@ -65,7 +63,7 @@ public interface ColorPixel extends Pixel {
 	/**
 	 * Returns the channel associated with the index.
 	 * 
-	 * @param index — index of a channel , {@code 0 <= index <= 3}.
+	 * @param index index of a channel , {@code 0 <= index <= 3}.
 	 * @return Channel value of a pixel.
 	 */
 	public default byte i(int index) {
@@ -113,7 +111,7 @@ public interface ColorPixel extends Pixel {
 	/**
 	 * Returns the unsigned form of the channel associated with the index.
 	 * 
-	 * @param index — index of a channel , {@code 0 <= index <= 3}.
+	 * @param index index of a channel , {@code 0 <= index <= 3}.
 	 * @return Unsigned from of the channel value of a pixel.
 	 */
 	public default short ui(int index) {

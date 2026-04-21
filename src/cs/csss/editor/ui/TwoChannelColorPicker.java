@@ -8,13 +8,13 @@ import org.lwjgl.nuklear.NkColor;
 import org.lwjgl.nuklear.NkContext;
 import org.lwjgl.system.MemoryStack;
 
-import cs.core.ui.CSNuklear.CSUI.CSLayout;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSElement;
+import sc.core.ui.SCElements.SCUI.SCLayout;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCElement;
 
 /**
  * Color picker used for two channel color pickers.
  */
-public class TwoChannelColorPicker extends CSElement {
+public class TwoChannelColorPicker extends SCElement {
 
 	public short gray = 0, alpha = 255;
 	
@@ -26,7 +26,7 @@ public class TwoChannelColorPicker extends CSElement {
 	 * @param context the nuklear context
 	 * @param source the owning layout
 	 */
-	public TwoChannelColorPicker(NkContext context , CSLayout source) {
+	public TwoChannelColorPicker(NkContext context , SCLayout source) {
 		
 		source.super();
 		

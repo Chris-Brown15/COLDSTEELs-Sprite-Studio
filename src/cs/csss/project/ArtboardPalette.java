@@ -15,10 +15,7 @@ import static org.lwjgl.opengl.GL30C.glEnable;
 
 import static org.lwjgl.system.MemoryUtil.memCopy;
 
-import static cs.core.graphics.StandardRendererConstants.POSITION_2D;
-import static cs.core.graphics.StandardRendererConstants.UV;
-import static cs.core.graphics.StandardRendererConstants.STATIC_VAO;
-import static cs.core.graphics.StandardRendererConstants.UINT;
+import static sc.core.graphics.SCRendererConstants.*;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -27,17 +24,13 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.EmptyStackException;
 import java.util.List;
 import java.util.Objects;
 
 import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryStack;
 
-import cs.core.graphics.CSRender;
-import cs.core.graphics.CSTexture;
-import cs.core.graphics.CSVAO;
-import cs.core.graphics.utils.VertexBufferBuilder;
-import cs.core.utils.data.exceptions.StackUnderflowException;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.engine.CSSSCamera;
 import cs.csss.engine.ChannelBuffer;
@@ -48,16 +41,15 @@ import cs.csss.engine.Pixel;
 import cs.csss.engine.TransformPosition;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.misc.utils.FlexableGraphic;
+import sc.core.graphics.SCTexture;
+import sc.core.graphics.SCVAO;
+import sc.core.graphics.utils.SCVertexBufferBuilder;
 
 /**
- * Implementation of {@code CSTexture} used extensively as a container of color values. The indices of pixels in the artboard are the values 
- * pixels of {@link cs.csss.project.IndexTexture IndexTexture} will contain, which are used in shaders to lookup and display the correct 
- * color. 
- * 
- * @author Chris Brown
- *
+ * Texture used as a container of color values. The indices of pixels in the artboard are the values pixels of 
+ * {@link cs.csss.project.IndexTexture IndexTexture} will contain, which are used in shaders to lookup and display the correct color. 
  */
-@RenderThreadOnly public class ArtboardPalette extends CSTexture {
+@RenderThreadOnly public class ArtboardPalette extends SCTexture {
 
 	/**
 	 * OpenGL constant for the channel type for GL functions.
@@ -80,14 +72,13 @@ import cs.csss.misc.utils.FlexableGraphic;
 	 */
 	final byte[] darkerCheckeredBackground , lighterCheckeredBackground;
 	
-	private CSRender render = null;
-	private CSVAO vao;
+	private SCVAO vao;
 	private TransformPosition transform;
 	
 	/**
 	 * Creates an artboard palette.
 	 * 
-	 * @param channelsPerPixel — number of channels per pixel of this palette
+	 * @param channelsPerPixel number of channels per pixel of this palette
 	 */
 	public ArtboardPalette(int channelsPerPixel) {
 		
@@ -98,9 +89,9 @@ import cs.csss.misc.utils.FlexableGraphic;
 	/**
 	 * Creates an artboard palette.
 	 * 
-	 * @param channelsPerPixel — number of channels per pixel for this palette
-	 * @param width — initial width of this palette
-	 * @param height — initial height of this palette
+	 * @param channelsPerPixel number of channels per pixel for this palette
+	 * @param width initial width of this palette
+	 * @param height initial height of this palette
 	 */
 	public ArtboardPalette(int channelsPerPixel , int width , int height) {
 		
@@ -138,13 +129,12 @@ import cs.csss.misc.utils.FlexableGraphic;
 		put(new PalettePixel(darkerCheckeredBackground));
 		put(new PalettePixel(lighterCheckeredBackground));
 
-	 	VertexBufferBuilder vertices = new VertexBufferBuilder(POSITION_2D|UV);
-	 	vertices.size(paletteWidth, paletteHeight);
+	 	SCVertexBufferBuilder vertices = new SCVertexBufferBuilder(POSITION_2D|UV);
+	 	vertices.dimensions(paletteWidth, paletteHeight);
 	 	vertices.midpoint(0 , 0);
 	 	transform = new TransformPosition(vertices.attribute(POSITION_2D));
-	 	vao = new CSVAO(vertices.attributes , STATIC_VAO , vertices.get()); 	 		 		
+	 	vao = new SCVAO(vertices.attributes , STATIC_DRAW , vertices.get()); 	 		 		
 	 	vao.drawAsElements(6, UINT);
-	 	render = new CSRender(vao , CSSSProject.theTextureShader() , this);
 	 		
 	}
 	
@@ -210,9 +200,9 @@ import cs.csss.misc.utils.FlexableGraphic;
 	/**
 	 * Puts {@code writeThis} in the palette.
 	 * 
-	 * @param xIndex — x index to write to
-	 * @param yIndex — y index to write to
-	 * @param writeThis — color to write in this palette 
+	 * @param xIndex x index to write to
+	 * @param yIndex y index to write to
+	 * @param writeThis color to write in this palette 
 	 */
 	public void put(int xIndex , int yIndex , ColorPixel writeThis) {
 
@@ -254,7 +244,7 @@ import cs.csss.misc.utils.FlexableGraphic;
 	 * 
 	 * <B>Note:</B> Must be called from the render thread.
 	 * 
-	 * @param colors
+	 * @param colors color to put or get from this palette
 	 * @return Lookup pixel containing the x and y coordinates of {@code colors}.
 	 */
 	public LookupPixel putOrGetColors(ColorPixel colors) {
@@ -280,7 +270,7 @@ import cs.csss.misc.utils.FlexableGraphic;
 	 *  won't be found by this method. 
 	 * </p>
 	 * 
-	 * @param color — the color to find
+	 * @param color the color to find
 	 * @return The indices of {@code color} in this palette if found, or <code>null</code> otherwise.
 	 */
 	public LookupPixel getIndicesOfColor(ColorPixel color) {
@@ -441,7 +431,7 @@ import cs.csss.misc.utils.FlexableGraphic;
 			
 			currentCol = (short)(paletteWidth - 1);
 			currentRow--;
-			if(currentRow < 0) throw new StackUnderflowException("This palette is completely empty.");
+			if(currentRow < 0) throw new EmptyStackException();
 			
 		}		
 		
@@ -450,19 +440,23 @@ import cs.csss.misc.utils.FlexableGraphic;
 	/**
 	 * Renders this palette at the given position using the given camera.
 	 * 
-	 * @param camera — camera to render with
-	 * @param midX — the x coordinate in world space to render this palette at
-	 * @param midY — the y coordinate in world space to render this palette at
+	 * @param camera camera to render with
+	 * @param midX the x coordinate in world space to render this palette at
+	 * @param midY the y coordinate in world space to render this palette at
 	 */
  	@RenderThreadOnly public void render(CSSSCamera camera , float midX , float midY) {
 		
  		CSSSShader textureShader = CSSSProject.theTextureShader();
 
  		transform.moveTo(midX , midY);
- 		textureShader.updatePassVariables(camera.projection() , camera.viewTranslation() , transform.translation);
  		
  		glDisable(GL_BLEND);
- 		render.draw(); 		
+ 		vao.activate();
+ 		textureShader.activate();
+ 		textureShader.updatePassVariables(camera.projection() , camera.viewTranslation() , transform.translation);
+ 		this.activate();
+ 		
+ 		vao.draw();
  		glEnable(GL_BLEND);
  		
  		//undo changed active shader
@@ -474,8 +468,8 @@ import cs.csss.misc.utils.FlexableGraphic;
  	/**
  	 * Converts the given world coordinates to pixel indices, which are stored in {@code destination}.
  	 * 
- 	 * @param worldCoordinates — array containing a world x and y coordinate
- 	 * @param destination — array to store pixel indices of the given coordinates
+ 	 * @param worldCoordinates array containing a world x and y coordinate
+ 	 * @param destination array to store pixel indices of the given coordinates
  	 */
  	public void worldCoordinateToPixelIndices(float[] worldCoordinates , int[] destination) { 
  		
@@ -490,7 +484,7 @@ import cs.csss.misc.utils.FlexableGraphic;
  	/**
  	 * Converts the given worlc coordinates into pixel indices, returning the result as an array.
  	 * 
- 	 * @param worldCoordinates — array containing a world x and y coordinate
+ 	 * @param worldCoordinates array containing a world x and y coordinate
  	 * @return Array containing pixel indices of the given coordinates.
  	 */
  	public int[]  worldCoordinateToPixelIndices(float[] worldCoordinates) {
@@ -516,13 +510,25 @@ import cs.csss.misc.utils.FlexableGraphic;
  	/**
  	 * Returns the palette pixel at the given indices.
  	 * 
- 	 * @param x — x index of the palette pixel to get
- 	 * @param y — y index of the palette pixel to get
+ 	 * @param x x index of the palette pixel to get
+ 	 * @param y y index of the palette pixel to get
  	 * @return {@link ColorPixel} containing the color values in the palette at the given indices.
  	 */
  	public ColorPixel get(int x , int y) {
  		
  		return new PalettePixel(paletteMemory , x , y);
+ 		
+ 	}
+ 	
+ 	/**
+ 	 * Returns the palette pixel at the indices given by {@code indices}.
+ 	 * 
+ 	 * @param indices lookup pixel to use to retrieve color 
+ 	 * @return {@link ColorPixel} containing the color values in the palette at the given lookup pixel's indices.
+ 	 */
+ 	public ColorPixel get(LookupPixel indices) {
+ 		
+ 		return get(indices.lookupX() , indices.lookupY());
  		
  	}
  	
@@ -599,9 +605,10 @@ import cs.csss.misc.utils.FlexableGraphic;
 	
 	@Override public void shutDown() {
 		
+		if(isFreed()) return;
 		super.shutDown();
-		if(render != null) render.shutDown();
-		
+		vao.shutDown();
+			
 	}
 	
 	/**
@@ -633,7 +640,7 @@ import cs.csss.misc.utils.FlexableGraphic;
 		 * Creates a new palette pixel from the given array. The values in the array are copied into this pixel from 
 		 * {@code [0 , channelsPerPixel - 1]}, so the given array must have enough spaces to satisfy this.
 		 * 
-		 * @param channelValues — array of channel values
+		 * @param channelValues array of channel values
 		 */
 		public PalettePixel(byte[] channelValues) {
 		
@@ -644,10 +651,10 @@ import cs.csss.misc.utils.FlexableGraphic;
 		/**
 		 * Creates a new palette pixel from the given byte values.
 		 * 
-		 * @param red — red channel value
-		 * @param green — green channel value
-		 * @param blue — blue channel value
-		 * @param alpha — alpha channel value
+		 * @param red red channel value
+		 * @param green green channel value
+		 * @param blue blue channel value
+		 * @param alpha alpha channel value
 		 */
 		public PalettePixel(byte red , byte green , byte blue , byte alpha) {
 			
@@ -674,7 +681,7 @@ import cs.csss.misc.utils.FlexableGraphic;
 		/**
 		 * Creates a new palette pixel frm the channel values of {@code other}.
 		 * 
-		 * @param other — another palette pixel
+		 * @param other another palette pixel
 		 */
 		public PalettePixel(ColorPixel other) {
 			
@@ -702,8 +709,8 @@ import cs.csss.misc.utils.FlexableGraphic;
 		/**
 		 * Sets the color channel corresponding to {@code index} to {@code value}.
 		 * 
-		 * @param value — a color value
-		 * @param index — channel index value
+		 * @param value a color value
+		 * @param index channel index value
 		 */
 		public void setByIndex(byte value , int index) {
 			

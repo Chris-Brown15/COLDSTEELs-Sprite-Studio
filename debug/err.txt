@@ -1,0 +1,7 @@
+[DEBUG] [COLDSTEEL SPRITE STUDIO DEBUG ENABLED]
+[DEBUG] Shutting down NanoVG...
+[DEBUG] NanoVG shut down.
+[DEBUG] Shutting down Editor...
+[DEBUG] Editor shut down.
+[DEBUG] Detached render context.
+[DEBUG] Attached render context.

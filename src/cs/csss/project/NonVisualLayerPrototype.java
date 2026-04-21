@@ -1,7 +1,5 @@
 package cs.csss.project;
 
-import static cs.core.utils.CSUtils.specify;
-
 /**
  * Store of information for producing nonvisual layers.
  */
@@ -14,8 +12,8 @@ public class NonVisualLayerPrototype {
 	
 	NonVisualLayerPrototype(int sizeBytes , String name) {
 		
-		specify(sizeBytes > 0 && sizeBytes < 5 , sizeBytes + " is not a valid number of bytes per pixel. Must be between [1 , 4].");
-		specify(name , "Must enter a name for a layer.");
+		assert sizeBytes > 0 && sizeBytes < 5 : sizeBytes + " is not a valid number of bytes per pixel. Must be between [1 , 4].";
+		assert name != null : "Must enter a name for a layer.";
 		
 		this.name = name;
 		this.sizeBytes = sizeBytes;

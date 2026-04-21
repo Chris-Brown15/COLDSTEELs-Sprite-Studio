@@ -1,3 +1,14 @@
+/**
+ * Copyright 2025, All Rights Reserved.
+ * ————————————————————————————————————
+ * This file and any accompanying files
+ * belong to STEEL Softworks, LLC. Do 
+ * not distribute these files without 
+ * permission from Chris Brown, owner 
+ * of STEEL Softworks, at 
+ * chris@steelsoftworks.net
+ * ————————————————————————————————————
+ */
 package cs.csss.editor;
 
 import static cs.csss.editor.event.CSSSMemoryEvent.*;
@@ -8,6 +19,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
@@ -16,13 +29,13 @@ import java.util.function.Supplier;
 import org.joml.Vector2f;
 import org.lwjgl.nuklear.NkPluginFilter;
 
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
-import cs.core.utils.Lambda;
-import cs.core.utils.ShutDown;
-import cs.core.utils.threads.Await;
-import cs.core.utils.threads.ConstructingAwait;
-import cs.coreext.nanovg.NanoVG;
-import cs.coreext.nanovg.NanoVGFrame;
+import sc.core.SCDisplay;
+import sc.core.SCShutDown;
+import sc.core.graphics.SCOrthographicCamera;
+import sc.core.graphics.nanovg.SCNanoVG;
+import sc.core.graphics.nanovg.SCNanoVGFrame;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCRadio;
+import sc.core.ui.SCNuklear;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.brush.CSSSBrush;
 import cs.csss.editor.brush.CSSSModifyingBrush;
@@ -61,7 +74,6 @@ import cs.csss.editor.ui.FilePanel;
 import cs.csss.editor.ui.LHSPanel;
 import cs.csss.editor.ui.RHSPanel;
 import cs.csss.engine.CSSSCamera;
-import cs.csss.engine.CSSSDisplay;
 import cs.csss.engine.ChannelBuffer;
 import cs.csss.engine.ColorPixel;
 import cs.csss.engine.Control;
@@ -87,7 +99,7 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
  * @author Chris Brown
  *
  */
-public class Editor implements ShutDown {
+public class Editor implements SCShutDown {
 		
 	static final int DEFAULT_UNDO_REDO_STACK_SIZE = 1024;
 		
@@ -173,7 +185,9 @@ public class Editor implements ShutDown {
 	private volatile CSSSBrush currentBrush = thePencilBrush;
 	
 	private ConcurrentLinkedDeque<CSSSEvent> events = new ConcurrentLinkedDeque<>();
-	private UndoRedoStack redos = new UndoRedoStack(DEFAULT_UNDO_REDO_STACK_SIZE) , undos = new UndoRedoStack(DEFAULT_UNDO_REDO_STACK_SIZE);
+	private UndoRedoStack 
+		redos = new UndoRedoStack(DEFAULT_UNDO_REDO_STACK_SIZE) , 
+		undos = new UndoRedoStack(DEFAULT_UNDO_REDO_STACK_SIZE);
 	
 	private final AnimationPanel animationPanel;
 	private final LHSPanel leftSidePanel;
@@ -183,8 +197,8 @@ public class Editor implements ShutDown {
 	
 	private boolean colorInputsAreHex = false;
 	
-	//NanoVG rectangle used to approximately show where the user will modify with their next action if they are using a modification brush of some 
-	//kind.
+	//NanoVG rectangle used to approximately show where the user will modify with their next action if they are using a modification 
+	//brush of some kind.
 	private final SelectionAreaBounder modifyingBounder = new SelectionAreaBounder();
 	
 	private final SelectionAreaBounder paletteBounder = new SelectionAreaBounder();
@@ -194,14 +208,14 @@ public class Editor implements ShutDown {
 	/*
 	 * modifying palette directly refers to whether we are currently able to modify the palette image.
 	 * 
-	 * referencing palette directly refers to whether we are currently using paletteXIndex and paletteYIndex to choose what color's indices to put
-	 * in the palette.
+	 * referencing palette directly refers to whether we are currently using paletteXIndex and paletteYIndex to choose what color's 
+	 * indices to put in the palette.
 	 */
 	private boolean referencingPaletteDirectly = false , modifyingPaletteDirectly = false;
 	
 	private LookupPixel currentColorIndices;
 	
-	private ConcurrentLinkedDeque<Consumer<NanoVGFrame>> nanoVGRenderCallbacks = new ConcurrentLinkedDeque<>();
+	private ConcurrentLinkedDeque<Consumer<SCNanoVGFrame>> nanoVGRenderCallbacks = new ConcurrentLinkedDeque<>();
 
 	private Shape activeShape = null;
 	private Line activeLine = null;
@@ -212,27 +226,28 @@ public class Editor implements ShutDown {
 	/**
 	 * Creates an editor object. 
 	 * 
-	 * @param engine � the engine of this application
-	 * @param display � display for the application
+	 * @param engine the engine of this application
+	 * @param display display for the application
 	 */
-	public Editor(Engine engine , CSSSDisplay display) {
+	public Editor(Engine engine , SCDisplay<Integer> display) {
 		
 		this.engine = engine;
+		SCNuklear nuklear = display.nuklear();
 		
 		setCameraMoveRate = engine::cameraMoveRate;
 		getCameraMoveRate = engine::cameraMoveRate;
 
-		leftSidePanel = new LHSPanel(this , display.nuklear);
-		paletteUI = new ArtboardPaletteUI(display.nuklear , this , leftSidePanel);
-		new FilePanel(this , display.nuklear);
-		new RHSPanel(this , display.nuklear , engine);
-		animationPanel = new AnimationPanel(this , display.nuklear);
+		leftSidePanel = new LHSPanel(this , nuklear);
+		paletteUI = new ArtboardPaletteUI(nuklear , this , leftSidePanel);
+		new FilePanel(this , nuklear);
+		new RHSPanel(this , nuklear , engine);
+		animationPanel = new AnimationPanel(this , nuklear);
 
 		new MonochromaticPalette(15);
 		new AnalogousPalette(15);
 		new ComplementaryPalette(6);
 		
-		display.window.onWindowResize(paletteUI::onFramebufferResize);
+		display.window().onWindowResize(paletteUI::onFramebufferResize , 201);
 		
 		activeLineBounder.showLeftSideMover = 
 		activeLineBounder.showTopSideMover = 
@@ -240,20 +255,55 @@ public class Editor implements ShutDown {
 		activeLineBounder.showBottomSideMover = false;
 		
 		theShapeBrush = new ShapesBrush(Map.of(
-			"Ellipse" , () -> rendererMake(() -> {
-			
-				Artboard current = currentArtboard();
-				if(current == null) return null;
-				return current.newEllipse();
-			
-			}).get() ,
-			"Rectangle" , () -> rendererMake(() -> {
+			"Ellipse" , () -> {
 				
-				Artboard current = currentArtboard();
-				if(current == null) return null;
-				return current.newRectangle();
+				Ellipse ellipse;
+				try {
+					
+					ellipse = rendererMake(() -> {
+						
+						Artboard current = currentArtboard();
+						if(current == null) return null;
+						return current.newEllipse();
+					
+					}).get();
+					
+				} catch (InterruptedException | ExecutionException e) {
+
+					e.printStackTrace();
+					ellipse = null;
+					Engine.overrideBeginShutDown("Failed to create ellipse shape." , e);
+					
+				}
 				
-			}).get()
+				return ellipse;
+
+			} ,
+			"Rectangle" , () -> {
+				
+				Rectangle rectangle;
+				
+				try {
+					
+					rectangle = rendererMake(() -> {
+						
+						Artboard current = currentArtboard();
+						if(current == null) return null;
+						return current.newRectangle();
+						
+					}).get();
+					
+				} catch (InterruptedException | ExecutionException e) {
+
+					e.printStackTrace();
+					rectangle = null;
+					Engine.overrideBeginShutDown("Failed to create rectangle shape." , e);
+					
+				}
+				
+				return rectangle;
+
+			}
 		));
 		
 		theLineBrush = new LinesBrush(Map.of(
@@ -297,45 +347,52 @@ public class Editor implements ShutDown {
 	}
 	
 	/**
-	 * Pushes an event onto the event queue and the undo stack. If pushing {@code event} onto the undo stack causes another event to be pushed off it and
-	 * the removed event is an instance of {@code ShutDown}, it is shut down.
+	 * Pushes an event onto the event queue and the undo stack. If pushing {@code event} onto the undo stack causes another event to be 
+	 * pushed off it and the removed event is an instance of {@code ShutDown}, it is shut down.
 	 * 
-	 * @param event � any event
+	 * @param event any event
 	 */
 	public void eventPush(CSSSEvent event) {
 		
 		events.add(event);
 
-		if(event.isTransientEvent) forceFreeEjectedEvent(event); 		
-		else handleEjectedEvent(undos.push(event), true);
+		if(event.isTransientEvent) pushFreeEventEvent(event); 		
+		else {
+			
+			CSSSEvent oldEvent = undos.push(event);
+			System.out.println(undos.size());
+			handleEjectedEvent(oldEvent , true);
+			
+		}
 
 	}
 	
 	/**
-	 * Receives all events ejected from either the undo or redo stack. When an event is ejected, it is checked for being a {@link CSSSMemoryEvent}, in 
-	 * which case the semantics for shutting down events containing memory are carried out. 
+	 * Receives all events ejected from either the undo or redo stack. When an event is ejected, it is checked for being a 
+	 * {@link CSSSMemoryEvent}, in which case the semantics for shutting down events containing memory are carried out. 
 	 * 
 	 * @param event the event to handle
-	 * @param justEjectedFromUndo if <code>true</code>, {@code event} is understood to have just been ejected from the undo stack, otherwise it is 
-	 * 							  understood to have been ejected from the redo stack
+	 * @param justEjectedFromUndo if <code>true</code>, {@code event} is understood to have just been ejected from the undo stack, 
+	 * 							  otherwise it is understood to have been ejected from the redo stack
 	 */
 	private void handleEjectedEvent(CSSSEvent event , boolean justEjectedFromUndo) {
 		
 		if(event instanceof CSSSMemoryEvent asMemoryEvent) {
 			
-			if(justEjectedFromUndo && asMemoryEvent.isAny(SHUTDOWN_ON_REMOVE_FROM_UNDO)) eventPush(new ShutDownEventEvent(asMemoryEvent));
-			else if (!justEjectedFromUndo && asMemoryEvent.isAny(SHUTDOWN_ON_REMOVE_FROM_REDO)) eventPush(new ShutDownEventEvent(asMemoryEvent));
-						
+			byte shutDownFromWhich = justEjectedFromUndo ? SHUTDOWN_ON_REMOVE_FROM_UNDO : SHUTDOWN_ON_REMOVE_FROM_REDO;
+			
+			if(asMemoryEvent.isAny(shutDownFromWhich)) eventPush(new ShutDownEventEvent(asMemoryEvent));
+									
 		}
 		
 	}
 	
 	/**
-	 * Frees the given event as long as it is a memory event, ignoring its shut down cases identifier.
+	 * Pushes a {@link ShutDownEventEvent} if {@code event} is a {@link CSSSMemoryEvent}.
 	 * 
 	 * @param event the event to shut down
 	 */
-	private void forceFreeEjectedEvent(CSSSEvent event) {
+	private void pushFreeEventEvent(CSSSEvent event) {
 
 		if(event instanceof CSSSMemoryEvent asMemoryEvent) eventPush(new ShutDownEventEvent(asMemoryEvent));
 			
@@ -348,7 +405,7 @@ public class Editor implements ShutDown {
 
 		for(CSSSEvent x : events) {
 
-			Lambda _do = Engine.isDebug() ? () -> {
+			Runnable _do = Engine.isDebug() ? () -> {
 				
 				try {
 					
@@ -382,19 +439,25 @@ public class Editor implements ShutDown {
 
 		float[] cursor = engine.getCursorWorldCoords();			
 		
-		if(current != null && current.isCursorInBounds(cursor)) {
+		if(current == null || !current.isCursorInBounds(cursor)) return;
 		
-			int[] pixelIndex = current.worldToPixelIndices(cursor);
+		int[] pixelIndex = current.worldToPixelIndices(cursor);
+		
+		Artboard finalCurrent = current;
+		
+		//TODO: make these only go to the renderer if needed
+		try {
 			
-			Artboard finalCurrent = current;
-			
-			//TODO: make these only go to the renderer if needed
 			engine.renderer().post(() -> {
 
 				if(Engine.isDebug()) try {
 					
 					boolean canUse = currentBrush.canUse(finalCurrent , this , pixelIndex[0] , pixelIndex[1]);
-					if(canUse) eventPush(currentBrush.use(finalCurrent , this , pixelIndex[0] , pixelIndex[1]));
+					if(canUse) { 
+						
+						eventPush(currentBrush.use(finalCurrent , this , pixelIndex[0] , pixelIndex[1]));
+						
+					}
 					
 				} catch(Exception e) {
 					
@@ -404,13 +467,24 @@ public class Editor implements ShutDown {
 				} else {
 					
 					boolean canUse = currentBrush.canUse(finalCurrent , this , pixelIndex[0] , pixelIndex[1]);
-					if(canUse) eventPush(currentBrush.use(finalCurrent , this , pixelIndex[0] , pixelIndex[1]));
+					if(canUse) { 
+						
+						eventPush(currentBrush.use(finalCurrent , this , pixelIndex[0] , pixelIndex[1]));
+												
+					}
 				
 				}
 				
-			}).await();
-						
-		}
+			}).get();
+			
+		} catch (InterruptedException | ExecutionException e) {
+			
+			e.printStackTrace();
+			Engine.overrideBeginShutDown("Brush excepted", e);
+			
+		} 
+		
+	
 
 	}
 
@@ -419,13 +493,12 @@ public class Editor implements ShutDown {
 	 */
 	private void updateEditorControls() {
 
-		if(Control.PRELIM.pressed()) if(Control.PRELIM2.pressed()) {
+		if(Control.PRELIM.pressed() && Control.PRELIM2.pressed()) {
 			
 			if(Control.UNDO.pressed()) handleEjectedEvent(undo(), false);
 			else if (Control.REDO.pressed()) handleEjectedEvent(redo(), true);
-			
 		
-		} else {
+		} else if (Control.PRELIM.pressed()) {
 			
 			if(Control.UNDO.struck()) handleEjectedEvent(undo(), false);
 			else if (Control.REDO.struck()) handleEjectedEvent(redo(), true);
@@ -441,7 +514,7 @@ public class Editor implements ShutDown {
 			float xTranslation = current[0] - previousX;
 			float yTranslation = current[1] - previousY;
 			
-			engine.camera().translate(xTranslation, yTranslation);
+			engine.camera().translate(xTranslation, yTranslation , 0f);
 			//this code can be used to translate the views of the animation panel and palette panel, but its janky
 //			if(!engine.isCursorHoveringUI()) 
 //			else {
@@ -451,6 +524,15 @@ public class Editor implements ShutDown {
 //				
 //			}
 						
+		}
+		
+		if(currentBrush instanceof CSSSSelectingBrush asSelecting) {
+
+			if(Control.SELECTION_AREA_UP.struck()) asSelecting.translate(0, 1);
+			if(Control.SELECTION_AREA_DOWN.struck()) asSelecting.translate(0, -1);
+			if(Control.SELECTION_AREA_LEFT.struck()) asSelecting.translate(-1, 0);
+			if(Control.SELECTION_AREA_RIGHT.struck()) asSelecting.translate(1, 0);
+			
 		}
 		
 		if(currentBrush instanceof CSSSModifyingBrush asModifying) {
@@ -468,7 +550,7 @@ public class Editor implements ShutDown {
 	 * 
 	 * @param frame a frame for rendering
 	 */
-	public void renderNanoVGCallbacks(NanoVGFrame frame) {
+	public void renderNanoVGCallbacks(SCNanoVGFrame frame) {
 		
 		while(!nanoVGRenderCallbacks.isEmpty()) nanoVGRenderCallbacks.pop().accept(frame);
 		
@@ -505,24 +587,32 @@ public class Editor implements ShutDown {
 		
 		if(currentBrush.stateful) {
 			
-			rendererPost(() -> {
+			try {
 				
-				if(Engine.isDebug()) {
+				rendererPost(() -> {
 					
-					try {
+					if(Engine.isDebug()) {
 						
-						currentBrush.update(currentArtboard() , this);
-					
-					} catch(Exception e) {
+						try {
+							
+							currentBrush.update(currentArtboard() , this);
 						
-						Logging.syserrln("Brush update failed for brush " + currentBrush);
-						e.printStackTrace();
-													
-					}
-					
-				} else currentBrush.update(currentArtboard() , this);
-			
-			}).await();
+						} catch(Exception e) {
+							
+							Logging.syserrln("Brush update failed for brush " + currentBrush);
+							e.printStackTrace();
+														
+						}
+						
+					} else currentBrush.update(currentArtboard() , this);
+				
+				}).get();
+				
+			} catch (InterruptedException | ExecutionException e) {
+
+				e.printStackTrace();
+				
+			}
 		
 		}
 		
@@ -652,9 +742,9 @@ public class Editor implements ShutDown {
 	/**
 	 * Renders the bounder of the current brush if the current brush is a selecting brush.
 	 * 
-	 * @param frame � a NanoVG frame to render with
+	 * @param frame a NanoVG frame to render with
 	 */
-	@RenderThreadOnly public void renderSelectingBrushBounder(NanoVGFrame frame) {
+	@RenderThreadOnly public void renderSelectingBrushBounder(SCNanoVGFrame frame) {
 		
 		if(currentBrush instanceof CSSSSelectingBrush x) x.renderBounder(frame); 
 		
@@ -672,9 +762,9 @@ public class Editor implements ShutDown {
 	/**
 	 * Renders the frame of the modifying brush bounder iff the current brush is a modifying brush.
 	 * 
-	 * @param frame � the NanoVG frame
+	 * @param frame the NanoVG frame
 	 */
-	@RenderThreadOnly public void renderModifyingBrushBounder(NanoVGFrame frame) {
+	@RenderThreadOnly public void renderModifyingBrushBounder(SCNanoVGFrame frame) {
 		
 		if(!engine.isCursorHoveringUI() && currentBrush instanceof CSSSModifyingBrush && currentArtboard() != null) modifyingBounder.render(frame);
 		
@@ -683,9 +773,9 @@ public class Editor implements ShutDown {
 	/**
 	 * Renders the palette bounder, the square that identifies the currently active palette pixel for when palette modification is current.
 	 * 
-	 * @param frame � the NanoVG frame
+	 * @param frame the NanoVG frame
 	 */
-	@RenderThreadOnly public void renderPaletteBounder(NanoVGFrame frame) {
+	@RenderThreadOnly public void renderPaletteBounder(SCNanoVGFrame frame) {
 		
 		ArtboardPalette currentPalette = currentPalette();
 		if(!paletteUI.showing() || currentPalette == null) return;
@@ -701,7 +791,7 @@ public class Editor implements ShutDown {
 		
 		TransformPosition palettePosition = currentPalette.position();
 		
-		NanoVG nano = engine.nanoVG();
+		SCNanoVG nano = engine.nanoVG();
 		nano.converter().camera(paletteUI.camera());
 
 		Vector2f bounderInScreenSpace = nano.worldToScreen(palettePosition.leftX() + paletteXIndex , palettePosition.bottomY() + paletteYIndex);
@@ -732,7 +822,7 @@ public class Editor implements ShutDown {
 	/**
 	 * Sets the current brush to {@link cs.csss.annotation.Nullable @Nullable} {@code brush}.
 	 * 
-	 * @param brush � a {@code @Nullable} brush to make active
+	 * @param brush a {@code @Nullable} brush to make active
 	 */
 	public void setBrushTo(CSSSBrush brush) {
 		
@@ -835,7 +925,7 @@ public class Editor implements ShutDown {
 	/**
 	 * Sets the capacity of both the undo and redo stack.
 	 * 
-	 * @param size � new capacity for the stacks
+	 * @param size new capacity for the stacks
 	 */
 	public void setUndoAndRedoCapacity(int size) {
 		
@@ -871,7 +961,7 @@ public class Editor implements ShutDown {
 	/**
 	 * Sets the active colors of the color picker in the left hand side panel to {@code pixel}.
 	 * 
-	 * @param pixel � a new color to be selected in the left hand side panel
+	 * @param pixel a new color to be selected in the left hand side panel
 	 */
 	public void setLHSSelectedColor(final ColorPixel pixel) {
 		
@@ -882,10 +972,10 @@ public class Editor implements ShutDown {
 	/**
 	 * Sets the active colors of the color picker in the left hand side panel to {@code pixel}.
 	 * 
-	 * @param r � red channel of the new color
-	 * @param g � green channel of the new color
-	 * @param b � blue channel of the new color
-	 * @param a � alpha channel of the new color
+	 * @param r red channel of the new color
+	 * @param g green channel of the new color
+	 * @param b blue channel of the new color
+	 * @param a alpha channel of the new color
 	 */
 	public void setLHSSelectedColor(byte r , byte g , byte b , byte a) {
 		
@@ -896,7 +986,7 @@ public class Editor implements ShutDown {
 	/**
 	 * Sets the color the editor considers to be the current color value.
 	 * 
-	 * @param other � source for the channel values of the pixel now considered to be the selected color
+	 * @param other source for the channel values of the pixel now considered to be the selected color
 	 */
 	public void setSelectedColor(ColorPixel other) {
 		
@@ -936,10 +1026,10 @@ public class Editor implements ShutDown {
 	/**
 	 * Sets the color the editor considers to be the current color value.
 	 * 
-	 * @param r � red channel for the new selected color
-	 * @param g � green channel for the new selected color
-	 * @param b � blue channel for the new selected color
-	 * @param a � alpha channel for the new selected color
+	 * @param r red channel for the new selected color
+	 * @param g green channel for the new selected color
+	 * @param b blue channel for the new selected color
+	 * @param a alpha channel for the new selected color
 	 */
 	public void setSelectedColor(byte r , byte g , byte b , byte a) {
 		
@@ -994,12 +1084,38 @@ public class Editor implements ShutDown {
 	/**
 	 * Pushes some code to the render thread.
 	 * 
-	 * @param code � code to push to the render thread
+	 * @param code code to push to the render thread
 	 * @return {@link cs.core.utils.threads.Await Await} for the task given.
 	 */
-	public Await rendererPost(Lambda code) {
+	public Future<?> rendererPost(Runnable code) {
 		
 		return engine.renderer().post(code);
+		
+	}
+	
+	/**
+	 * Pushes code to be invoked in the render thread, keyed by {@code renderKey}.
+	 * 
+	 * @param renderKey key to identify the code being invoked
+	 * @param code code to invoke
+	 */
+	public void rendererPost(int renderKey , Runnable code) {
+		
+		engine.renderer().post(renderKey, code);
+		
+	}
+	
+	/**
+	 * Returns whether the given key identifies an action found in the renderer's queue. This method returns <code>true</code> if a 
+	 * previous call to {@link #rendererPost(int, Runnable)} was made with {@code key} as its {@code renderKey} parameter, and the code
+	 * posted is not yet invoked.
+	 * 
+	 * @param key key to query in renderer 
+	 * @return Whether {@code key} identifies some code posted to the renderer.
+	 */
+	public boolean isKeyInRenderer(int key) {
+		
+		return engine.renderer().isInQueue(key);
 		
 	}
 	
@@ -1007,11 +1123,11 @@ public class Editor implements ShutDown {
 	 * Creates an object in the render thread, returning a {@link cs.core.utils.threads.ConstructingAwait ConstructingAwait} who will 
 	 * contain the object when it is finished.
 	 * 
-	 * @param <T> � type of object to make 
-	 * @param constructor � code who produces an instance of {@code T}.
+	 * @param <T> type of object to make 
+	 * @param constructor code who produces an instance of {@code T}.
 	 * @return {@code ConstructingAwait} of {@code T}.
 	 */
-	public <T> ConstructingAwait<T> rendererMake(Supplier<T> constructor) {
+	public <T> Future<T> rendererMake(Supplier<T> constructor) {
 		
 		return engine.renderer().make(constructor);
 		
@@ -1094,7 +1210,7 @@ public class Editor implements ShutDown {
 	/**
 	 * Creates a UI element for setting a custom time for an animation frame.
 	 * 
-	 * @param index � index of an animation frame
+	 * @param index index of an animation frame
 	 */
 	public void startAnimationFrameCustomTimeInput(int index) {
 		
@@ -1137,7 +1253,7 @@ public class Editor implements ShutDown {
 	/**
 	 * Creates an UI element for setting the swap type of a frame at the given index.
 	 * 
-	 * @param index � index of a frame of an animation whose swap time is being adjusted
+	 * @param index index of a frame of an animation whose swap time is being adjusted
 	 */
 	public void startSetAnimationFrameSwapType(int index) {
 		
@@ -1148,7 +1264,7 @@ public class Editor implements ShutDown {
 	/**
 	 * Creates an UI element for setting the rank of a visual layer.
 	 * 
-	 * @param layer � visual layer whose rank is being changed
+	 * @param layer visual layer whose rank is being changed
 	 */
 	public void startMoveLayerRankEvent(VisualLayer layer) {
 		
@@ -1159,7 +1275,7 @@ public class Editor implements ShutDown {
 	/**
 	 * Creates an UI element for setting the index of a particular animation frame.
 	 * 
-	 * @param originalIndex � the index of the frame to move
+	 * @param originalIndex the index of the frame to move
 	 */
 	public void startSetAnimationFramePosition(int originalIndex) {
 		
@@ -1232,7 +1348,7 @@ public class Editor implements ShutDown {
 		NkPluginFilter filter , 
 		int maxCharacters , 
 		Consumer<String> onAccept , 
-		Lambda onCancel
+		Runnable onCancel
 	) {
 		
 		engine.startDetailedInputBox(title , description , filter , maxCharacters , onAccept , onCancel);
@@ -1246,7 +1362,7 @@ public class Editor implements ShutDown {
 	 * @param message message displayed in the box
 	 * @param onOK code to invoke when the user presses OK
 	 */
-	public void startDetailedNotification(String title , String message , Lambda onOK) {
+	public void startDetailedNotification(String title , String message , Runnable onOK) {
 		
 		engine.startNotification(title, message, onOK);
 		
@@ -1337,7 +1453,7 @@ public class Editor implements ShutDown {
 	/**
 	 * Returns whether the given animation is the current animation.
 	 * 
-	 * @param animation � an animation
+	 * @param animation an animation
 	 * @return {@code true} if the current animation is {@code animation}.
 	 */
 	public boolean isCurrentAnimation(Animation animation) {
@@ -1360,7 +1476,7 @@ public class Editor implements ShutDown {
 	/**
 	 * Creates a name for an artboard to display in UIs.
 	 * 
-	 * @param artboard � an artboard
+	 * @param artboard an artboard
 	 * @return A string containing the name of the artboard and some other contents depending on the nature of the artboard.
 	 */
 	public String getArtboardUIName(Artboard artboard) {
@@ -1493,7 +1609,7 @@ public class Editor implements ShutDown {
 	 * 
 	 * @return Camera of the progrma.
 	 */
-	public CSSSCamera camera() {
+	public SCOrthographicCamera camera() {
 		
 		return engine.camera();
 		
@@ -1564,9 +1680,9 @@ public class Editor implements ShutDown {
 	/**
 	 * Starts a menu to select the current simple script brush.
 	 * 
-	 * @param radio � the radio button whose tooltip will be updated to the selected brush's tooltip
+	 * @param radio the radio button whose tooltip will be updated to the selected brush's tooltip
 	 */
-	public void startSelectSimpleScriptBrush2(CSRadio radio) {
+	public void startSelectSimpleScriptBrush2(SCRadio radio) {
 		
 		engine.startSelectScriptMenu("simple brushes", file -> {
 			
@@ -1581,9 +1697,9 @@ public class Editor implements ShutDown {
 	/**
 	 * Starts a menu to select the current modifying script brush.
 	 * 
-	 * @param radio � the radio button whose tooltip will be updated to the selected brush's tooltip
+	 * @param radio the radio button whose tooltip will be updated to the selected brush's tooltip
 	 */
-	public void startSelectModifyingScriptBrush2(CSRadio radio) {
+	public void startSelectModifyingScriptBrush2(SCRadio radio) {
 		
 		engine.startSelectScriptMenu("modifying brushes", file -> {
 			
@@ -1598,9 +1714,9 @@ public class Editor implements ShutDown {
 	/**
 	 * Starts a menu to select the current selecting script brush.
 	 * 
-	 * @param radio � the radio button whose tooltip will be updated to the selected brush's tooltip
+	 * @param radio the radio button whose tooltip will be updated to the selected brush's tooltip
 	 */
-	public void startSelectSelectingScriptBrush2(CSRadio radio) {
+	public void startSelectSelectingScriptBrush2(SCRadio radio) {
 		
 		engine.startSelectScriptMenu("selecting brushes", file -> {
 			
@@ -1775,7 +1891,7 @@ public class Editor implements ShutDown {
 	/**
 	 * Sets whether the editor is in direct palette access mode.
 	 * 
-	 * @param nowReferencing � whether the UI is now being modified
+	 * @param nowReferencing whether the UI is now being modified
 	 */
 	public void setReferencingPaletteDirectly(boolean nowReferencing) {
 		
@@ -1793,7 +1909,7 @@ public class Editor implements ShutDown {
 	/**
 	 * Sets the state of whether the palette is being modified directly.
 	 * 
-	 * @param state � whether the palette is being modified directly
+	 * @param state whether the palette is being modified directly
 	 */
 	public void setModifyingPaletteDirectly(boolean state) {
 		
@@ -1818,7 +1934,7 @@ public class Editor implements ShutDown {
 	 * @param callback code to invoke
 	 * @throws NullPointerException if {@code callback} is <code>null</code>.
 	 */
-	public void pushNanoRenderCallback(Consumer<NanoVGFrame> callback) {
+	public void pushNanoRenderCallback(Consumer<SCNanoVGFrame> callback) {
 		
 		nanoVGRenderCallbacks.push(Objects.requireNonNull(callback));
 		
@@ -1911,7 +2027,7 @@ public class Editor implements ShutDown {
 	 * @param frame the nano frame to render on
 	 * @throws NullPointerException if {@code frame} is <code>null</code>.
 	 */
-	public void boxOnActiveShape(NanoVGFrame frame) {
+	public void boxOnActiveShape(SCNanoVGFrame frame) {
 		
 		Objects.requireNonNull(frame);
 		
@@ -1944,7 +2060,7 @@ public class Editor implements ShutDown {
 	 * 
 	 * @param frame the nano frame to render with
 	 */
-	public void boxOnActiveLine(NanoVGFrame frame) {
+	public void boxOnActiveLine(SCNanoVGFrame frame) {
 		
 		Objects.requireNonNull(frame);
 		

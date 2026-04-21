@@ -1,7 +1,18 @@
+/**
+ * Copyright 2025, All Rights Reserved.
+ * ————————————————————————————————————
+ * This file and any accompanying files
+ * belong to STEEL Softworks, LLC. Do 
+ * not distribute these files without 
+ * permission from Chris Brown, owner 
+ * of STEEL Softworks, at 
+ * chris@steelsoftworks.net
+ * ————————————————————————————————————
+ */
 package cs.csss.editor;
 
-import cs.coreext.nanovg.NanoVGFrame;
 import cs.csss.annotation.RenderThreadOnly;
+import sc.core.graphics.nanovg.SCNanoVGFrame;
 
 /**
  * Bounding box. This bounding box is used by selection brushes in order to select regions.
@@ -20,9 +31,9 @@ public class SelectionAreaBounder {
 	/**
 	 * Renders this bounding box in the given {@code NanoVGFrame}.
 	 * 
-	 * @param frame � a nanovg frame
+	 * @param frame a nanovg frame
 	 */
-	@RenderThreadOnly public void render(NanoVGFrame frame) {
+	@RenderThreadOnly public void render(SCNanoVGFrame frame) {
 		
 		frame.newPath()
 			.strokeColor(color)
@@ -40,8 +51,8 @@ public class SelectionAreaBounder {
 	/**
 	 * Translates this bounding box by the given translation amounts.
 	 * 
-	 * @param x � x translation amount
-	 * @param y � y translation amount
+	 * @param x x translation amount
+	 * @param y y translation amount
 	 */
 	public void translate(int x , int y) {
 		
@@ -55,8 +66,8 @@ public class SelectionAreaBounder {
 	/**
 	 * Moves a corner of this bounding box based on which corner is closest to the coordinates given.  
 	 * 
-	 * @param cursorX � {@code integer} x coordinate in world space of the cursor
-	 * @param cursorY � {@code integer} y coordinate in world space of the cursor
+	 * @param cursorX {@code integer} x coordinate in world space of the cursor
+	 * @param cursorY {@code integer} y coordinate in world space of the cursor
 	 */
 	public void moveCorner(int cursorX , int cursorY) {
 		
@@ -84,8 +95,8 @@ public class SelectionAreaBounder {
 	/**
 	 * Moves a corner of this bounding box based on which corner is closest to the coordinates given.  
 	 * 
-	 * @param cursorX � {@code float} x coordinate in world space of the cursor
-	 * @param cursorY � {@code float} y coordinate in world space of the cursor
+	 * @param cursorX {@code float} x coordinate in world space of the cursor
+	 * @param cursorY {@code float} y coordinate in world space of the cursor
 	 */
 	public void moveCorner(float cursorX , float cursorY) {
 		
@@ -113,8 +124,8 @@ public class SelectionAreaBounder {
 	/**
 	 * Moves this bounder to the given world coordinates.
 	 * 
-	 * @param moveToX � x coordinate to move to
-	 * @param moveToY � y coordinate to move to
+	 * @param moveToX x coordinate to move to
+	 * @param moveToY y coordinate to move to
 	 */
 	public void moveTo(float moveToX , float moveToY) {
 		
@@ -135,10 +146,10 @@ public class SelectionAreaBounder {
 	/**
 	 * Forces the corners of this bounding box to be within the given coordinates in world space.
 	 * 
-	 * @param leftX � left x coordinate in world space
-	 * @param rightX � right x coordinate in world space
-	 * @param bottomY � bottom x coordinate in world space
-	 * @param topY � top x coordinate in world space
+	 * @param leftX left x coordinate in world space
+	 * @param rightX right x coordinate in world space
+	 * @param bottomY bottom x coordinate in world space
+	 * @param topY top x coordinate in world space
 	 */
 	public void snapBounderToCoordinates(int leftX , int rightX , int bottomY , int topY) {
 
@@ -248,11 +259,12 @@ public class SelectionAreaBounder {
 	/**
 	 * Sets the left x coordinate of this bounder.
 	 * 
-	 * @param lx � new left x coordinate
+	 * @param lx new left x coordinate
 	 */
 	public void LX(float lx) {
 		
-		assert lx < RX : lx + " is less than RX (" + RX + ").";
+//		assert lx < RX : lx + " is less than RX (" + RX + ").";
+		if(!(lx < RX)) lx = RX;
 		
 		this.LX = lx;
 		
@@ -261,11 +273,12 @@ public class SelectionAreaBounder {
 	/**
 	 * Sets the right x coordinate of this bounder.
 	 * 
-	 * @param rx � new right x coordinate
+	 * @param rx new right x coordinate
 	 */
 	public void RX(float rx) {
 		
-		assert rx > LX : rx + " is less than LX (" + LX + ").";
+//		assert rx > LX : rx + " is less than LX (" + LX + ").";
+		if(!(rx > LX)) rx = LX;
 		
 		this.RX = rx;
 		
@@ -274,11 +287,12 @@ public class SelectionAreaBounder {
 	/**
 	 * Sets the bottom y coordinate of this bounder.
 	 * 
-	 * @param by � new bottom y coordinate  
+	 * @param by new bottom y coordinate  
 	 */
 	public void BY(float by) {
 		
-		assert by < TY : by + " is less than TY (" + TY + ").";
+//		assert by < TY : by + " is less than TY (" + TY + ").";
+		if(!(by < TY)) by = TY;
 		
 		this.BY = by;
 		
@@ -287,11 +301,12 @@ public class SelectionAreaBounder {
 	/**
 	 * Sets the top y coordinate of this bounder.
 	 * 
-	 * @param by � new top y coordinate  
+	 * @param by new top y coordinate  
 	 */
 	public void TY(float ty) {
 		
-		assert ty > BY : ty + " is less than BY (" + BY + ").";
+//		assert ty > BY : ty + " is less than BY (" + BY + ").";
+		if(!(ty > BY)) ty = BY;
 		
 		this.TY = ty;
 		
@@ -300,10 +315,10 @@ public class SelectionAreaBounder {
 	/**
 	 * Sets all four positions of this bounder to the given ones.
 	 * 
-	 * @param leftX � new left x coordinate 
-	 * @param rightX � new right x coordinate 
-	 * @param bottomY � new bottom y coordinate
-	 * @param topY � new top y coordinate
+	 * @param leftX new left x coordinate 
+	 * @param rightX new right x coordinate 
+	 * @param bottomY new bottom y coordinate
+	 * @param topY new top y coordinate
 	 */
 	public void positions(int leftX , int rightX , int bottomY , int topY) {
 		

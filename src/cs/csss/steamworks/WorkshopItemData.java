@@ -17,7 +17,6 @@ import com.codedisaster.steamworks.SteamRemoteStorage.PublishedFileVisibility;
 
 import cs.csss.annotation.InDevelopment;
 import cs.csss.misc.files.CSFolder;
-import cs.csss.misc.utils.MiscUtils;
 import cs.ext.steamworks.SteamLanguages;
 
 /**
@@ -42,15 +41,15 @@ import cs.ext.steamworks.SteamLanguages;
 	/**
 	 * Writes a Workshop meta file to disk from the given parameters. 
 	 * 
-	 * @param metaFolder — folder to write the new file in
-	 * @param ID — Steam-provided Workshop item ID
-	 * @param title — title of the item
-	 * @param description — description of the item
-	 * @param language — language the item pertains to
-	 * @param visibility — visibility of the item
-	 * @param tags — tags for the item
-	 * @param sourceScriptPath — file path to the script to upload
-	 * @param previewImagePath — file path to a preview image for this item
+	 * @param metaFolder ï¿½ folder to write the new file in
+	 * @param ID ï¿½ Steam-provided Workshop item ID
+	 * @param title ï¿½ title of the item
+	 * @param description ï¿½ description of the item
+	 * @param language ï¿½ language the item pertains to
+	 * @param visibility ï¿½ visibility of the item
+	 * @param tags ï¿½ tags for the item
+	 * @param sourceScriptPath ï¿½ file path to the script to upload
+	 * @param previewImagePath ï¿½ file path to a preview image for this item
 	 * @throws IOException if an IO error occurs while writing this file to disk.
 	 */
 	public static void writeWorkshopMeta(
@@ -69,7 +68,7 @@ import cs.ext.steamworks.SteamLanguages;
 		
 		try(FileOutputStream writer = new FileOutputStream(sourceFile)) {
 			
-			putLong(MiscUtils.parseHexLong(ID.toString() , 0) , writer);
+			putLong(Long.parseLong(ID.toString() , 16) , writer);
 			putString(title , writer);
 			putString(description, writer);
 			putInt(language.ordinal() , writer);
@@ -87,9 +86,9 @@ import cs.ext.steamworks.SteamLanguages;
 	/**
 	 * Writes an item meta file to the given folder. This file simply contains tags of the script.
 	 * 
-	 * @param uploadFolder — folder to be uploaded to Steam
-	 * @param title — title of the item being written for
-	 * @param tags — the array of tags defining the item being uploaded
+	 * @param uploadFolder ï¿½ folder to be uploaded to Steam
+	 * @param title ï¿½ title of the item being written for
+	 * @param tags ï¿½ the array of tags defining the item being uploaded
 	 * @throws IOException if an IO error occurs while writing to the file.
 	 */
 	public static void writeItemMeta(CSFolder uploadFolder , String title , String[] tags) throws IOException {
@@ -107,7 +106,7 @@ import cs.ext.steamworks.SteamLanguages;
 	/**
 	 * Loads and returns a {@code WorkshopItemData} from {@code metaFilePath}, a filepath to a {@code .ctswm} file.
 	 * 
-	 * @param metaFilePath — filepath to a workshop meta file
+	 * @param metaFilePath ï¿½ filepath to a workshop meta file
 	 * @return {@code WorkshopItemData} whose fields are given by the file at {@code metaFilePath}.
 	 * @throws NullPointerException if {@code metaFilePath} is {@code null}.
 	 * @throws FileNotFoundException if {@code metaFilePath} does not exist.
@@ -138,7 +137,7 @@ import cs.ext.steamworks.SteamLanguages;
 	/**
 	 * Reads and returns the item metadata located at {@code metaFilePath}.
 	 * 
-	 * @param metaFilePath — filepath to a {@code .ctsim} file
+	 * @param metaFilePath ï¿½ filepath to a {@code .ctsim} file
 	 * @return Array of strings containing metadata.
 	 * @throws NullPointerException if {@code metaFilePath} is null.
 	 * @throws FileNotFoundException if {@code metaFilePath} does not point to a file.
@@ -161,7 +160,7 @@ import cs.ext.steamworks.SteamLanguages;
 	/**
 	 * Writes this workshop item data to disk as a {@code .ctswm} file.
 	 * 
-	 * @param destination — write destination
+	 * @param destination ï¿½ write destination
 	 * @throws IOException if an IO error occurs while writing this file to disk.
 	 */
 	public void writeWorkshopMetaFile(CSFolder destination) throws IOException {
@@ -173,7 +172,7 @@ import cs.ext.steamworks.SteamLanguages;
 	/**
 	 * Writes this {@code WorkshopItemData}'s tags to disk as a form of identifying what type of script it is. 
 	 * 
-	 * @param destination — write destination folder
+	 * @param destination ï¿½ write destination folder
 	 * @throws IOException if an IO error occurs while writing this file to disk.
 	 */
 	public void writeItemMetaFile(CSFolder destination) throws IOException {

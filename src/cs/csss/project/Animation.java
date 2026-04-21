@@ -14,15 +14,15 @@ import java.util.function.IntSupplier;
 
 import org.joml.Matrix4f;
 
-import cs.core.utils.CSRefInt;
-import cs.core.utils.FloatConsumer;
-import cs.core.utils.FloatSupplier;
-import cs.core.utils.Timer;
+import cs.bringover.cs.core.utils.data.FloatConsumer;
+import cs.bringover.cs.core.utils.data.FloatSupplier;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.ui.AnimationPanel;
-import cs.csss.engine.CSSSCamera;
 import cs.csss.misc.utils.ThrowingConsumer;
 import cs.csss.utils.FloatReference;
+import sc.core.graphics.SCOrthographicCamera;
+import sc.core.utils.SCIntReferencer;
+import sc.core.utils.SCTimer;
 
 /**
  * Container for all information needed to create and edit animations.
@@ -51,10 +51,10 @@ public class Animation {
 	
 	//used when the animation runs based on time
 	private FloatReference swapTime = new FloatReference(0);
-	private Timer swapTimer = new Timer();
+	private SCTimer swapTimer = new SCTimer();
 	
 	//used when the animation runs by updates
-	private CSRefInt swapOnUpdates = new CSRefInt(0);
+	private SCIntReferencer swapOnUpdates = new SCIntReferencer(0);
 	private int currentUpdate = 0;
 	
 	private volatile int currentFrame;
@@ -72,7 +72,7 @@ public class Animation {
 	/**
 	 * Returns the default time in program updates a frame takes.
 	 */
-	public final IntSupplier getUpdates = swapOnUpdates::intValue;
+	public final IntSupplier getUpdates = swapOnUpdates::get;
 	
 	/**
 	 * sets the default time in program updates a frame takes.
@@ -158,7 +158,7 @@ public class Animation {
 	/**
 	 * Gets an animaiton frame from the given index.
 	 * 
-	 * @param index — index of a frame
+	 * @param index ï¿½ index of a frame
 	 * @return Animation frame of this animation.
 	 */
 	public AnimationFrame getFrame(int index) {
@@ -205,8 +205,8 @@ public class Animation {
 	/**
 	 * Sets the animation frame time at {@code index} to {@code newFrameTime}. 
 	 * 
-	 * @param index — index of an animation
-	 * @param newFrameTime — new frame time for the animation at {@code newFrameTime}
+	 * @param index ï¿½ index of an animation
+	 * @param newFrameTime ï¿½ new frame time for the animation at {@code newFrameTime}
 	 */
 	public void setFrameAsNonDefault(int index , final float newFrameTime) {
 		
@@ -218,7 +218,7 @@ public class Animation {
 	/**
 	 * Gets the time of an animation.
 	 * 
-	 * @param index — animation frame index
+	 * @param index ï¿½ animation frame index
 	 * @return Time of the animation.
 	 */
 	public float getNonDefaultFrameTime(int index) {
@@ -292,7 +292,7 @@ public class Animation {
 		
 			time += switch(frame.swapType()) {
 				case SWAP_BY_TIME -> frame.time.get();
-				case SWAP_BY_UPDATES -> realtimeFrameTime.getAsDouble() * frame.frames.intValue();
+				case SWAP_BY_UPDATES -> realtimeFrameTime.getAsDouble() * frame.frames.get();
 			};
 			
 		}
@@ -313,11 +313,11 @@ public class Animation {
 			
 			accum += switch(frames.get(i).swapType()) {
 				case SWAP_BY_TIME -> frames.get(i).time.get();
-				case SWAP_BY_UPDATES -> realtimeFrameTime.getAsDouble() * frames.get(i).frames.intValue();
+				case SWAP_BY_UPDATES -> realtimeFrameTime.getAsDouble() * frames.get(i).frames.get();
 			};
 			
 		}
-		return accum + (float) swapTimer.getElapsedTimeMillis();
+		return accum + (float) swapTimer.elapsedMillis();
 		
 	}
 	
@@ -330,11 +330,11 @@ public class Animation {
 		
 		AnimationFrame frame = frames.get(currentFrame);
 		return switch(frame.swapType()) {		
-			case SWAP_BY_TIME -> swapTimer.getElapsedTimeMillis() >= frame.time.get();
+			case SWAP_BY_TIME -> swapTimer.elapsedMillis() >= frame.time.get();
 			case SWAP_BY_UPDATES -> { 
 				
 				currentUpdate++;
-				yield currentUpdate >= frame.frames.intValue();
+				yield currentUpdate >= frame.frames.get();
 				
 			}
 		};		
@@ -358,8 +358,8 @@ public class Animation {
 	/**
 	 * Sets the frame at {@code frameIndex} to the specified swap type.
 	 * 
-	 * @param frameIndex — index of a frame
-	 * @param swapType — new swap type for that frame
+	 * @param frameIndex ï¿½ index of a frame
+	 * @param swapType ï¿½ new swap type for that frame
 	 */
 	public void setFrameSwapType(int frameIndex , AnimationSwapType swapType) {
 		
@@ -373,8 +373,8 @@ public class Animation {
 	/**
 	 * Sets the frame at {@code originalIndex} to the index {@code newIndex}.
 	 * 
-	 * @param originalIndex — index of some a frame
-	 * @param newIndex — new index for the frame
+	 * @param originalIndex ï¿½ index of some a frame
+	 * @param newIndex ï¿½ new index for the frame
 	 */
 	public void setFramePosition(int originalIndex , int newIndex) {
 		
@@ -393,13 +393,13 @@ public class Animation {
 	 * 	this method scissors any part of the artboard that is out of bounds.
 	 * </p>
 	 * 
-	 * @param camera — the program's camera
-	 * @param renderOnto — the animation panel, which is where the active frame will be rendered to; this object contains the data needed
+	 * @param camera ï¿½ the program's camera
+	 * @param renderOnto ï¿½ the animation panel, which is where the active frame will be rendered to; this object contains the data needed
 	 * 					   to correctly position the frame
-	 * @param screenHeight — needed because Nuklear's origin is top left but OpenGL represents its points as bottom left, so we need to get 
+	 * @param screenHeight ï¿½ needed because Nuklear's origin is top left but OpenGL represents its points as bottom left, so we need to get 
 	 * 						 the difference to get the bottom left point for the scissor test
 	 */
-	@RenderThreadOnly public void renderCurrentFrame(CSSSCamera camera , AnimationPanel renderOnto , int screenHeight) {		
+	@RenderThreadOnly public void renderCurrentFrame(SCOrthographicCamera camera , AnimationPanel renderOnto , int screenHeight) {		
 	
 		AnimationFrame frame = getCurrentFrame();
 		
@@ -490,7 +490,7 @@ public class Animation {
 	/**
 	 * Sets the current animation frame to {@code index}.
 	 * 
-	 * @param frame — new current frame index
+	 * @param frame ï¿½ new current frame index
 	 */
 	public void currentFrameIndex(int frame) {
 		
@@ -523,7 +523,7 @@ public class Animation {
 	/**
 	 * Returns whether any animation frame has the given artboard.
 	 * 
-	 * @param artboard — some artboard
+	 * @param artboard ï¿½ some artboard
 	 * @return {@code true} if some frame of the animation uses {@code artboard} 
 	 */
 	public boolean hasArtboard(Artboard artboard) {
@@ -535,7 +535,7 @@ public class Animation {
 	/**
 	 * Invokes {@code callback} for each animation frame.
 	 * 
-	 * @param callback — code to invoke for each animation frame
+	 * @param callback ï¿½ code to invoke for each animation frame
 	 */
 	public void forAllArtboards(Consumer<Artboard> callback) {
 		
@@ -546,8 +546,8 @@ public class Animation {
 	/**
 	 * Invokes {@code callback} for each frame of this animation, which can throw a {@code Throwable}. 
 	 * 
-	 * @param <ThrowType> — type of throwable error
-	 * @param callback — code to invoke for each frame of this animation
+	 * @param <ThrowType> ï¿½ type of throwable error
+	 * @param callback ï¿½ code to invoke for each frame of this animation
 	 * @throws ThrowType if the code in {@code callback} throws an exception.
 	 */
 	public <ThrowType extends Throwable> void forAllFrames(ThrowingConsumer<ThrowType , AnimationFrame> callback) throws ThrowType {
@@ -570,7 +570,7 @@ public class Animation {
 	/**
 	 * Sets the default swap type of this animation.
 	 *  
-	 * @param swapType — new default swap type
+	 * @param swapType ï¿½ new default swap type
 	 */
 	public void defaultSwapType(AnimationSwapType swapType) {
 		
@@ -604,7 +604,7 @@ public class Animation {
 	/**
 	 * Sets the frame of the swap time.
 	 * 
-	 * @param time — a time for default frames
+	 * @param time ï¿½ a time for default frames
 	 */
 	public void setTime(float time) {
 		
@@ -615,7 +615,7 @@ public class Animation {
 	/**
 	 * Sets the update rate for the swap time.
 	 * 
-	 * @param updates — number of updates per frame for default frames
+	 * @param updates ï¿½ number of updates per frame for default frames
 	 */
 	public void setUpdates(int updates) {
 	
@@ -652,7 +652,7 @@ public class Animation {
 
 		if(updates < 0) throw new IllegalArgumentException(updates + " is invalid as an updates value.");
 	
-		if(updates == swapOnUpdates.intValue()) frames.get(frameIndex).frames = this.swapOnUpdates;
+		if(updates == swapOnUpdates.get()) frames.get(frameIndex).frames = this.swapOnUpdates;
 		else frames.get(frameIndex).frames.set(updates);
 	
 	}
@@ -683,7 +683,7 @@ public class Animation {
 	 * @throws IndexOutOfBoundsException if {@code frameIndex} is not a valid frame index for this animation.
 	 * @throws NullPointerException if {@code updatesContainer} is <code>null</code>.
 	 */
-	public void setFrameUpdates(int frameIndex , CSRefInt updatesContainer) {
+	public void setFrameUpdates(int frameIndex , SCIntReferencer updatesContainer) {
 		
 		Objects.requireNonNull(updatesContainer);
 		
@@ -700,7 +700,7 @@ public class Animation {
 	/**
 	 * Returns the index of an animation frame whose artboard is {@code artboard}, or {@literal -1} if the given artboard is not in this animation.
 	 * 
-	 * @param artboard — an artboard
+	 * @param artboard ï¿½ an artboard
 	 * @return Index of an animation frame whose artboard is {@code artboard}, or {@literal -1} if it was not found.
 	 */
 	public int indexOf(Artboard artboard) {
@@ -732,7 +732,7 @@ public class Animation {
 	 * 
 	 * @return The default swap updates.
 	 */
-	public CSRefInt defaultUpdateAmount() {
+	public SCIntReferencer defaultUpdateAmount() {
 		
 		return swapOnUpdates;
 		
@@ -741,8 +741,8 @@ public class Animation {
 	/**
 	 * Returns the left U of this animation.
 	 * 
-	 * @param projectLeftMostX — leftmost x coordinate of the project
-	 * @param projectRightMostX — rightmost x coordinate of the project
+	 * @param projectLeftMostX ï¿½ leftmost x coordinate of the project
+	 * @param projectRightMostX ï¿½ rightmost x coordinate of the project
 	 * @return Left U coordinate for this animation.
 	 */
 	public float leftU(float projectLeftMostX , float projectRightMostX) {
@@ -757,8 +757,8 @@ public class Animation {
 	/**
 	 * Returns the bottom V of this animation.
 	 * 
-	 * @param projectBottomY — bottommost y coordinate of the project
-	 * @param projectTopY — topmost y coordinate of the project
+	 * @param projectBottomY ï¿½ bottommost y coordinate of the project
+	 * @param projectTopY ï¿½ topmost y coordinate of the project
 	 * @return Bottom V coordinate for this animation. 
 	 */
 	public float bottomV(float projectBottomY , float projectTopY) {
@@ -773,8 +773,8 @@ public class Animation {
 	/**
 	 * Returns the top V coordinate of this animation.
 	 * 
-	 * @param projectBottomY — bottommost y coordinate of the project
-	 * @param projectTopY — topmost y coordinate of the project
+	 * @param projectBottomY ï¿½ bottommost y coordinate of the project
+	 * @param projectTopY ï¿½ topmost y coordinate of the project
 	 * @return Top V coordinate for this animation.
 	 */
 	public float topV(float projectBottomY , float projectTopY) {
@@ -789,8 +789,8 @@ public class Animation {
 	/**
 	 * Returns the UV width of an animation frame.
 	 * 
-	 * @param projectLeftMostX — leftmost x coordinate of the project
-	 * @param projectRightMostX — rightmost x coordinate of the project
+	 * @param projectLeftMostX ï¿½ leftmost x coordinate of the project
+	 * @param projectRightMostX ï¿½ rightmost x coordinate of the project
 	 * @return UV width of an animation frame.
 	 */
 	public float widthU(float projectLeftMostX , float projectRightMostX) {

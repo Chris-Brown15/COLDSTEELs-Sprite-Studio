@@ -1,5 +1,13 @@
 /**
- * 
+ * Copyright 2025, All Rights Reserved.
+ * ————————————————————————————————————
+ * This file and any accompanying files
+ * belong to STEEL Softworks, LLC. Do 
+ * not distribute these files without 
+ * permission from Chris Brown, owner 
+ * of STEEL Softworks, at 
+ * chris@steelsoftworks.net
+ * ————————————————————————————————————
  */
 package cs.csss.editor;
 
@@ -23,9 +31,10 @@ public enum ScriptType {
 	;
 
 	/**
-	 * Returns a type of script based on {@code directoryName}, which is understood to be one of the eumerations' {@code associatedFolderName}.
+	 * Returns a type of script based on {@code directoryName}, which is understood to be one of the eumerations' 
+	 * {@code associatedFolderName}.
 	 * 
-	 * @param directoryName � name of an associated directory
+	 * @param directoryName name of an associated directory
 	 * @return Type who has an associated folder name equal to {@code directoryName}.
 	 * @throws NullPointerException if {@code directoryName} is {@code null}.
 	 * @throws NoSuchElementException if {@code directoryName} does not name an associated folder name of an enumeration.

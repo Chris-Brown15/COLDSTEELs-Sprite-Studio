@@ -2,8 +2,6 @@ package cs.csss.project.io;
 
 import static cs.csss.engine.Logging.*;
 
-import static cs.core.utils.CSUtils.specify;
-
 import static org.lwjgl.system.MemoryUtil.memFree;
 
 import static cs.csss.misc.files.FileOperations.*;
@@ -16,7 +14,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Objects;
 
-import cs.core.utils.CSRefInt;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.project.AnimationFrame;
 import cs.csss.project.Artboard;
@@ -25,6 +22,7 @@ import cs.csss.project.CSSSProject;
 import cs.csss.project.Layer;
 import cs.csss.project.NonVisualLayer;
 import cs.csss.project.VisualLayer;
+import sc.core.utils.SCIntReferencer;
 
 /**
  * 
@@ -103,8 +101,8 @@ public class CTSPFile {
 	/**
 	 * Write constructor for a ctsp file.
 	 * 
-	 * @param project — a project to save
-	 * @param saveAs — a name for the file to save
+	 * @param project ï¿½ a project to save
+	 * @param saveAs ï¿½ a name for the file to save
 	 */
 	public CTSPFile(CSSSProject project , String saveAs) {
 		
@@ -136,7 +134,7 @@ public class CTSPFile {
 	/**
 	 * Read constructor for a ctsp file.
 	 * 
-	 * @param fileName — a name for the file to load
+	 * @param fileName ï¿½ a name for the file to load
 	 */ 
 	public CTSPFile(String fileName) {
 		
@@ -212,7 +210,7 @@ public class CTSPFile {
 	 */
 	public void read() throws IOException {
 		
-		specify(projectExists(projectName) , "File does not exist: \n" + projectName + DEFAULT_FILE_EXTENSION);
+		assert projectExists(projectName) : "File does not exist: \n" + projectName + DEFAULT_FILE_EXTENSION;
 		
 		try(FileInputStream reader = new FileInputStream(fileName())) {
 
@@ -322,11 +320,11 @@ public class CTSPFile {
 	protected String[] visualLayerNamesToArray() {
 		
 		String[] names = new String[project.numberVisualLayers()];
-		CSRefInt i = new CSRefInt(0);
+		SCIntReferencer i = new SCIntReferencer(0);
 		project.forEachVisualLayerPrototype(prototype -> {
 			
-			names[i.intValue()] = prototype.name();
-			i.inc();
+			names[i.get()] = prototype.name();
+			i.mutate(x -> x++);
 			
 		});
 		
@@ -753,7 +751,7 @@ public class CTSPFile {
 	 */
 	protected void verifyReadValid() {
 
-		specify(project == null && projectName != null , "Read constructor was not called or read() was not called");
+		assert project == null && projectName != null : "Read constructor was not called or read() was not called";
 		
 	}
 

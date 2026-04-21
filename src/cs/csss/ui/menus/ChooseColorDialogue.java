@@ -3,9 +3,12 @@
  */
 package cs.csss.ui.menus;
 
+import static org.lwjgl.nuklear.Nuklear.NK_RGBA;
+import static org.lwjgl.nuklear.Nuklear.NK_RGB;
+
 import cs.csss.editor.ui.TwoChannelColorPicker;
 
-import static cs.core.ui.CSUIConstants.*;
+import static sc.core.ui.SCUIConstants.*;
 
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -14,24 +17,22 @@ import java.util.function.IntSupplier;
 import org.joml.Vector4f;
 import org.lwjgl.nuklear.NkPluginFilter;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
-import cs.core.ui.CSNuklear.CSUI.CSRow;
-import cs.core.ui.CSNuklear.CSUserInterface;
-import cs.core.utils.CSUtils;
-import cs.core.utils.Lambda;
 import cs.csss.engine.ChannelBuffer;
 import cs.csss.engine.ColorPixel;
 import cs.csss.ui.elements.PublicFormatColorPicker;
+import sc.core.ui.SCElements.SCUI.SCDynamicRow;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCTextEditor;
+import sc.core.ui.SCElements.SCUI.SCRow;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
 
 /**
  * Dialogue for selecting a color.
  */
 public class ChooseColorDialogue extends Dialogue {
 	
-	private CSUserInterface ui;
-	private CSNuklear nuklear;
+	private SCUserInterface ui;
+	private SCNuklear nuklear;
 	
 	private PublicFormatColorPicker rgbPicker;
 	private TwoChannelColorPicker grayPicker;
@@ -54,14 +55,14 @@ public class ChooseColorDialogue extends Dialogue {
 	 * @throws NullPointerException if any parameter is <code>null</code>.
 	 */
 	public ChooseColorDialogue(
-		CSNuklear nuklear , 
+		SCNuklear nuklear , 
 		boolean inputsAreHex ,
 		String title , 
 		float xRatio , 
 		float yRatio , 
 		IntSupplier channelsPerPixel , 
 		Consumer<ColorPixel> onAccept , 
-		Lambda onCancel
+		Runnable onCancel
 	) {
 
 		Objects.requireNonNull(nuklear);
@@ -73,51 +74,51 @@ public class ChooseColorDialogue extends Dialogue {
 		this.inputsAreHex = inputsAreHex;
 		
 		this.nuklear = nuklear;
-		ui = nuklear.new CSUserInterface(title , xRatio , yRatio , 350 , 460);	
-		ui.options |= UI_TITLED|UI_BORDERED|UI_UNSCROLLABLE;
+		ui = new SCUserInterface(nuklear , title , xRatio , yRatio , 350 , 460);	
+		ui.flags |= UI_TITLED|UI_BORDERED|UI_UNSCROLLABLE;
 		
-		CSDynamicRow rgbRow = ui.new CSDynamicRow(200) ; rgbRow.doLayout = () -> channelsPerPixel.getAsInt() >= 3;
-		CSDynamicRow grayRow = ui.new CSDynamicRow(200) ; grayRow.doLayout = () -> channelsPerPixel.getAsInt() <= 2;
+		SCDynamicRow rgbRow = ui.new SCDynamicRow(200) ; rgbRow.doLayout = () -> channelsPerPixel.getAsInt() >= 3;
+		SCDynamicRow grayRow = ui.new SCDynamicRow(200) ; grayRow.doLayout = () -> channelsPerPixel.getAsInt() <= 2;
 		
-		rgbPicker = new PublicFormatColorPicker(nuklear.context() , rgbRow , channelsPerPixel.getAsInt() == 4 ? RGBA : RGB);
+		rgbPicker = new PublicFormatColorPicker(nuklear.context() , rgbRow , channelsPerPixel.getAsInt() == 4 ? NK_RGBA : NK_RGB);
 		grayPicker = new TwoChannelColorPicker(nuklear.context() , grayRow);
 		
 		int maxCharacters = inputsAreHex ? 3 : 4;
-		NkPluginFilter filter = inputsAreHex ? CSNuklear.HEX_FILTER : CSNuklear.DECIMAL_FILTER;
+		NkPluginFilter filter = inputsAreHex ? SCNuklear.HEX_FILTER : SCNuklear.DECIMAL_FILTER;
 
-		CSRow grayInputRow = ui.new CSRow(30).pushWidth(.15f).pushWidth(.85f) ; grayInputRow.doLayout = () -> channelsPerPixel.getAsInt() <= 2;
-		grayInputRow.new CSText("Gray:" , TEXT_CENTERED|TEXT_LEFT);
-		CSTextEditor grayEditor = grayInputRow.new CSTextEditor(maxCharacters , filter);
+		SCRow grayInputRow = ui.new SCRow(30).pushWidth(.15f).pushWidth(.85f) ; grayInputRow.doLayout = () -> channelsPerPixel.getAsInt() <= 2;
+		grayInputRow.new SCText("Gray:" , TEXT_CENTERED|TEXT_LEFT);
+		SCTextEditor grayEditor = grayInputRow.new SCTextEditor(maxCharacters , filter);
 
-		CSRow redInputRow = ui.new CSRow(30).pushWidth(.15f).pushWidth(.85f) ; redInputRow.doLayout = () -> channelsPerPixel.getAsInt() >= 3;
-		redInputRow.new CSText("Red:" , TEXT_CENTERED|TEXT_LEFT);
-		CSTextEditor redEditor =  redInputRow.new CSTextEditor(maxCharacters , filter);
+		SCRow redInputRow = ui.new SCRow(30).pushWidth(.15f).pushWidth(.85f) ; redInputRow.doLayout = () -> channelsPerPixel.getAsInt() >= 3;
+		redInputRow.new SCText("Red:" , TEXT_CENTERED|TEXT_LEFT);
+		SCTextEditor redEditor =  redInputRow.new SCTextEditor(maxCharacters , filter);
 
-		CSRow greenInputRow = ui.new CSRow(30).pushWidth(.15f).pushWidth(.85f) ; greenInputRow.doLayout = () -> channelsPerPixel.getAsInt() >= 3;
-		greenInputRow.new CSText("Green:" , TEXT_CENTERED|TEXT_LEFT);
-		CSTextEditor greenEditor =  greenInputRow.new CSTextEditor(maxCharacters , filter);
+		SCRow greenInputRow = ui.new SCRow(30).pushWidth(.15f).pushWidth(.85f) ; greenInputRow.doLayout = () -> channelsPerPixel.getAsInt() >= 3;
+		greenInputRow.new SCText("Green:" , TEXT_CENTERED|TEXT_LEFT);
+		SCTextEditor greenEditor =  greenInputRow.new SCTextEditor(maxCharacters , filter);
 
-		CSRow blueInputRow = ui.new CSRow(30).pushWidth(.15f).pushWidth(.85f) ; blueInputRow.doLayout = () -> channelsPerPixel.getAsInt() >= 3;
-		blueInputRow.new CSText("Blue:" , TEXT_CENTERED|TEXT_LEFT);
-		CSTextEditor blueEditor =  blueInputRow.new CSTextEditor(maxCharacters , filter);
+		SCRow blueInputRow = ui.new SCRow(30).pushWidth(.15f).pushWidth(.85f) ; blueInputRow.doLayout = () -> channelsPerPixel.getAsInt() >= 3;
+		blueInputRow.new SCText("Blue:" , TEXT_CENTERED|TEXT_LEFT);
+		SCTextEditor blueEditor =  blueInputRow.new SCTextEditor(maxCharacters , filter);
 
-		CSRow alphaInputRow = ui.new CSRow(30).pushWidth(.15f).pushWidth(.85f) ; alphaInputRow.doLayout = () -> {
+		SCRow alphaInputRow = ui.new SCRow(30).pushWidth(.15f).pushWidth(.85f) ; alphaInputRow.doLayout = () -> {
 			
 			int channels = channelsPerPixel.getAsInt();
 			return channels == 4 || channels == 2;
 			
 		};
 		
-		alphaInputRow.new CSText("Alpha:" , TEXT_CENTERED|TEXT_LEFT);
-		CSTextEditor alphaEditor = alphaInputRow.new CSTextEditor(maxCharacters , filter);
+		alphaInputRow.new SCText("Alpha:" , TEXT_CENTERED|TEXT_LEFT);
+		SCTextEditor alphaEditor = alphaInputRow.new SCTextEditor(maxCharacters , filter);
 
 		//handles immediate mode effects
-		ui.attachedLayout((context , stack) -> {
+		ui.attachedLayout((context) -> {
 			
 			int channels = channelsPerPixel.getAsInt();
 			grayPicker.hasAlpha = channels == 2;
-			if(channels == 4) rgbPicker.format(RGBA);
-			else rgbPicker.format(RGB);
+			if(channels == 4) rgbPicker.format(NK_RGBA);
+			else rgbPicker.format(NK_RGB);
 			
 			String redString = redEditor.toString();
 			String greenString = greenEditor.toString();
@@ -125,7 +126,7 @@ public class ChooseColorDialogue extends Dialogue {
 			String alphaString = alphaEditor.toString();
 			String grayString = grayEditor.toString();
 			
-			Vector4f values = rgbPicker.color();
+			Vector4f values = new Vector4f(rgbPicker.colorAsFloats());
 			
 			short red = (short)(values.x() * 0xff);
 			short green = (short)(values.y() * 0xff);
@@ -170,14 +171,14 @@ public class ChooseColorDialogue extends Dialogue {
 				
 			}
 			
-			rgbPicker.color((byte)red, (byte)green, (byte)blue, (byte)alpha);
+			rgbPicker.setColor((byte)red, (byte)green, (byte)blue, (byte)alpha);
 			grayPicker.gray = gray;
 			grayPicker.alpha = alpha;
 						
 		});
 		
-		CSDynamicRow finishRow = ui.new CSDynamicRow();
-		finishRow.new CSButton("Finish" , () -> {
+		SCDynamicRow finishRow = ui.new SCDynamicRow();
+		finishRow.new SCButton("Finish" , () -> {
 			
 			byte r = 0 , g = 0 , b = 0 , a = (byte)0xff;
 			
@@ -191,7 +192,7 @@ public class ChooseColorDialogue extends Dialogue {
 								
 				case 3 -> {
 					
-					Vector4f selected = rgbPicker.color();
+					Vector4f selected = new Vector4f(rgbPicker.colorAsFloats());
 					r = (byte)(selected.x() * 0xff);
 					g = (byte)(selected.y() * 0xff);
 					b = (byte)(selected.z() * 0xff);
@@ -200,7 +201,7 @@ public class ChooseColorDialogue extends Dialogue {
 					
 				case 4 -> {
 					
-					Vector4f selected = rgbPicker.color();
+					Vector4f selected = new Vector4f(rgbPicker.colorAsFloats());
 					r = (byte)(selected.x() * 0xff);
 					g = (byte)(selected.y() * 0xff);
 					b = (byte)(selected.z() * 0xff);
@@ -223,7 +224,7 @@ public class ChooseColorDialogue extends Dialogue {
 			
 		});
 		
-		finishRow.new CSButton("Cancel" , this::onFinish);
+		finishRow.new SCButton("Cancel" , this::onFinish);
 		
 	}
 
@@ -235,7 +236,7 @@ public class ChooseColorDialogue extends Dialogue {
 	
 	private short parse(String source) {
 		
-		return inputsAreHex ? (short)CSUtils.parseHexInt(source, 0, source.length()) : Short.parseShort(source);
+		return Short.parseShort(source, inputsAreHex ? 16 : 10);
 		
 	}
 	

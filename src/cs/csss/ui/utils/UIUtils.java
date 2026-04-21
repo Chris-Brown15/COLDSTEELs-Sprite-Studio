@@ -1,8 +1,10 @@
 package cs.csss.ui.utils;
 
-import static cs.core.ui.CSUIConstants.*;
-import static org.lwjgl.nuklear.Nuklear.nk_input_is_mouse_hovering_rect;
+import static sc.core.ui.SCUIConstants.*;
+import static org.lwjgl.nuklear.Nuklear.NK_SYMBOL_TRIANGLE_DOWN;
+import static org.lwjgl.nuklear.Nuklear.NK_SYMBOL_TRIANGLE_RIGHT;
 import static org.lwjgl.nuklear.Nuklear.nk_widget_bounds;
+import static org.lwjgl.nuklear.Nuklear.nk_input_is_mouse_hovering_rect;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
 import java.nio.ByteBuffer;
@@ -12,7 +14,7 @@ import org.lwjgl.nuklear.NkRect;
 import org.lwjgl.nuklear.NkTextWidthCallbackI;
 import org.lwjgl.system.MemoryStack;
 
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSElement;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCElement;
 
 /**
  * Utilities for UI elements.
@@ -24,7 +26,7 @@ public final class UIUtils {
 	/**
 	 * Used to set the callback this class invokes to get the width of a string.
 	 * 
-	 * @param getter — new text width getter
+	 * @param getter new text width getter
 	 */
 	public static void setFontWidthGetter(NkTextWidthCallbackI getter) {
 		
@@ -35,8 +37,8 @@ public final class UIUtils {
 	/**
 	 * Returns a byte pointer allocated on {@code stack} whose byte will be 1 if {@code state} is true, 0 otherwise.
 	 * 
-	 * @param stack — stack to allocate from
-	 * @param state — a boolean
+	 * @param stack stack to allocate from
+	 * @param state a boolean
 	 * @return A stack allocated byte pointer containing a byte representation of {@code state}.
 	 */
 	public static ByteBuffer toByte(MemoryStack stack , final boolean state) {
@@ -48,7 +50,7 @@ public final class UIUtils {
 	/**
 	 * Returns a stack allocated byte pointer whose byte will be 1 if {@code state} is true, 0 otherwise.
 	 * 
-	 * @param state — a boolean
+	 * @param state a boolean
 	 * @return A stack allocated byte pointer containing a byte representation of {@code state}.
 	 */
 	public static ByteBuffer asByte(final boolean state) {
@@ -60,7 +62,7 @@ public final class UIUtils {
 	/**
 	 * Convertes a boolean to a byte
 	 * 
-	 * @param state — a boolean
+	 * @param state a boolean
 	 * @return 1 if {@code state} is true, 0 otherwise.
 	 */
 	public static byte toByte(final boolean state) {
@@ -72,19 +74,19 @@ public final class UIUtils {
 	/**
 	 * Returns a symbol based on {@code state}.
 	 * 
-	 * @param state — boolean representing state
+	 * @param state boolean representing state
 	 * @return Symbol based on whether {@code state} is {@code true} or {@code false}.
 	 */
-	public static int toMenuSymbol(final boolean state) {
+	public static int toMenuSymbol(boolean state) {
 		
-		return state ? SYMBOL_TRIANGLE_DOWN : SYMBOL_TRIANGLE_RIGHT;
+		return state ? NK_SYMBOL_TRIANGLE_DOWN : NK_SYMBOL_TRIANGLE_RIGHT;
 		
 	}
 	
 	/**
 	 * Helper for calculating the width needed to display a tooltip text.
 	 * 
-	 * @param widthCalc — the width calculating function the current {@code CSNuklear} is using
+	 * @param widthCalc the width calculating function the current {@code CSNuklear} is using
 	 * @return Width of a tooltip text.
 	 */
 	public static int textLength(String tooltipString) {
@@ -103,7 +105,7 @@ public final class UIUtils {
 	/**
 	 * Returns whether the cursor is hovering the current UI row.
 	 * 
-	 * @param context — Nuklear context
+	 * @param context Nuklear context
 	 * @return {@code true} if the cursor is hovering the current UI row.
 	 */
 	public static boolean hovering(NkContext context) {
@@ -121,15 +123,15 @@ public final class UIUtils {
 	/**
 	 * Sets the tooltip of any element to the cannonical tooltip show test and sets the string displayed to {@code tooltip}. 
 	 *  
-	 * @param element — an element whose tooltip is being initialized
-	 * @param tooltip — text to display as the toolti of the element.
+	 * @param element an element whose tooltip is being initialized
+	 * @param tooltip text to display as the toolti of the element.
 	 */
-	public static void toolTip(CSElement element , String tooltip) {
+	public static void toolTip(SCElement element , String tooltip) {
 		
 		if(element.toolTip != null) element.toolTip.shutDown();
 		int width = textLength(tooltip);		
-		element.initializeToolTip(HOVERING|MOUSE_PRESSED, MOUSE_RIGHT, 0, width);
-		element.toolTip.new CSDynamicRow(20).new CSText(tooltip);
+		element.initializeToolTip(TOOLTIP_HOVERING|TOOLTIP_MOUSE_PRESSED, MOUSE_RIGHT, 0, width);
+		element.toolTip.new SCDynamicRow(20).new SCText(tooltip);
 		
 	}
 		

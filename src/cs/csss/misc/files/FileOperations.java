@@ -16,8 +16,6 @@ import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.stream.IntStream;
 
-import cs.core.utils.CSFileUtils;
-
 /**
  * Helper class used to write and read files from disk using {@code OutputStream} and {@code InputStream}.
  *  
@@ -44,7 +42,7 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Sets the byte order to the given byte order
 	 * 
-	 * @param order — byte order of the formatter.get()
+	 * @param order byte order of the formatter.get()
 	 */
 	public static void setByteOrder(ByteOrder order) {
 		
@@ -61,9 +59,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Puts the given value in the writer.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putByte(byte object , W writer) throws IOException {
@@ -76,9 +74,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Puts the given value in the writer with the byte order set by {@link FileOperations#setByteOrder(ByteOrder) setByteOrder}, defaulting
 	 * to {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN}.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putShort(short object , W writer) throws IOException {
@@ -94,9 +92,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Puts the given value in the writer with the byte order set by {@link FileOperations#setByteOrder(ByteOrder) setByteOrder}, defaulting
 	 * to {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN}.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putInt(int object , W writer) throws IOException {
@@ -111,9 +109,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Puts the given value in the writer with the byte order set by {@link FileOperations#setByteOrder(ByteOrder) setByteOrder}, defaulting
 	 * to {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN}.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putLong(long object , W writer) throws IOException {
@@ -128,9 +126,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Puts the given value in the writer with the byte order set by {@link FileOperations#setByteOrder(ByteOrder) setByteOrder}, defaulting
 	 * to {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN}.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putFloat(float object , W writer) throws IOException {
@@ -145,9 +143,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Puts the given value in the writer with the byte order set by {@link FileOperations#setByteOrder(ByteOrder) setByteOrder}, defaulting
 	 * to {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN}.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putDouble(double object , W writer) throws IOException {
@@ -161,9 +159,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Puts the given value in the writer. The written value is 1 if {@code object} is {@code true}, 0 otherwise.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putBoolean(boolean object , W writer) throws IOException {
@@ -176,9 +174,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Puts the given value in the writer with the byte order set by {@link FileOperations#setByteOrder(ByteOrder) setByteOrder}, defaulting
 	 * to {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN}.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putChar(char object , W writer)throws IOException  {
@@ -193,9 +191,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Puts the given String in the writer. The byte order of the size is {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN} and the values in
 	 * the string are the current byte order.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putString(String stringValue , W writer) throws IOException {
@@ -220,9 +218,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Puts the given array in the writer. The byte order of the size is {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN}.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putByteArray(byte[] object , W writer) throws IOException {
@@ -237,9 +235,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Puts the given array in the writer. The byte order of the size is {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN} and the values in
 	 * the array are the current byte order.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putShortArray(short[] object , W writer) throws IOException {
@@ -254,9 +252,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Puts the given array in the writer. The byte order of the size is {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN} and the values in
 	 * the array are the current byte order.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putIntArray(int[] object , W writer) throws IOException {
@@ -271,9 +269,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Puts the given array in the writer. The byte order of the size is {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN} and the values in
 	 * the array are the current byte order.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putLongArray(long[] object , W writer) throws IOException {
@@ -288,9 +286,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Puts the given array in the writer. The byte order of the size is {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN} and the values in
 	 * the array are the current byte order.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putFloatArray(float[] object , W writer) throws IOException {
@@ -305,9 +303,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Puts the given array in the writer. The byte order of the size is {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN} and the values in
 	 * the array are the current byte order.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putDoubleArray(double[] object , W writer) throws IOException {
@@ -322,9 +320,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Puts the given array in the writer. The byte order of the size is {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN} and the values in
 	 * the array are the current byte order.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putBooleanArray(boolean[] object , W writer) throws IOException {
@@ -339,9 +337,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Puts the given array in the writer. The byte order of the size is {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN} and the values in
 	 * the array are the current byte order.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putCharArray(char[] object , W writer) throws IOException {
@@ -356,9 +354,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Puts the given array in the writer. The byte order of the size is {@link java.nio.ByteOrder#BIG_ENDIAN BIG_ENDIAN} and the values in
 	 * the array are the current byte order.
 	 * 
-	 * @param <W> — Type of {@link java.io.OutputStream OutputStream} given.
-	 * @param object — value to write 
-	 * @param writer — writer to use
+	 * @param <W> Type of {@link java.io.OutputStream OutputStream} given.
+	 * @param object value to write 
+	 * @param writer writer to use
 	 * @throws IOException if {@code writer} throws an exception.
 	 */	
 	public static final <W extends OutputStream> void putStringArray(String[] object , W writer) throws IOException {
@@ -378,8 +376,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Gets a byte from the reader.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code byte} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -393,8 +391,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Gets a value from the reader. The value is read as the current byte order set by 
 	 * {@link FileOperations#setByteOrder(ByteOrder) setByteOrder}, defaulting to {@link java.nio.ByteOrder#BIG_ENDIAN}.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code short} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -412,8 +410,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Gets a value from the reader. The value is read as the current byte order set by 
 	 * {@link FileOperations#setByteOrder(ByteOrder) setByteOrder}, defaulting to {@link java.nio.ByteOrder#BIG_ENDIAN}.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code int} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -432,8 +430,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Gets a value from the reader. The value is read as the current byte order set by 
 	 * {@link FileOperations#setByteOrder(ByteOrder) setByteOrder}, defaulting to {@link java.nio.ByteOrder#BIG_ENDIAN}.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code long} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -451,8 +449,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Gets a value from the reader. The value is read as the current byte order set by 
 	 * {@link FileOperations#setByteOrder(ByteOrder) setByteOrder}, defaulting to {@link java.nio.ByteOrder#BIG_ENDIAN}.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code float} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -470,8 +468,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Gets a value from the reader. The value is read as the current byte order set by 
 	 * {@link FileOperations#setByteOrder(ByteOrder) setByteOrder}, defaulting to {@link java.nio.ByteOrder#BIG_ENDIAN}.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code double} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -488,8 +486,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Gets a value from the reader. The result is {@code true} if the next byte read by the reader is not zero.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code boolean} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -503,8 +501,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Gets a value from the reader. The value is read as the current byte order set by 
 	 * {@link FileOperations#setByteOrder(ByteOrder) setByteOrder}, defaulting to {@link java.nio.ByteOrder#BIG_ENDIAN}.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code char} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -521,8 +519,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Gets a String from the reader. The characters from the String are read as the current byte order.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code String} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -537,8 +535,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Gets an array from the reader. 
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code String} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -553,8 +551,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Gets an array from the reader. The values from the array are read as the current byte order.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code short[]} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -569,8 +567,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Gets an array from the reader. The values from the array are read as the current byte order.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code int[]} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -585,8 +583,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Gets an array from the reader. The values from the array are read as the current byte order.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code long[]} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -601,8 +599,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Gets an array from the reader. The values from the array are read as the current byte order.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code float[]} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -617,8 +615,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Gets an array from the reader. The values from the array are read as the current byte order.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code double[]} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -633,8 +631,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Gets an array from the reader. The values from the array are read as the current byte order.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code boolean[]} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -649,8 +647,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Gets an array from the reader. The values from the array are read as the current byte order.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code char[]} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -665,8 +663,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Gets an array from the reader. The values from the array are read as the current byte order.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return {@code String[]} value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -696,7 +694,7 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Returns the total number of bytes a list prefix will be for a list of size {@code listLength}.
 	 * 
-	 * @param listLength — arbitrary size of a list
+	 * @param listLength arbitrary size of a list
 	 * @return Number of bytes a prefix to a list of size {@code listLength} would be. 
 	 */
 	public static int listSizePrefixSize(int listLength) {
@@ -708,7 +706,7 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Computes the number of additional bytes a list size prefix would be for a list of size {@code length}.
 	 * 
-	 * @param length — arbitrary size of a list
+	 * @param length arbitrary size of a list
 	 * @return Number of additional bytes beyond the first a list size prefix would be for a list of size {@code length}.
 	 */
 	private static int additionalListSizePrefixBytes(int length) {
@@ -724,8 +722,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	/**
 	 * Writes a size of a list in a {@code ByteBuffer}, returning the buffer after writing. 
 	 * 
-	 * @param buffer — a buffer to write to
-	 * @param listSize — number of elements in a list
+	 * @param buffer a buffer to write to
+	 * @param listSize number of elements in a list
 	 * @return {@code ByteBuffer} containing a size of elements of a list.
 	 */
 	public static ByteBuffer bufferSize(ByteBuffer buffer , int listSize) {
@@ -757,9 +755,9 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Writes a list size into a buffer, then an {@code OutputStream}, returning the buffer after writing. The resulting buffer's position
 	 * is 0 and its byte order is the same as it was when passed into this method, however size value of the list is always big endian.
 	 * 
-	 * @param <W> — {@code OutputStream} implementation
-	 * @param writer — an {@code OutputStream} to write to disk with
-	 * @param listSize — number of elements in some list
+	 * @param <W> {@code OutputStream} implementation
+	 * @param writer an {@code OutputStream} to write to disk with
+	 * @param listSize number of elements in some list
 	 * @return {@code buffer} after writing to disk.
 	 * @throws IOException if the {@code writer} throws an exception.
 	 */
@@ -773,10 +771,10 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Writes a list size into a buffer, then an {@code OutputStream}, returning the buffer after writing. The resulting buffer's position
 	 * is 0 and its byte order is the same as it was when passed into this method, however size value of the list is always big endian.
 	 * 
-	 * @param <W> — {@code OutputStream} implementation
-	 * @param buffer — a buffer to format with
-	 * @param writer — an {@code OutputStream} to write to disk with
-	 * @param listSize — number of elements in some list
+	 * @param <W> {@code OutputStream} implementation
+	 * @param buffer a buffer to format with
+	 * @param writer an {@code OutputStream} to write to disk with
+	 * @param listSize number of elements in some list
 	 * @return {@code buffer} after writing to disk.
 	 * @throws IOException if the {@code writer} throws an exception.
 	 */
@@ -814,8 +812,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Reads the size of a list from the reader, returning the result. This does not interfere with the current byte order set by 
 	 * {@link FileOperations#setByteOrder(ByteOrder) setByteOrder}.
 	 * 
-	 * @param <R> — Type of {@link java.io.InputStream InputStream} given.
-	 * @param reader — reader to read from
+	 * @param <R> Type of {@link java.io.InputStream InputStream} given.
+	 * @param reader reader to read from
 	 * @return List size value read from {@code reader}. 
 	 * @throws IOException if {@code reader} throws an exception.
 	 */
@@ -853,8 +851,8 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Copies the contents of the file at {@code sourcePath} to a file at {@code destinationPath}. If no file exists at {@code destinationPath}, one
 	 * will be created.
 	 * 
-	 * @param sourcePath — source path for copying
-	 * @param destinationPath — destination path to copy to
+	 * @param sourcePath source path for copying
+	 * @param destinationPath destination path to copy to
 	 * @throws IOException if an error occurs during IO operations, or if {@code sourcePath} does not point to a file.
 	 */
 	public static void copy(String sourcePath , String destinationPath) throws IOException {
@@ -875,14 +873,15 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Copies the contents of {@code sourceFile} to a file in {@code destinationFolder}. If no file exists at {@code destinationFolder}, one
 	 * will be created.
 	 * 
-	 * @param sourceFile — source file for copying
-	 * @param destinationFolder — destination file path
+	 * @param sourceFile source file for copying
+	 * @param destinationFolder destination file path
 	 * @throws IOException if an IO error occurs during copy operations, or if {@code sourceFile} does not point to a file.
 	 */
 	public static void copy(File sourceFile , CSFolder destinationFolder) throws IOException {
 		
 		String sourceAbsPath = sourceFile.getAbsolutePath();
-		copy(sourceAbsPath , destinationFolder.getRealPath() + CSFolder.separator + CSFileUtils.toExtendedName(sourceAbsPath));
+		
+		copy(sourceAbsPath , destinationFolder.getRealPath() + CSFolder.separator + new File(sourceAbsPath).getName());
 		
 	}
 	
@@ -890,13 +889,13 @@ public class FileOperations<Writer extends OutputStream , Reader extends InputSt
 	 * Copies the contents of the file at {@code sourcePath} to a file in {@code destinationFolder}. If no file exists at {@code destinationFolder},
 	 * one will be created.
 	 * 
-	 * @param sourcePath — source path for copying
-	 * @param destinationFolder — destination file path
+	 * @param sourcePath source path for copying
+	 * @param destinationFolder destination file path
 	 * @throws IOException if an error occurs during IO operations, or if {@code sourcePath} does not point to a file.
 	 */
 	public static void copy(String sourcePath , CSFolder destination) throws IOException {
 		
-		copy(sourcePath , destination.getRealPath() + CSFolder.separator + CSFileUtils.toExtendedName(sourcePath));
+		copy(sourcePath , destination.getRealPath() + CSFolder.separator + new File(sourcePath).getName());
 				
 	}
 

@@ -51,10 +51,10 @@ public class CTSS {
 	/**
 	 *  Write constructor. When {@link #write()} is called, the given {@code NkStyle} is written to disk.
 	 *  
-	 *  @param filepath — name of this theme
-	 *  @param source — source {@link NkStyle} struct to write
-	 *  @param colorPalette — container of colors used in {@code source}
-	 *  @param clearColor — color of the window background 
+	 *  @param filepath name of this theme
+	 *  @param source source {@link NkStyle} struct to write
+	 *  @param colorPalette container of colors used in {@code source}
+	 *  @param clearColor color of the window background 
 	 *  
 	 *  @throws NullPointerException if an of the parameters are <code>null</code>.
 	 */

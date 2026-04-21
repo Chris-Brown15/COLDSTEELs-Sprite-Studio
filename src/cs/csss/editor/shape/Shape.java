@@ -5,12 +5,7 @@ package cs.csss.editor.shape;
 
 import static org.lwjgl.opengl.GL30C.GL_TEXTURE_2D;
 import static org.lwjgl.opengl.GL30C.GL_RGBA;
-import static cs.core.graphics.StandardRendererConstants.MAG_FILTER_LINEAR;
-import static cs.core.graphics.StandardRendererConstants.MIN_FILTER_LINEAR;
-import static cs.core.graphics.StandardRendererConstants.POSITION_2D;
-import static cs.core.graphics.StandardRendererConstants.STREAM_VAO;
-import static cs.core.graphics.StandardRendererConstants.UINT;
-import static cs.core.graphics.StandardRendererConstants.UV;
+import static sc.core.graphics.SCRendererConstants.*;
 import static org.lwjgl.opengl.GL30C.GL_RED;
 import static org.lwjgl.opengl.GL30C.GL_RG;
 import static org.lwjgl.opengl.GL30C.GL_RGB;
@@ -25,15 +20,9 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.joml.Vector3f;
-import cs.core.graphics.CSRender;
-import cs.core.graphics.CSTexture;
-import cs.core.graphics.CSVAO;
-import cs.core.graphics.utils.VertexBufferBuilder;
-import cs.core.utils.files.CSGraphic;
 import cs.csss.annotation.FreeAfterUse;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Rasterizable;
-import cs.csss.engine.CSSSCamera;
 import cs.csss.engine.ChannelBuffer;
 import cs.csss.engine.ColorPixel;
 import cs.csss.engine.LookupPixel;
@@ -43,6 +32,11 @@ import cs.csss.project.CSSSProject;
 import cs.csss.project.TextureShader;
 import cs.csss.project.utils.Artboards;
 import cs.csss.utils.ByteBufferUtils.CorrectedResult;
+import sc.core.binary.SCGraphic;
+import sc.core.graphics.SCOrthographicCamera;
+import sc.core.graphics.SCTexture;
+import sc.core.graphics.SCVAO;
+import sc.core.graphics.utils.SCVertexBufferBuilder;
 
 /**
  * Base class for all shapes, providing basic behavior and common variables to all shapes.
@@ -50,8 +44,8 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 public abstract class Shape extends Rasterizable {
 
 	/**
-	 * Converts a channels per pixel value into a value for shapes. Shapes must have a transparency, so if the given channels does not indicate a 
-	 * transparency, it is converted so the result is the same color format, but with transparency. 
+	 * Converts a channels per pixel value into a value for shapes. Shapes must have a transparency, so if the given channels does not 
+	 * indicate a transparency, it is converted so the result is the same color format, but with transparency. 
 	 * 
 	 * @param channels a number of channels per pixel
 	 * @return Number of channels per pixel that allows for transparency.
@@ -69,10 +63,10 @@ public abstract class Shape extends Rasterizable {
 	}
 	
 	/**
-	 * Sets a destination color propperly from the given source color. Shapes must have transparency, but they can be grayscale or RGB. If a shape is 
-	 * grayscale transparency, the <em>green</em> channel of the shape's border or fill color contains the transparency. This method sets the green value
-	 * of {@code destinationColor} to the alpha channel value of {@code sourceColor} if {@code channels == 2}, while also setting the remaining values 
-	 * from source to destination.
+	 * Sets a destination color propperly from the given source color. Shapes must have transparency, but they can be grayscale or RGB. 
+	 * If a shape is grayscale transparency, the <em>green</em> channel of the shape's border or fill color contains the transparency. 
+	 * This method sets the green value of {@code destinationColor} to the alpha channel value of {@code sourceColor} if 
+	 * {@code channels == 2}, while also setting the remaining values from source to destination.
 	 * 
 	 * @param sourceColor a color to set {@code destinationColor} to 
 	 * @param destinationColor channel buffer to write the values of {@code sourceColor} to
@@ -82,7 +76,12 @@ public abstract class Shape extends Rasterizable {
 	 */
 	public static void formatColor(ColorPixel sourceColor , ChannelBuffer destinationColor , int channels) {
 
-		if(channels < 1 || channels > 4) throw new IllegalArgumentException("Channels parameter invalid as a channels per pixel: " + channels);
+		if(channels < 1 || channels > 4) { 
+			
+			throw new IllegalArgumentException("Channels parameter invalid as a channels per pixel: " + channels);
+			
+		}
+		
 		Objects.requireNonNull(sourceColor);
 		Objects.requireNonNull(destinationColor);
 		
@@ -155,8 +154,8 @@ public abstract class Shape extends Rasterizable {
 	public abstract void reset();
 	
 	/**
-	 * Performs a deep copy of this shape into a new one, returning the result. The resulting shape needs to be {@link #reset()} before it is ready
-	 * to be rendered.
+	 * Performs a deep copy of this shape into a new one, returning the result. The resulting shape needs to be {@link #reset()} before
+	 * it is ready to be rendered.
 	 * 
 	 * @param <X> type of the resulting shape
 	 * @return Deep copied shape from this shape.
@@ -290,7 +289,7 @@ public abstract class Shape extends Rasterizable {
 	 * 
 	 * @param camera the camera to render with
 	 */
-	@RenderThreadOnly @Override public void render(CSSSCamera camera) {
+	@RenderThreadOnly @Override public void render(SCOrthographicCamera camera) {
 		
 		if(hide.get() || vao == null) return;
 		
@@ -311,26 +310,25 @@ public abstract class Shape extends Rasterizable {
 	 * @param width width of the graphic
 	 * @param height height of the graphic
 	 */
-	@RenderThreadOnly protected final void defaultReset(CSGraphic graphic , int width , int height) {
+	@RenderThreadOnly protected final void defaultReset(SCGraphic graphic , int width , int height) {
 
-		if(render != null) render.shutDown();
+		if(vao != null) vao.shutDown();		
+		if(texture != null) texture.shutDown();
 
 		float midX = midX();
 		float midY = midY();
 		
-		vao = new CSVAO();
-		VertexBufferBuilder builder = new VertexBufferBuilder(POSITION_2D|UV);
-		builder.size(this.textureWidth = width , this.textureHeight = height);
+		vao = new SCVAO();
+		SCVertexBufferBuilder builder = new SCVertexBufferBuilder(POSITION_2D|UV);
+		builder.dimensions(this.textureWidth = width , this.textureHeight = height);
 
-		vao.initialize(builder.attributes, STREAM_VAO, builder.get());
+		vao.initialize(builder.attributes, STREAM_DRAW, builder.get());
 		vao.drawAsElements(6, UINT);
 		
-		texture = new CSTexture(graphic , MIN_FILTER_LINEAR|MAG_FILTER_LINEAR);
+		texture = new SCTexture(graphic , MIN_FILTER_LINEAR|MAG_FILTER_LINEAR);
 		
 		graphic.shutDown();
-		//used for resource freeing purposes.
-		render = new CSRender(vao , texture);
-
+		
 		moveTo(midX , midY);
 		
 	}

@@ -1,11 +1,10 @@
 package cs.csss.ui.menus;
 
-import static cs.core.ui.CSUIConstants.*;
+import static sc.core.ui.SCUIConstants.*;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUserInterface;
-import cs.core.utils.Lambda;
 import cs.csss.ui.utils.UIUtils;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
 
 /**
  * UI menu for notifying the user of something. 
@@ -22,16 +21,16 @@ public class NotificationBox extends Dialogue {
 	/**
 	 * Creates a new notification box.
 	 * 
-	 * @param title — title of this notification box
-	 * @param message — message of this notification box
-	 * @param nuklear — the Nuklear factory
-	 * @param onOK — invoked when the user presses the OK button.
+	 * @param title title of this notification box
+	 * @param message message of this notification box
+	 * @param nuklear the Nuklear factory
+	 * @param onOK invoked when the user presses the OK button.
 	 */
-	public NotificationBox(final String title , final String message , CSNuklear nuklear , Lambda onOK) {
+	public NotificationBox(String title , String message , SCNuklear nuklear , Runnable onOK) {
 
-		CSUserInterface ui = nuklear.new CSUserInterface(title , .4f , .4f , width , height);
+		SCUserInterface ui = new SCUserInterface(nuklear , title , .4f , .4f , width , height);
 		
-		ui.options = UI_BORDERED|UI_TITLED;
+		ui.flags = UI_BORDERED|UI_TITLED;
 		
 		int length = UIUtils.textLength(message);
 				
@@ -39,11 +38,11 @@ public class NotificationBox extends Dialogue {
 		
 		int height = (int) Math.ceil((length / realHeight)) * 20;
 				
-		ui.new CSDynamicRow(height).new CSText(message);
+		ui.new SCDynamicRow(height).new SCText(message);
 		
-		ui.new CSDynamicRow().new CSButton("Okay" , () -> {
+		ui.new SCDynamicRow().new SCButton("Okay" , () -> {
 			
-			if(onOK != null) onOK.invoke();
+			if(onOK != null) onOK.run();
 			ui.shutDown();
 			nuklear.removeUserInterface(ui);
 			super.onFinish();
@@ -55,11 +54,11 @@ public class NotificationBox extends Dialogue {
 	/**
 	 * Creates a new notification box.
 	 * 
-	 * @param title — title of this notification box
-	 * @param message — message of this notification box
-	 * @param nuklear — the Nuklear factory
+	 * @param title title of this notification box
+	 * @param message message of this notification box
+	 * @param nuklear the Nuklear factory
 	 */
-	public NotificationBox(String title , String message , CSNuklear nuklear) {
+	public NotificationBox(String title , String message , SCNuklear nuklear) {
 		
 		this(title , message , nuklear , null);
 		

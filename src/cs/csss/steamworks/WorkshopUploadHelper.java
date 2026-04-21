@@ -3,6 +3,7 @@
  */
 package cs.csss.steamworks;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,7 +13,6 @@ import com.codedisaster.steamworks.SteamRemoteStorage.PublishedFileVisibility;
 import com.codedisaster.steamworks.SteamUGCDetails;
 import com.codedisaster.steamworks.SteamUGCUpdateHandle;
 
-import cs.core.utils.CSFileUtils;
 import cs.csss.editor.ScriptType;
 import cs.csss.engine.Engine;
 import cs.csss.misc.files.CSFolder;
@@ -49,7 +49,7 @@ public class WorkshopUploadHelper {
 	/**
 	 * Accepts and stores the results of the last query for items created by the current user.
 	 * 
-	 * @param lastQueryForCreationsResults — results of the last query for created UGC by the current user
+	 * @param lastQueryForCreationsResults ï¿½ results of the last query for created UGC by the current user
 	 */
 	public static void acceptLastQueryForUGC(SteamUGCDetails[] lastQueryForCreationsResults) {
 		
@@ -84,13 +84,13 @@ public class WorkshopUploadHelper {
 	/**
 	 * Updates a newly created item.
 	 * 
-	 * @param title — title of the item
-	 * @param description — description of the item
-	 * @param type — script type for the item
-	 * @param visibility — visibility of the item
-	 * @param tags — creator defined tags for the item
-	 * @param previewImagePath — {@link cs.csss.annotation.Nullable @Nullable} filepath to an image to use for previews of the item
-	 * @param scriptPath — filepath to the script to upload
+	 * @param title ï¿½ title of the item
+	 * @param description ï¿½ description of the item
+	 * @param type ï¿½ script type for the item
+	 * @param visibility ï¿½ visibility of the item
+	 * @param tags ï¿½ creator defined tags for the item
+	 * @param previewImagePath ï¿½ {@link cs.csss.annotation.Nullable @Nullable} filepath to an image to use for previews of the item
+	 * @param scriptPath ï¿½ filepath to the script to upload
 	 */
 	public static void updateNewItem(
 		Engine engine ,
@@ -151,16 +151,16 @@ public class WorkshopUploadHelper {
 	/**
 	 * Updates an existing UGC item given by {@code item}. The file ID from {@code item} is used to pass the new values for the various item data.
 	 * 
-	 * @param engine — the engine
-	 * @param ugc — the Steam UGC
-	 * @param item — the item to update
-	 * @param newTitle — the new title of the item
-	 * @param newDescription — the new description of the item
-	 * @param newVisibility — the new visibility of the item
-	 * @param newTags — the new tags for the item
-	 * @param newScriptPath — the filepath for the new script for the item
-	 * @param newPreviewImagePath — the filepath for the new preview image for the item
-	 * @param changeLogInput — a changelog message
+	 * @param engine ï¿½ the engine
+	 * @param ugc ï¿½ the Steam UGC
+	 * @param item ï¿½ the item to update
+	 * @param newTitle ï¿½ the new title of the item
+	 * @param newDescription ï¿½ the new description of the item
+	 * @param newVisibility ï¿½ the new visibility of the item
+	 * @param newTags ï¿½ the new tags for the item
+	 * @param newScriptPath ï¿½ the filepath for the new script for the item
+	 * @param newPreviewImagePath ï¿½ the filepath for the new preview image for the item
+	 * @param changeLogInput ï¿½ a changelog message
 	 */
 	public static void updateExistingItem(
 		Engine engine , 
@@ -207,7 +207,7 @@ public class WorkshopUploadHelper {
 			
 			uploadFolder.clear();
 			metaFolder.clear();
-			String scriptName = CSFileUtils.toExtendedName(newScriptPath);
+			String scriptName = new File(newScriptPath).getName();
 			FileOperations.copy(newScriptPath , uploadFolder.getRealPath() + CSFolder.separator + scriptName);
 			newItemsData.writeWorkshopMetaFile(metaFolder);
 			newItemsData.writeItemMetaFile(uploadFolder);
@@ -271,7 +271,7 @@ public class WorkshopUploadHelper {
 	/**
 	 * Creates and returns a {@code WorkshopItemdata} from the given {@code SteamPublishedFileID}.
 	 * 
-	 * @param publishedFileID — a handle for a published item
+	 * @param publishedFileID ï¿½ a handle for a published item
 	 */
 	public static void psuhNewPublishedFileID(SteamPublishedFileID publishedFileID) {
 		

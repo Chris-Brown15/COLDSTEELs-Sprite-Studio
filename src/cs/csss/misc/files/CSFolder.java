@@ -1,7 +1,5 @@
 package cs.csss.misc.files;
 
-import static cs.core.utils.CSUtils.specify;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentHashMap.KeySetView;
 import java.util.function.Consumer;
 
-import cs.core.utils.data.CSCHashMap;
+import sc.core.data.SCCuckooHashMap;
 
 /**
  * Representation of a directory within a virutal file system. This is used in software to easily locate directories or files within virtual root
@@ -40,20 +38,20 @@ public final class CSFolder {
 
 	public static final String separator = File.separator;
 	
-	private static final CSCHashMap<CSFolder , String> roots = new CSCHashMap<>(7);
+	private static final SCCuckooHashMap<String , CSFolder> roots = new SCCuckooHashMap<>(7);
 	
 	public static synchronized final CSFolder establishRoot(final String rootName) {
 		
 		CSFolder root = new CSFolder(rootName);
 		root.seekExistingFiles();  
-		roots.put(root , rootName);
+		roots.put(rootName , root);
 		return root;		
 		
 	}
 	
 	public static synchronized final CSFolder getRoot(final String name) {
 		
-		specify(roots.hasKey(name) , name + " is not a root.");
+		assert roots.containsKey(name) : name + " is not a root.";
 		
 		return roots.get(name);
 		
@@ -69,7 +67,7 @@ public final class CSFolder {
 	/**
 	 * Creates a root directory.
 	 * 
-	 * @param name — name of this directory
+	 * @param name name of this directory
 	 */
 	private CSFolder(final String name) {
 		
@@ -83,12 +81,12 @@ public final class CSFolder {
 	/**
 	 * Creates a directory with the given name and parent directory.
 	 * 
-	 * @param name — name of this directory
-	 * @param parent — parent to this directory, who will have a reference to this directory and who will be this directory's parent.
+	 * @param name name of this directory
+	 * @param parent parent to this directory, who will have a reference to this directory and who will be this directory's parent.
 	 */
 	public CSFolder(final String name , final CSFolder parent) {
 
-		specify(parent , "This directory must have a parent directory.");
+		assert parent != null : "This directory must have a parent directory.";
 		
 		this.parent = parent;
 		this.name = name;
@@ -101,7 +99,7 @@ public final class CSFolder {
 	/**
 	 * Creates a subdirectory of the calling directory with the given name.
 	 * 
-	 * @param name — name of a new directory
+	 * @param name name of a new directory
 	 * @return Subdirectory created by this method.
 	 */
 	public CSFolder createSubdirectory(String name) { 
@@ -119,8 +117,8 @@ public final class CSFolder {
 	 * @see {@link cs.csss.misc.files.CSFile CSFile}.
 	 * </p>
 	 * 
-	 * @param name — name of a file to add to this directory
-	 * @param fileContents — file composition object modeling the contents of this file
+	 * @param name name of a file to add to this directory
+	 * @param fileContents file composition object modeling the contents of this file
 	 * @return CSFile object added to this directory.
 	 * @throws IOException if creating a the file throws an IO execption.
 	 */
@@ -141,7 +139,7 @@ public final class CSFolder {
 	 * 	The created subdirectories are returned as an array and they are ordered according to the order of names passed to this method.
 	 * </p>
 	 * 
-	 * @param names — variadic list of names
+	 * @param names variadic list of names
 	 * @return Array containing created directories.
 	 */
 	public CSFolder[] createSubdirectories(String...names) {
@@ -208,8 +206,8 @@ public final class CSFolder {
 	 * 	The created files are returned as an array and they are ordered according to the order of names passed to this method.
 	 * </p>
 	 * 
-	 * @param composition — file composition each file will share
-	 * @param names — names of files
+	 * @param composition file composition each file will share
+	 * @param names names of files
 	 * @return Array containing the created files.
 	 */
 	public CSFile[] createFiles(FileComposition composition , String...names) {
@@ -228,13 +226,13 @@ public final class CSFolder {
 	 *	corresponding arrays at the same index and creating a file from them.  
 	 * </p>
 	 * 
-	 * @param names — array of names for files
-	 * @param compositions — file compositions for files
+	 * @param names array of names for files
+	 * @param compositions file compositions for files
 	 * @return Array containing files created from the given arrays.
 	 */
 	public CSFile[] createFiles(String[] names , FileComposition[] compositions) {
 		
-		specify(names.length == compositions.length , "Inequal number of elements for file name array and file composition array.");
+		assert names.length == compositions.length : "Inequal number of elements for file name array and file composition array.";
 
 		CSFile[] files = new CSFile[names.length];		
 		for(int i = 0 ; i < names.length ; i++) files[i] = createFile(names[i] , compositions[i]);
@@ -257,14 +255,14 @@ public final class CSFolder {
 	 *  this method is no longer valid, and as shown above, this method's return is the moved directory.
 	 * </p>
 	 * 
-	 * @param newParent — the directory to move this directory into
+	 * @param newParent the directory to move this directory into
 	 * @return The new instance of this directory.
 	 * @throws IOException if any IO exception occurs.
 	 */
 	public CSFolder moveToSubdirectoryOf(CSFolder newParent) throws IOException {
 		
-		specify(parent , "Cannot make a root directory a subdirectory.");
-		specify(newParent , "New parent directory must not be null.");
+		assert parent != null : "Cannot make a root directory a subdirectory.";
+		assert newParent != null : "New parent directory must not be null.";
 		
 		CSFolder newInstance = copy(name , newParent);
 		
@@ -332,7 +330,7 @@ public final class CSFolder {
 	 * Returns whether the given directory is a subdirectory of this. A directory is for the purposes of this method a subdirectory if it is
 	 * either a subdirectory of this directory or one of this directory's subdirectories. 
 	 * 
-	 * @param subdirectory — a directory
+	 * @param subdirectory a directory
 	 * @return {@code true} if {@code subdirectory} is a subdirectory of this.
 	 */
 	public boolean isSubdirectory(CSFolder subdirectory) {
@@ -346,12 +344,12 @@ public final class CSFolder {
 	/**
 	 * Deletes the given directory who is a subdirectory of this directory, requiring that {@code subdirectory} is indeed a subdirectory.
 	 * 
-	 * @param subdirectory — a subdirectory to delete
+	 * @param subdirectory a subdirectory to delete
 	 * @throws IOException if any exception is thrown during the deletion process.
 	 */
 	public void deleteSubdirectory(CSFolder subdirectory) throws IOException {
 		
-		specify(isSubdirectory(subdirectory) , subdirectory.name + " is not a subdirectory of this directory.");		
+		assert isSubdirectory(subdirectory) : subdirectory.name + " is not a subdirectory of this directory.";		
 		subdirectory.delete();
 		
 	}
@@ -365,7 +363,7 @@ public final class CSFolder {
 	 * 	<b>NOT</b> make it a root directory. Most operations such a directory will result in a null pointer exception being thrown.
 	 * </p>
 	 * 
-	 * @param copyInto — a directory to make a copy of this directory into as a subdirectory
+	 * @param copyInto a directory to make a copy of this directory into as a subdirectory
 	 * @return The copied directory, whose parent is {@code copyInto}.
 	 * @throws IOException if an IO error occurs when copying a file.
 	 */
@@ -450,7 +448,7 @@ public final class CSFolder {
 	/**
 	 * Gets the subdirectory of the given name (identical to {@link CSFolder#getOrCreateSubdirectory(String) getOrCreateSubDirectory()} .
 	 * 
-	 * @param name — name of a subdirectory within this directory
+	 * @param name name of a subdirectory within this directory
 	 * @return The given subdirectory.
 	 */
 	public CSFolder getSubdirectory(String name) {
@@ -462,7 +460,7 @@ public final class CSFolder {
 	/**
 	 * Gets an existing subdirectory of the given name, or creates a new, empty one if none is found.
 	 * 
-	 * @param name — name of a subdirectory within this directory
+	 * @param name name of a subdirectory within this directory
 	 * @return An existing subdirectory if one exists already, or a new empty one.
 	 */
 	public CSFolder getOrCreateSubdirectory(String name) {
@@ -476,13 +474,13 @@ public final class CSFolder {
 	/**
 	 * Gets a file with the name of {@code name} in this folder.
 	 * 
-	 * @param name — name of a file
+	 * @param name name of a file
 	 * @return {@code CSFile} named {@code name}.
 	 */
 	public CSFile getFile(String name) {
 		
 		CSFile file = files.get(name);
-		specify(file , name + " is not in this directory.");
+		assert file != null : name + " is not in this directory.";
 		return file;
 		
 	}
@@ -490,7 +488,7 @@ public final class CSFolder {
 	/**
 	 * Renames this folder to {@code newName}. This operation will fail if {@code this} is a root folder, so roots cannot be renamed.
 	 * 
-	 * @param newName — new name for this folder.
+	 * @param newName new name for this folder.
 	 * @throws IOException 
 	 * @throws NullPointerException if {@code newName} is {@code null}.
 	 */
@@ -511,7 +509,7 @@ public final class CSFolder {
 	 */
 	public boolean isRoot() {
 		
-		return roots.hasKey(name);
+		return roots.containsKey(name);
 		
 	}
 	
@@ -570,7 +568,7 @@ public final class CSFolder {
 	 * 	The bottom subdirectories of this file structure are reached before the invokations to {@code callback} begin. 
 	 * </p>
 	 * 
-	 * @param callback — callback for each subdirectory of this directory
+	 * @param callback callback for each subdirectory of this directory
 	 */
 	public void forEachSubdirectoryPreorder(Consumer<CSFolder> callback) {
 		
@@ -592,7 +590,7 @@ public final class CSFolder {
 	 * 	The bottom subdirectories of this file structure are reached last and will be the last directories to be accepted by the callback.
 	 * </p>
 	 * 
-	 * @param callback — callback for each subdirectory of this directory
+	 * @param callback callback for each subdirectory of this directory
 	 */
 	public void forEachSubdirectoryPostorder(Consumer<CSFolder> callback) {
 		
@@ -634,7 +632,7 @@ public final class CSFolder {
 	 */
 	protected void remove() {
 		
-		specify(parent != null , "Cannot remove a root directory.");
+		assert parent != null : "Cannot remove a root directory.";
 		parent.subdirectories.remove(this.name);
 		
 	}
@@ -659,11 +657,11 @@ public final class CSFolder {
 	/**
 	 * Adds an existing Directory to the calling directory. 
 	 * 
-	 * @param directory — a directory to add.
+	 * @param directory a directory to add.
 	 */
 	private void addSubdirectory(CSFolder directory) {
 		
-		specify(directory != this , "A file cannot be its own subdirectory.");
+		assert directory != this : "A file cannot be its own subdirectory.";
 		
 		subdirectories.put(directory.name , directory);
 		

@@ -16,7 +16,7 @@ import com.codedisaster.steamworks.SteamFriends.OverlayToUserDialog;
 import com.codedisaster.steamworks.SteamFriends.OverlayToWebPageMode;
 import com.codedisaster.steamworks.SteamFriends.PersonaState;
 
-import cs.core.utils.ShutDown;
+import sc.core.SCShutDown;
 
 import com.codedisaster.steamworks.SteamFriendsCallback;
 import com.codedisaster.steamworks.SteamID;
@@ -24,7 +24,7 @@ import com.codedisaster.steamworks.SteamID;
 /**
  * 
  */
-public class Friends implements ShutDown {
+public class Friends implements SCShutDown {
 
 	private final SteamFriends friends;
 	

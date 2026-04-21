@@ -1,19 +1,17 @@
 package cs.csss.ui.menus;
 
-import static cs.core.ui.CSUIConstants.*;
+import static sc.core.ui.SCUIConstants.*;
 
 import java.util.Iterator;
 import java.util.Objects;
-
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUserInterface;
-import cs.core.utils.Lambda;
 import cs.csss.engine.Engine;
 import cs.csss.engine.NamedNanoVGTypeface;
 import cs.csss.project.CSSSProject;
-import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
+import sc.core.ui.SCElements.SCUI.SCDynamicRow;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCRadio;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCTextEditor;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
 
 /**
  * UI menu for creating vector text boxes.
@@ -25,28 +23,28 @@ public class VectorTextMenu extends Dialogue {
 	 */
 	public static final int TEXT_EDIT_OPTIONS = EDIT_FIELD|EDIT_MULTILINE|EDIT_TABBABLE;
 	
-	private final CSUserInterface ui;
+	private final SCUserInterface ui;
 	
 	private NamedNanoVGTypeface selectedTypeface;
 	private boolean finished = false;
 
-	private final CSTextEditor textEditor;
+	private final SCTextEditor textEditor;
 	
 	/**
 	 * Creates a new vector text menu.
 	 * 
-	 * @param nuklear — the Nuklear factory
-	 * @param engine — the engine
-	 * @param currentProject — the current project
+	 * @param nuklear the Nuklear factory
+	 * @param engine the engine
+	 * @param currentProject the current project
 	 */
-	public VectorTextMenu(CSNuklear nuklear , Engine engine , CSSSProject currentProject) {
+	public VectorTextMenu(SCNuklear nuklear , Engine engine , CSSSProject currentProject) {
 
 		Objects.requireNonNull(currentProject);
 		
-		ui = nuklear.new CSUserInterface("Artboard Text Editor" , .3f , .2f , .4f , .4f);
-		ui.options = UI_TITLED|UI_BORDERED;
+		ui = new SCUserInterface(nuklear , "Artboard Text Editor" , .3f , .2f , .4f , .4f);
+		ui.flags = UI_TITLED|UI_BORDERED;
 
-		Lambda onFinish = () -> {
+		Runnable onFinish = () -> {
 
 			finished = true;
 			nuklear.removeUserInterface(ui);
@@ -55,34 +53,34 @@ public class VectorTextMenu extends Dialogue {
 			
 		};
 		
-		ui.new CSDynamicRow(30).new CSText("Select Typeface");
+		ui.new SCDynamicRow(30).new SCText("Select Typeface");
 		
 		//displays of fonts to choose from
-		CSRadio[] radios = new CSRadio[engine.loadedFonts.size()];
+		SCRadio[] radios = new SCRadio[engine.loadedFonts.size()];
 		int nextRadio = 0;
 		
 		Iterator<NamedNanoVGTypeface> typefaceIterator = engine.loadedFonts.iterator();
 		while(typefaceIterator.hasNext()) {
 
 			NamedNanoVGTypeface typeface = typefaceIterator.next();
-			radios[nextRadio++] = ui.new CSDynamicRow(20).new CSRadio(typeface.name() , false , () -> selectedTypeface = typeface);
+			radios[nextRadio++] = ui.new SCDynamicRow(20).new SCRadio(typeface.name() , false , () -> selectedTypeface = typeface);
 		
 		}
 		
-		CSRadio.groupAll(radios);
+		SCRadio.groupAll(radios);
 
-		ui.new CSDynamicRow(30).new CSText("Input text.");
-		textEditor = ui.new CSDynamicRow(150).new CSTextEditor(999);
-		textEditor.editorOptions = TEXT_EDIT_OPTIONS;
+		ui.new SCDynamicRow(30).new SCText("Input text.");
+		textEditor = ui.new SCDynamicRow(150).new SCTextEditor(999);
+		textEditor.flags = TEXT_EDIT_OPTIONS;
 
-		CSDynamicRow finishRow = ui.new CSDynamicRow();
-		finishRow.new CSButton("Finish" , () -> {
+		SCDynamicRow finishRow = ui.new SCDynamicRow();
+		finishRow.new SCButton("Finish" , () -> {
 			
-			if(canFinish()) onFinish.invoke();
+			if(canFinish()) onFinish.run();
 			
 		});		
 		
-		finishRow.new CSButton("Cancel" , onFinish);
+		finishRow.new SCButton("Cancel" , onFinish);
 		
 	}
 	

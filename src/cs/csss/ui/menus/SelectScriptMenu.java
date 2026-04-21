@@ -1,6 +1,6 @@
 package cs.csss.ui.menus;
 
-import static cs.core.ui.CSUIConstants.*;
+import static sc.core.ui.SCUIConstants.*;
 
 import java.awt.Desktop;
 import java.io.File;
@@ -8,16 +8,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSButton;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
-import cs.core.ui.CSNuklear.CSUI.CSRow;
-import cs.core.ui.CSNuklear.CSUserInterface;
-import cs.core.utils.Lambda;
 import cs.csss.editor.ScriptType;
+import cs.csss.engine.Engine;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.steamworks.WorkshopDownloadHelper;
+import sc.core.ui.SCElements.SCUI.SCDynamicRow;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCButton;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCRadio;
+import sc.core.ui.SCElements.SCUI.SCRow;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
 
 /**
  * UI menu used to select a script. This is used for all instances of selecting a script.
@@ -25,25 +25,26 @@ import cs.csss.steamworks.WorkshopDownloadHelper;
 public class SelectScriptMenu extends Dialogue {
 
 	private File selectedFile;
-	private CSUserInterface ui;
+	private SCUserInterface ui;
 	
 	/**
 	 * Creates a new select script menu.
 	 * 
-	 * @param nuklear — the Nuklear factory
-	 * @param scriptDirectory — directory to look in for script files to choose from
+	 * @param nuklear the Nuklear factory
+	 * @param scriptDirectory directory to look in for script files to choose from
 	 */
-	public SelectScriptMenu(CSNuklear nuklear , String scriptDirectory) {
+	public SelectScriptMenu(SCNuklear nuklear , String scriptDirectory) {
 
-		ui = nuklear.new CSUserInterface("Select a script" , 0.5f - (0.33f / 2) , 0.5f - (0.33f / 2) , 0.33f , 0.33f);
-		ui.options = UI_TITLED|UI_BORDERED;
+		ui = new SCUserInterface(nuklear , "Select a script" , 0.5f - (0.33f / 2) , 0.5f - (0.33f / 2) , 0.33f , 0.33f);
+		ui.flags = UI_TITLED|UI_BORDERED;
 		
 		CSFolder scriptsDir = CSFolder.getRoot("program").getOrCreateSubdirectory("scripts").getOrCreateSubdirectory(scriptDirectory);
+		
 		File scriptsDirFile = scriptsDir.asFile();
-		
+
 		scriptsDir.seekExistingFiles();
-		
-		ArrayList<CSRadio> radios = new ArrayList<>();
+
+		ArrayList<SCRadio> radios = new ArrayList<>();
 		File[] files = scriptsDirFile.listFiles((file , name) -> name.endsWith(".py"));
 		for(File x : files) newRadio(x , radios);
 		
@@ -64,25 +65,25 @@ public class SelectScriptMenu extends Dialogue {
 			
 		});
 		
-		CSRadio[] radiosArray = new CSRadio[radios.size()];
+		SCRadio[] radiosArray = new SCRadio[radios.size()];
 		radios.toArray(radiosArray);
-		CSRadio.groupAll(radiosArray);
+		SCRadio.groupAll(radiosArray);
 		
-		Lambda onFinish = () -> {
+		Runnable onFinish = () -> {
 			
-			ui.shutDown();
-			nuklear.removeUserInterface(ui);	
+			nuklear.removeUserInterface(ui);
+			Engine.THE_TEMPORAL.onTrue(() -> true, ui::shutDown);
 			super.onFinish();
 			
 		};
 		
-		CSDynamicRow finishRow = ui.new CSDynamicRow();
+		SCDynamicRow finishRow = ui.new SCDynamicRow();
 		
-		finishRow.new CSButton("Execute" , onFinish);
-		finishRow.new CSButton("Cancel" , () -> {
+		finishRow.new SCButton("Execute" , onFinish);
+		finishRow.new SCButton("Cancel" , () -> {
 			
 			selectedFile = null; 
-			onFinish.invoke();
+			onFinish.run();
 			
 		});
 		
@@ -110,13 +111,13 @@ public class SelectScriptMenu extends Dialogue {
 		
 	}
 	
-	private void newRadio(File file , List<CSRadio> radios) {
+	private void newRadio(File file , List<SCRadio> radios) {
 		
-		CSRow row = ui.new CSRow(30);
+		SCRow row = ui.new SCRow(30);
 		row.pushWidth(0.66f);
 		row.pushWidth(0.25f);
-		CSRadio radio = row.new CSRadio(file.getName() , false , () -> selectedFile = file);
-		CSButton openButton = row.new CSButton("Open" , () -> {
+		SCRadio radio = row.new SCRadio(file.getName() , false , () -> selectedFile = file);
+		SCButton openButton = row.new SCButton("Open" , () -> {
 			
 			try {
 				

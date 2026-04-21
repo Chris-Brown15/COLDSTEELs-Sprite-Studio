@@ -3,8 +3,6 @@
  */
 package cs.csss.utils;
 
-import static cs.core.utils.CSUtils.specify;
-
 import java.util.Objects;
 
 import org.python.core.PyObject;
@@ -23,8 +21,8 @@ public final class ScriptingUtils2 {
 	/**
 	 * Synchronizes on {@code object} to run {@code code}.
 	 * 
-	 * @param object — any nonnull object
-	 * @param code — code to invoke
+	 * @param object any nonnull object
+	 * @param code code to invoke
 	 */
 	public static final void synchronizedOn(Object object , Runnable code) {
 		
@@ -41,7 +39,7 @@ public final class ScriptingUtils2 {
 	/**
 	 * Returns whether the given object is a lookup pixel.
 	 * 
-	 * @param object — an object who is being checked for being a lookup pixel
+	 * @param object an object who is being checked for being a lookup pixel
 	 * @return Whether the given object is a lookup pixel.
 	 */
 	public static boolean isLookupPixel(Object object) {
@@ -53,7 +51,7 @@ public final class ScriptingUtils2 {
 	/**
 	 * Returns whether the given object is a color pixel.
 	 * 
-	 * @param object — an object who is being checked for being a color pixel
+	 * @param object an object who is being checked for being a color pixel
 	 * @return Whether the given object is a color pixel.
 	 */
 	public static boolean isColorPixel(Object object) {
@@ -65,12 +63,12 @@ public final class ScriptingUtils2 {
 	/**
 	 * Attemtps to convert {@code object} to a {@code byte}.
 	 * 
-	 * @param object — an object
+	 * @param object an object
 	 * @return Byte representation of {@code object}.
 	 */
 	public static byte doubleToByte(PyObject object) {
 		
-		specify(!object.getClass().isPrimitive() , object + " is not a primitive");
+		assert !object.getClass().isPrimitive() : object + " is not a primitive";
 		Double asDouble = (Double)object.__tojava__(Double.TYPE);
 		return asDouble.byteValue();
 		
@@ -79,12 +77,12 @@ public final class ScriptingUtils2 {
 	/**
 	 * Attemtps to convert {@code object} to a {@code short}.
 	 * 
-	 * @param object — an object
+	 * @param object an object
 	 * @return Short representation of {@code object}.
 	 */
 	public static short doubleToShort(PyObject object) {
 		
-		specify(!object.getClass().isPrimitive() , object + " is not a primitive");
+		assert !object.getClass().isPrimitive() : object + " is not a primitive";
 		Double asDouble = (Double)object.__tojava__(Double.TYPE);
 		return asDouble.shortValue();
 		
@@ -93,12 +91,12 @@ public final class ScriptingUtils2 {
 	/**
 	 * Attemtps to convert {@code object} to an {@code int}.
 	 * 
-	 * @param object — an object
+	 * @param object an object
 	 * @return Int representation of {@code object}.
 	 */
 	public static int doubleToInt(PyObject object) {
 		
-		specify(!object.getClass().isPrimitive() , object + " is not a primitive");
+		assert !object.getClass().isPrimitive() : object + " is not a primitive";
 		Double asDouble = (Double)object.__tojava__(Double.TYPE);
 		return asDouble.intValue();
 		
@@ -107,12 +105,12 @@ public final class ScriptingUtils2 {
 	/**
 	 * Attemtps to convert {@code object} to a {@code byte}.
 	 * 
-	 * @param object — an object
+	 * @param object an object
 	 * @return Byte representation of {@code object}.
 	 */
 	public static byte floatToByte(PyObject object) {
 		
-		specify(!object.getClass().isPrimitive() , object + " is not a primitive");
+		assert !object.getClass().isPrimitive() : object + " is not a primitive";
 		Float asfloat = (Float)object.__tojava__(Float.TYPE);
 		return asfloat.byteValue();
 		
@@ -121,12 +119,12 @@ public final class ScriptingUtils2 {
 	/**
 	 * Attemtps to convert {@code object} to a {@code short}.
 	 * 
-	 * @param object — an object
+	 * @param object an object
 	 * @return Short representation of {@code object}.
 	 */
 	public static short floatToShort(PyObject object) {
 		
-		specify(!object.getClass().isPrimitive() , object + " is not a primitive");
+		assert !object.getClass().isPrimitive() : object + " is not a primitive";
 		Float asfloat = (Float)object.__tojava__(Float.TYPE);
 		return asfloat.shortValue();
 		
@@ -135,12 +133,12 @@ public final class ScriptingUtils2 {
 	/**
 	 * Attemtps to convert {@code object} to an {@code int}.
 	 * 
-	 * @param object — an object
+	 * @param object an object
 	 * @return Int representation of {@code object}.
 	 */
 	public static int floatToInt(PyObject object) {
 		
-		specify(!object.getClass().isPrimitive() , object + " is not a primitive");
+		assert !object.getClass().isPrimitive() : object + " is not a primitive";
 		Float asfloat = (Float)object.__tojava__(Float.TYPE);
 		return asfloat.intValue();
 		
@@ -149,12 +147,12 @@ public final class ScriptingUtils2 {
 	/**
 	 * Attemtps to convert {@code object} to a {@code byte}.
 	 * 
-	 * @param object — an object
+	 * @param object an object
 	 * @return Byte representation of {@code object}.
 	 */
 	public static byte longToByte(PyObject object) {
 		
-		specify(!object.getClass().isPrimitive() , object + " is not a primitive");
+		assert !object.getClass().isPrimitive() : object + " is not a primitive";
 		Long asDouble = (Long)object.__tojava__(Long.TYPE);
 		return asDouble.byteValue();
 		
@@ -163,12 +161,12 @@ public final class ScriptingUtils2 {
 	/**
 	 * Attemtps to convert {@code object} to a {@code short}.
 	 * 
-	 * @param object — an object
+	 * @param object an object
 	 * @return Short representation of {@code object}.
 	 */
 	public static short longToShort(PyObject object) {
 		
-		specify(!object.getClass().isPrimitive() , object + " is not a primitive");
+		assert !object.getClass().isPrimitive() : object + " is not a primitive";
 		Long asDouble = (Long)object.__tojava__(Long.TYPE);
 		return asDouble.shortValue();
 		
@@ -177,12 +175,12 @@ public final class ScriptingUtils2 {
 	/**
 	 * Attemtps to convert {@code object} to an {@code int}.
 	 * 
-	 * @param object — an object
+	 * @param object an object
 	 * @return Int representation of {@code object}.
 	 */
 	public static int longToInt(PyObject object) {
 		
-		specify(!object.getClass().isPrimitive() , object + " is not a primitive");
+		assert !object.getClass().isPrimitive() : object + " is not a primitive";
 		Long asDouble = (Long)object.__tojava__(Long.TYPE);
 		return asDouble.intValue();
 		
@@ -191,7 +189,7 @@ public final class ScriptingUtils2 {
 	/**
 	 * Creates an array of bytes.
 	 * 
-	 * @param size — number of elements the resulting array can contain
+	 * @param size number of elements the resulting array can contain
 	 * @return Newly created array.
 	 */
 	public static byte[] bytes(int size) {
@@ -203,7 +201,7 @@ public final class ScriptingUtils2 {
 	/**
 	 * Creates an array of shorts.
 	 * 
-	 * @param size — number of elements the resulting array can contain
+	 * @param size number of elements the resulting array can contain
 	 * @return Newly created array.
 	 */
 	public static short[] shorts(int size) {
@@ -215,7 +213,7 @@ public final class ScriptingUtils2 {
 	/**
 	 * Creates an array of ints.
 	 * 
-	 * @param size — number of elements the resulting array can contain
+	 * @param size number of elements the resulting array can contain
 	 * @return Newly created array.
 	 */
 	public static int[] ints(int size) {
@@ -227,7 +225,7 @@ public final class ScriptingUtils2 {
 	/**
 	 * Creates an array of longs.
 	 * 
-	 * @param size — number of elements the resulting array can contain
+	 * @param size number of elements the resulting array can contain
 	 * @return Newly created array.
 	 */
 	public static long[] longs(int size) {
@@ -239,7 +237,7 @@ public final class ScriptingUtils2 {
 	/**
 	 * Creates an array of floats.
 	 * 
-	 * @param size — number of elements the resulting array can contain
+	 * @param size number of elements the resulting array can contain
 	 * @return Newly created array.
 	 */
 	public static float[] floats(int size) {
@@ -251,7 +249,7 @@ public final class ScriptingUtils2 {
 	/**
 	 * Creates an array of doubles.
 	 * 
-	 * @param size — number of elements the resulting array can contain
+	 * @param size number of elements the resulting array can contain
 	 * @return Newly created array.
 	 */
 	public static double[] doubles(int size) {
@@ -263,7 +261,7 @@ public final class ScriptingUtils2 {
 	/**
 	 * Creates an array of booleans.
 	 * 
-	 * @param size — number of elements the resulting array can contain
+	 * @param size number of elements the resulting array can contain
 	 * @return Newly created array.
 	 */
 	public static boolean[] booleans(int size) {
@@ -275,7 +273,7 @@ public final class ScriptingUtils2 {
 	/**
 	 * Creates an array of strings.
 	 * 
-	 * @param size — number of elements the resulting array can contain
+	 * @param size number of elements the resulting array can contain
 	 * @return Newly created array.
 	 */
 	public static String[] strings(int size) {
@@ -287,7 +285,7 @@ public final class ScriptingUtils2 {
 	/**
 	 * Creates an array of objects.
 	 * 
-	 * @param size — number of elements the resulting array can contain
+	 * @param size number of elements the resulting array can contain
 	 * @return Newly created array.
 	 */
 	public static Object[] array(int size) {
@@ -299,7 +297,7 @@ public final class ScriptingUtils2 {
 	/**
 	 * Creates an array of {@link cs.csss.engine.ChannelBuffer ChannelBuffer}s.
 	 * 
-	 * @param size — number of elements the resulting array can contain
+	 * @param size number of elements the resulting array can contain
 	 * @return Newly created array.
 	 */
 	public static ChannelBuffer[] channelBuffers(int size) {
@@ -311,7 +309,7 @@ public final class ScriptingUtils2 {
 	/**
 	 * Creates an array of {@link cs.csss.engine.Color Color}s.
 	 * 
-	 * @param size — number of elements the resulting array can contain
+	 * @param size number of elements the resulting array can contain
 	 * @return Newly created array.
 	 */
 	public static Color[] colors(int size) {

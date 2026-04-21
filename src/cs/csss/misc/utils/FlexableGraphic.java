@@ -2,15 +2,14 @@ package cs.csss.misc.utils;
 
 import static org.lwjgl.system.MemoryUtil.memAlloc;
 import static org.lwjgl.system.MemoryUtil.memFree;
-import static cs.core.utils.CSUtils.specify;
 
 import java.nio.ByteBuffer;
 
-import cs.core.utils.ShutDown;
-import cs.core.utils.files.CSGraphic;
 import cs.csss.engine.ColorPixel;
+import sc.core.SCShutDown;
+import sc.core.binary.SCGraphic;
 
-public class FlexableGraphic implements CSGraphic , ShutDown {
+public class FlexableGraphic extends SCGraphic implements SCShutDown {
 
 	private boolean isFreed = false;
 	
@@ -39,19 +38,15 @@ public class FlexableGraphic implements CSGraphic , ShutDown {
 		Number...defaultChannelValues 
 	) {
 
-		specify(
-			bytesPerChannel == 1 || 
-			bytesPerChannel == 2 || 
-			bytesPerChannel == 4 , 
-			bytesPerChannel + " is not a supported channel size."
-		);
+		assert bytesPerChannel == 1 || bytesPerChannel == 2 || bytesPerChannel == 4 : 
+			bytesPerChannel + " is not a supported channel size.";
 		
-		specify(channelsPerPixel >= 1 || channelsPerPixel <= 4 , channelsPerPixel + " is not a supported channel count");
+		assert channelsPerPixel >= 1 || channelsPerPixel <= 4 : channelsPerPixel + " is not a supported channel count";
 		
-		specify(
-			defaultChannelValues.length == 1 || defaultChannelValues.length == channelsPerPixel , 
+		assert
+			defaultChannelValues.length == 1 || defaultChannelValues.length == channelsPerPixel : 
 			defaultChannelValues.length + " is not a valid length for a set of default channel values. Must be 1 or channelsPerPixel." 
-		);
+		;
 
 		this.width = width;
 		this.height = height;
@@ -139,27 +134,26 @@ public class FlexableGraphic implements CSGraphic , ShutDown {
 		
 	}
 
-	@Override public int bitsPerPixel() {
-
-		return (bytesPerChannel * channelsPerPixel) << 3;
-		
-	}
-
-	@Override public ByteBuffer imageData() {
+	@Override public ByteBuffer data() {
 
 		return imageData;
-		
-	}
-
-	@Override public int bitsPerChannel() {
-
-		return bytesPerChannel << 3;
 		
 	}
 
 	@Override public int channels() {
 
 		return channelsPerPixel;
+		
+	}
+
+	@Override public int bytesPerPixel() {
+
+		return bytesPerChannel * channelsPerPixel;
+	}
+
+	@Override public int bytesPerChannel() {
+
+		return bytesPerChannel;
 		
 	}
 

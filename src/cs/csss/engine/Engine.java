@@ -29,8 +29,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
 import org.joml.Vector3f;
@@ -46,24 +48,6 @@ import com.codedisaster.steamworks.SteamUGC.MatchingUGCType;
 import com.codedisaster.steamworks.SteamUGC.UserUGCList;
 import com.codedisaster.steamworks.SteamUGC.UserUGCListSortOrder;
 
-import cs.core.CSDisplay;
-import cs.core.graphics.CSStandardRenderer;
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSNuklearRender;
-import cs.core.ui.prefabs.InputBox;
-import cs.core.utils.CSRefInt;
-import cs.core.utils.CSUtils;
-import cs.core.utils.Lambda;
-import cs.core.utils.ShutDown;
-import cs.core.utils.Timer;
-import cs.core.utils.exceptions.RequirementFailedException;
-import cs.core.utils.exceptions.SpecificationBrokenException;
-import cs.core.utils.files.TTF;
-import cs.core.utils.threads.Await;
-import cs.coreext.nanovg.CoordinateSpace;
-import cs.coreext.nanovg.NanoVG;
-import cs.coreext.nanovg.NanoVGFrame;
-import cs.coreext.nanovg.NanoVGTypeface;
 import cs.csss.annotation.InDevelopment;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
@@ -76,7 +60,7 @@ import cs.csss.editor.event.ShutDownProjectEvent;
 import cs.csss.editor.line.BezierLine;
 import cs.csss.misc.files.CSFile;
 import cs.csss.misc.files.CSFolder;
-import cs.csss.misc.graphcs.memory.GPUMemoryViewer;
+import cs.csss.misc.graphics.memory.GPUMemoryViewer;
 import cs.csss.misc.ui.CTSS;
 import cs.csss.misc.ui.UICustomizer;
 import cs.csss.project.Animation;
@@ -123,6 +107,23 @@ import cs.ext.steamworks.SteamApplicationData;
 import cs.ext.steamworks.Steamworks;
 import cs.ext.steamworks.UGC;
 import cs.ext.steamworks.UGCQuery;
+import sc.core.SCControls;
+import sc.core.SCDisplay;
+import sc.core.SCGLFWWindow;
+import sc.core.SCShutDown;
+import sc.core.binary.SCGraphic;
+import sc.core.binary.SCTTF;
+import sc.core.graphics.SCOpenGLRenderer;
+import sc.core.graphics.SCOrthographicCamera;
+import sc.core.graphics.nanovg.SCCoordinateSpace;
+import sc.core.graphics.nanovg.SCNanoVG;
+import sc.core.graphics.nanovg.SCNanoVGFrame;
+import sc.core.graphics.nanovg.SCNanoVGTypeface;
+import sc.core.ui.SCNuklear;
+import sc.core.ui.prefabs.SCBasicInputBox;
+import sc.core.utils.SCConcurrentTemporal;
+import sc.core.utils.SCIntReferencer;
+import sc.core.utils.SCTimer;
 
 /**
  * Engine is the driver of the application. It contains initialization, the main loop, and handles some program level behavior such as 
@@ -158,7 +159,7 @@ import cs.ext.steamworks.UGCQuery;
  * @author Chris Brown
  *
  */
-public final class Engine implements ShutDown {
+public final class Engine implements SCShutDown {
 
 	/**
 	 * Thread pool for the application.
@@ -168,13 +169,18 @@ public final class Engine implements ShutDown {
 	/**
 	 * Scheduler object that can receive code and execute it based on some predicate.
 	 */
-	public static final ConcurrentTemporal THE_TEMPORAL = new ConcurrentTemporal();
+	public static final SCConcurrentTemporal THE_TEMPORAL = new SCConcurrentTemporal();
 	
 	/**
 	 * Version of the current application distribution.
 	 */
-	public static final String VERSION_STRING = String.format("%s %d.%d%d" , "Beta" , 1 , 1 , 8);
+	public static final String VERSION_STRING = String.format("%s %d.%d%d" , "Beta" , 1 , 1 , 9);
 
+	/**
+	 * Display creation constants.
+	 */
+	private static final boolean MULTITHREAD_RENDERER = false , SHOW_WINDOW_ON_START = true;
+	
 	/**
 	 * Containers for program files and assets.
 	 */
@@ -185,7 +191,13 @@ public final class Engine implements ShutDown {
 		exportsRoot = CSFolder.establishRoot("exports") ,
 		debugRoot = CSFolder.establishRoot("debug");
 	
-	private static boolean isDebug = false , useSteam = true;
+	private static boolean isDebug = false , useSteam = true , overrideShutDown = false;
+	
+	private static String overrideShutDownReason;
+	
+	private static Throwable overrideShutDownStackError;
+	
+	private static int nextRenderKey = 1;
 	
 	/**
 	 * Contains reserved strings that cannot be used as script names, and are script names that cannot be uploaded to the Workshop.
@@ -204,14 +216,14 @@ public final class Engine implements ShutDown {
 	/**
 	 * Called from the main method to do any initialization that must occur before any other code from the program is invoked.
 	 * 
-	 * @param programArgs — arguments to the main method
+	 * @param programArgs arguments to the main method
 	 */
 	static void preinitialize(final String[] programArgs) {
 
 		//initialize logging
 		try {
 			
-			Logging.initialize(true);
+			Logging.initialize(false);
 						
 		} catch(IOException e) {
 			
@@ -227,6 +239,7 @@ public final class Engine implements ShutDown {
 		if(args.contains("-ns")) useSteam = false;
 
 		stbi_flip_vertically_on_write(true);
+		SCGraphic.setFlipVerticallyOnLoad(false);
 		
 		//load the ControlChord class and Hotkey classes for the purposes of the user settings2
 		Hotkey.COPY_REGION_HOTKEY.isKeyboard();
@@ -242,9 +255,20 @@ public final class Engine implements ShutDown {
 		isDebug = true;		
 		sysDebugln("[COLDSTEEL SPRITE STUDIO DEBUG ENABLED]");		
 		Configuration.DEBUG_MEMORY_ALLOCATOR.set(true);
-		
+				
 	}
 
+	/**
+	 * Returns a unique render key for use with render post methods.
+	 * 
+	 * @return New key to serve as an identifier for code posted to the renderer. 
+	 */
+	public static int requestRenderEventKey() {
+		
+		return nextRenderKey++;
+		
+	}
+	
 	/**
 	 * Returns whether this runtime is in debug mode.  
 	 * 
@@ -270,7 +294,7 @@ public final class Engine implements ShutDown {
 	/**
 	 * Returns whether the given string {@code equals} any elements of {@link Engine#reservedScriptNames}.
 	 * 
-	 * @param name — name of a script
+	 * @param name name of a script
 	 * @return {@code true} if {@code name} equals one of the reserved script names.
 	 */
 	public static boolean isReservedScriptName(String name) {
@@ -282,23 +306,41 @@ public final class Engine implements ShutDown {
 	}
 	
 	/**
+	 * Signals to the engine to begin shutting down because of a fatal error.
+	 * 
+	 * @param reason String representing the reason for the shut down
+	 * @param error stack trace resulting in the error
+	 */
+	public static void overrideBeginShutDown(String reason , Throwable error) {
+		
+		overrideShutDown = true;
+		overrideShutDownReason = reason;
+		overrideShutDownStackError = error;
+		
+	}
+	
+	private static void onOverrideShutDown() {
+		
+		Logging.syserr(overrideShutDownReason);
+		overrideShutDownStackError.printStackTrace(fileErr);
+				
+	}
+	
+	/**
 	 * Frees static memory associated with COLDSTEEL Core and the program.
 	 */
 	static void finalShutDown() {
 		
+		//any deferred shutdown events.
+		THE_TEMPORAL.updateAllEvents();
 		THE_THREADS.shutdown();
-		CSDisplay.finalShutDown();
+		SCDisplay.finish();
 		
 	}
 	
-	/**
-	 * Contains the renderer, window, and CSNuklear, a UI factory object. If this is assigned to null, the program will immediately close. 
-	 * If this is null, its because Steam is going to restart the application.
-	 */
-	private final CSSSDisplay display;
+	private final SCDisplay<Integer> display;
 	private final Editor editor;
-	private CSSSCamera camera;
-	private Await renderScene;
+	private Future<?> renderScene;
 	
 	private CSSSProject currentProject;
 
@@ -318,11 +360,11 @@ public final class Engine implements ShutDown {
 	private int realtimeTargetFPS = 60;
 	private double realtimeFrameTime = 1000 / realtimeTargetFPS;
 
- 	private Timer frameTimer = new Timer();
+ 	private SCTimer frameTimer = new SCTimer();
  	
 	private final UserSettings2 settings2 = new UserSettings2();
 	
-	private final NanoVG nanoVG;
+	private final SCNanoVG nanoVG;
 	
 	public final List<NamedNanoVGTypeface> loadedFonts = Collections.synchronizedList(new ArrayList<>());
 
@@ -333,6 +375,8 @@ public final class Engine implements ShutDown {
 	private NkStyle defaultStyle = NkStyle.malloc();
 	
 	private UITheme currentTheme;
+	
+	private SCTTF currentFont;
 	
 	/**
 	 * Constructs the engine and initializes its members.
@@ -356,16 +400,26 @@ public final class Engine implements ShutDown {
 		
 		initializeDirectories();
 		
-		display = new CSSSDisplay(true , "COLDSTEEL Sprite Studio" , 18 , "assets/fonts/current.ttf");
+		currentFont = new SCTTF("assets/fonts/current.ttf");
 				
-		CSNuklearRender.BUFFER_INITIAL_SIZE(12 * 1024);
-		UIUtils.setFontWidthGetter(display.nuklear.font().width());
-		defaultStyle.set(display.nuklear.context().style());
-		
-		initializeCamera();
+		display = SCDisplay.create(
+			currentFont.newFace(16, 256), 
+			"COLDSTEEL's Sprite Studio", 
+			800, 
+			600, 
+			MULTITHREAD_RENDERER, 
+			SHOW_WINDOW_ON_START, 
+			111, 
+			222, 
+			333
+		);
+				
+		display.nuklear().commandBufferCapacity(12 * 1024);
+		UIUtils.setFontWidthGetter(display.nuklear().font().width());
+		defaultStyle.set(display.nuklear().context().style());
 
-		nanoVG = display.renderer.make(() -> new NanoVG(display.window , camera , true)).get();
-		nanoVG.coordinateSpace(CoordinateSpace.WORLD_COORDINATE_SPACE);
+		nanoVG = display.addNano(true, 444);
+		nanoVG.coordinateSpace(SCCoordinateSpace.WORLD_COORDINATE_SPACE);
 		
 		initializeNanoVGFonts();
 		
@@ -388,9 +442,6 @@ public final class Engine implements ShutDown {
 		
 		CSSSException.registerTheEngine(this); 
 		
-		CSUtils.onRequirementFailed = message -> new CSSSException(message , new RequirementFailedException(message));
-		CSUtils.onSpecificationBroken = message -> new CSSSException(message , new SpecificationBrokenException(message));
-		
 	}
 	
 	/**
@@ -406,7 +457,8 @@ public final class Engine implements ShutDown {
 		//early out for steam
 		if(display == null) return;
 
-		while(display.window.persist()) {
+		SCGLFWWindow<Integer> window = display.window();
+		while(!overrideShutDown && window.persist()) {
 			
 			getInputs();
 			
@@ -428,31 +480,39 @@ public final class Engine implements ShutDown {
 			
 		}
 		
+		if(overrideShutDown) onOverrideShutDown();
+		
 	}
-	
+
 	private void renderScene() {
 		
-		if(renderScene.isFinished()) enqueueRender();
+		if(renderScene.isDone()) { 
+			
+			enqueueRender();
+			
+		}
 
 	}
 	
 	private void enqueueRender() {
 
-		display.nuklear.layoutAllInterfaces();
+		display.nuklear().update();
+		SCOrthographicCamera camera = display.camera();
 		
-		renderScene = display.renderer.post(() -> {
-			
+		renderScene = display.renderer().post(() -> {
+
 			glClear(GL_COLOR_BUFFER_BIT);
 			//NanoVG modifies blending
 			glBlendFunc(GL_SRC_ALPHA , GL_ONE_MINUS_SRC_ALPHA);
 
-			try(NanoVGFrame frame = nanoVG.frame()) {
+			try(SCNanoVGFrame frame = nanoVG.getFrame()) {
 
 				if(currentProject != null) {
 	
-					CSSSProject.currentShader().updatePassVariables(camera.projection() , camera.viewTranslation());				
+					CSSSProject.currentShader().updatePassVariables(camera.projection() , camera.viewTranslation());
+					
 					currentProject.renderEverything(CSSSProject.currentShader(), frame);
-
+					
 					editor.renderSelectingBrushRender();				
 					editor.renderSelectingBrushBounder(frame);
 					editor.renderModifyingBrushBounder(frame);
@@ -461,33 +521,53 @@ public final class Engine implements ShutDown {
 
 				editor.renderNanoVGCallbacks(frame);
 				
-				//render UI
-				display.nuklear.render();
+			} catch(Exception e) {
+				
+				e.printStackTrace();
+				
+			}
+			
+			//render UI
+			display.nuklear().render(true);
+			
+			try(SCNanoVGFrame frame = nanoVG.getFrame()) {
 				
 				//renders the current palette as long as state allows
 				editor.renderPalette();
 				
 				editor.renderPaletteBounder(frame);				
+			
+			} catch(Exception e) {
+				
+				e.printStackTrace();
 				
 			}
 
-			/*
-			 * Here is where we render the current frame of the active animation within the animation editor menu. To do this, I rerender
-			 * the artboard that is the current frame, applying a translation to it so it sits on top of the UI element, hence why this is
-			 * done after the UI is rendered. 
-			 */
-			if(currentProject != null) {
-				
-				Animation current = currentProject.currentAnimation();
-				if(current != null && editor.isAnimationPanelShowing()) {
+			try {
 
-					current.renderCurrentFrame(camera , editor.animationPanel() , display.window.size()[1]);
+				/*
+				 * Here is where we render the current frame of the active animation within the animation editor menu. To do this, I 
+				 * rerender the artboard that is the current frame, applying a translation to it so it sits on top of the UI element, hence 
+				 * why this is done after the UI is rendered. 
+				 */
+				if(currentProject != null) {
+					
+					Animation current = currentProject.currentAnimation();
+					if(current != null && editor.isAnimationPanelShowing()) {
+
+						current.renderCurrentFrame(camera , editor.animationPanel() , display.window().size()[1]);
+						
+					}
 					
 				}
 				
+				windowSwapBuffers();
+					
+			} catch (Exception e) {
+				
+				e.printStackTrace();
+				
 			}
-			
-			windowSwapBuffers();
 			
 		});
 		
@@ -500,11 +580,14 @@ public final class Engine implements ShutDown {
 
 		if(realtimeMode) { 
 			
-			display.pollInputs();
+			SCGLFWWindow.pollEvents();
 			frameTimer.start();
 			
-		} else display.waitInputs();
-			
+		} else SCGLFWWindow.waitEvents();
+		
+		SCControls.updateAllControls();
+		display.nuklear().updateInput();
+		
 	}
 	
 	/**
@@ -515,7 +598,7 @@ public final class Engine implements ShutDown {
 
 		if(realtimeMode) {
 			
-			long waitFor = (long) (realtimeFrameTime - frameTimer.getElapsedTimeMillis());
+			long waitFor = (long) (realtimeFrameTime - frameTimer.elapsedMillis());
 			//this will be true if the frame took longer than the ideal frame time, REALTIME_FRAME_TIME, in which case do not use waitFor to stop
 			//the frame
 			if(waitFor <= 0) return;
@@ -540,10 +623,10 @@ public final class Engine implements ShutDown {
 	 */
 	private void runProjectFreemove() {
 		
-		if(currentProject != null) { 
+		if(currentProject != null && currentProject.freemoveMode()) { 
 			
 			float[] cursorWorldCoords = getCursorWorldCoords();
-			display.renderer.post(() -> currentProject.runFreemove(cursorWorldCoords));
+			display.renderer().post(() -> currentProject.runFreemove(cursorWorldCoords));
 			
 		}
 		
@@ -570,10 +653,12 @@ public final class Engine implements ShutDown {
 		
 		if(!isCursorHoveringUI() && numberOpenDialogues == 0) {
 			
-			if(Control.CAMERA_UP.pressed()) camera.translate(0 , cameraMoveSpeed);			
-			if(Control.CAMERA_DOWN.pressed()) camera.translate(0 , -cameraMoveSpeed);			
-			if(Control.CAMERA_LEFT.pressed()) camera.translate(-cameraMoveSpeed , 0);			
-			if(Control.CAMERA_RIGHT.pressed()) camera.translate(cameraMoveSpeed , 0);
+			SCOrthographicCamera camera = display.camera();
+			
+			if(Control.CAMERA_UP.pressed()) camera.translate(0f , cameraMoveSpeed , 0f);			
+			if(Control.CAMERA_DOWN.pressed()) camera.translate(0f , -cameraMoveSpeed , 0f);			
+			if(Control.CAMERA_LEFT.pressed()) camera.translate(-cameraMoveSpeed , 0f , 0f);			
+			if(Control.CAMERA_RIGHT.pressed()) camera.translate(cameraMoveSpeed , 0f , 0f);
 
 		} 
 		//try to move the animation panel view of the current frame
@@ -626,7 +711,7 @@ public final class Engine implements ShutDown {
 	 */
 	public float[] getCursorWorldCoords() {
 		
-		double[] coords = display.window.cursorPosition();
+		double[] coords = display.window().cursorPosition();
 		float[] worldCoords = getCursorWorldCoords(new float[] {(float) coords[0] , (float) coords[1]});
 		cursorDragManager.updateCurrentDragCoords(worldCoords);
 		
@@ -642,6 +727,8 @@ public final class Engine implements ShutDown {
 	 */
 	public float[] getCursorWorldCoords(float[] screenCoords) {
 		
+		SCOrthographicCamera camera = display.camera();
+		
 		return new float[] {
 			camera.XscreenCoordinateToWorldCoordinate(screenCoords[0]) ,
 			camera.YscreenCoordinateToWorldCoordinate(screenCoords[1])				
@@ -656,7 +743,7 @@ public final class Engine implements ShutDown {
 	 */
 	public int[] getCursorScreenCoords() {
 		
-		double[] cursorPos = display.window.cursorPosition();
+		double[] cursorPos = display.window().cursorPosition();
 		return new int[] {(int)cursorPos[0] , (int)cursorPos[1]};
 		
 	}
@@ -677,7 +764,7 @@ public final class Engine implements ShutDown {
 	 * 
 	 * @return The NanoVG.
 	 */
-	public NanoVG nanoVG() {
+	public SCNanoVG nanoVG() {
 		
 		return nanoVG;
 		
@@ -688,16 +775,16 @@ public final class Engine implements ShutDown {
 	 * 
 	 * @return The standard renderer.
 	 */
-	public CSStandardRenderer renderer() {
+	public SCOpenGLRenderer renderer() {
 		
-		return display.renderer;
+		return display.renderer();
 		
 	}
 	
 	/**
 	 * Sets the camera's move rate.
 	 * 
-	 * @param moveSpeed — a new move rate for the camera
+	 * @param moveSpeed a new move rate for the camera
 	 */
 	public void cameraMoveRate(final int moveSpeed) {
 		
@@ -742,7 +829,7 @@ public final class Engine implements ShutDown {
 	/**
 	 * Sets the current project to {@link cs.csss.annotation.Nullable @Nullable} {@code project}. 
 	 * 
-	 * @param project — {@code @Nullable} new current project
+	 * @param project {@code @Nullable} new current project
 	 */
 	public void currentProject(CSSSProject project) {
 		
@@ -758,7 +845,7 @@ public final class Engine implements ShutDown {
 	 */
 	public boolean isCursorHoveringUI() {
 		
-		return nk_window_is_any_hovered(display.nuklear.context());
+		return nk_window_is_any_hovered(display.nuklear().context());
 		
 	}
 	
@@ -791,7 +878,7 @@ public final class Engine implements ShutDown {
 	 */
 	public void startNewProject() {
 		
-		NewProjectMenu newProjectMenu = new NewProjectMenu(display.nuklear);
+		NewProjectMenu newProjectMenu = new NewProjectMenu(display.nuklear());
 		
 		Engine.THE_TEMPORAL.onTrue(newProjectMenu::canFinish , () -> {
 			
@@ -805,20 +892,27 @@ public final class Engine implements ShutDown {
 			
 			}
 			
-			currentProject = display.renderer.make(() -> {
+			try {
+				currentProject = display.renderer().make(() -> {
+					
+					CSSSProject project = new CSSSProject(
+						this , 
+						newProjectMenu.get() , 
+						newProjectMenu.channelsPerPixel() , 
+						newProjectMenu.paletteWidth() , 
+						newProjectMenu.paletteHeight()
+					);
+					
+					project.initialize();
+					return project;
+					
+				}).get();
+			} catch (InterruptedException | ExecutionException e) {
 				
-				CSSSProject project = new CSSSProject(
-					this , 
-					newProjectMenu.get() , 
-					newProjectMenu.channelsPerPixel() , 
-					newProjectMenu.paletteWidth() , 
-					newProjectMenu.paletteHeight()
-				);
+				e.printStackTrace();
+				overrideBeginShutDown("Failed to make new project", e);
 				
-				project.initialize();
-				return project;
-				
-			}).get();
+			}
 			
 		});		
 		
@@ -830,7 +924,7 @@ public final class Engine implements ShutDown {
 	public void startNewAnimation() {
 		
 		if(currentProject == null) return;
-		NewAnimationMenu newAnimationMenu = new NewAnimationMenu(currentProject , display.nuklear);		
+		NewAnimationMenu newAnimationMenu = new NewAnimationMenu(currentProject , display.nuklear());		
 		Engine.THE_TEMPORAL.onTrue(newAnimationMenu::isFinished, () -> currentProject.createAnimation(newAnimationMenu.get()));
 		
 	}
@@ -842,7 +936,7 @@ public final class Engine implements ShutDown {
 		
 		if(currentProject == null) return;
 		
-		NewVisualLayerMenu newLayerMenu = new NewVisualLayerMenu(currentProject , display.nuklear);
+		NewVisualLayerMenu newLayerMenu = new NewVisualLayerMenu(currentProject , display.nuklear());
 		
 		THE_TEMPORAL.onTrue(newLayerMenu::isFinished , () -> {
 			
@@ -858,7 +952,7 @@ public final class Engine implements ShutDown {
 	public void startNewNonVisualLayer() {
 		
 		if(currentProject == null) return;
-		NewNonVisualLayerMenu newLayerMenu = new NewNonVisualLayerMenu(currentProject , display.nuklear);
+		NewNonVisualLayerMenu newLayerMenu = new NewNonVisualLayerMenu(currentProject , display.nuklear());
 		
 		THE_TEMPORAL.onTrue(newLayerMenu::isFinished , () -> {
 			
@@ -875,7 +969,7 @@ public final class Engine implements ShutDown {
 		
 		if(currentProject == null) return;
 		
-		ArtboardMenu artboardMenu = new ArtboardMenu(display.nuklear , "New Artboard");
+		ArtboardMenu artboardMenu = new ArtboardMenu(display.nuklear() , "New Artboard");
 		THE_TEMPORAL.onTrue(artboardMenu::finished , () -> {
 			
 			if(!artboardMenu.finishedValidly()) return;			
@@ -890,7 +984,7 @@ public final class Engine implements ShutDown {
 	 */
 	public void startNewControlsEditor() {
 		
-		new ModifyControlsMenu(display.nuklear , this);
+		new ModifyControlsMenu(display.nuklear() , this);
 				
 	}
 
@@ -899,7 +993,7 @@ public final class Engine implements ShutDown {
 	 */
 	public void startCheckeredBackgroundSettings() {
 		
-		new CheckeredBackgroundSettingsMenu(editor , display.nuklear , currentProject);
+		new CheckeredBackgroundSettingsMenu(editor , display.nuklear() , currentProject);
 		
 	}
 
@@ -910,8 +1004,8 @@ public final class Engine implements ShutDown {
 	public void startSelectScriptMenu(String scriptSubdirectory , Consumer<File> onComplete) {
 		
 		if(currentProject == null) return;		
-		SelectScriptMenu script = new SelectScriptMenu(display.nuklear , scriptSubdirectory);
-		
+		SelectScriptMenu script = new SelectScriptMenu(display.nuklear() , scriptSubdirectory);
+
 		THE_TEMPORAL.onTrue(script::readyToFinish , () -> {
 			
 			File selected;			
@@ -919,13 +1013,13 @@ public final class Engine implements ShutDown {
 			onComplete.accept(selected);
 			
 		});
-			
+		
 	}
 	
 	/**
 	 * Creates an UI element for selecing a custom time input.
 	 * 
-	 * @param animationFrameIndex — an animation frame index
+	 * @param animationFrameIndex an animation frame index
 	 */
 	public void startAnimationFrameCustomTimeInput(int animationFrameIndex) {
 		
@@ -938,48 +1032,50 @@ public final class Engine implements ShutDown {
 		 	case SWAP_BY_TIME -> {
 
 		 		title += " (millis)";
-		 		yield CSNuklear.ONLY_FLOATS_FILTER;
+		 		yield SCNuklear.FLOATS_FILTER;
 		 		
 		 	}
 		 	case SWAP_BY_UPDATES -> {
 
 		 		title += " (frames)";
-		 		yield CSNuklear.DECIMAL_FILTER;
+		 		yield SCNuklear.DECIMAL_FILTER;
 		 		
 		 	}
 	 	};
 	 	
-		new InputBox(display.nuklear , title , .4f , .4f , 10 , filter , result -> {
+		SCBasicInputBox animationSwapTypeBox = new SCBasicInputBox(display.nuklear() , title , null , null , filter , result -> {
 			
 			if(result.equals("")) return;
 			
 			switch(type) {
 				case SWAP_BY_TIME -> frame.time(new FloatReference(Float.parseFloat(result)));
-				case SWAP_BY_UPDATES -> frame.updates(new CSRefInt(Integer.parseInt(result)));
+				case SWAP_BY_UPDATES -> frame.updates(new SCIntReferencer(Integer.parseInt(result)));
 			}
 							
-		});
+		} , 10);
+		
+		animationSwapTypeBox.ui.positioner.widthRatio(.4f).heightRatio(0.4f);
 		
 	}
 
 	/**
 	 * Creates an UI element for moving an animation frame position.
 	 * 
-	 * @param originalIndex — the original index of the animation frame  
+	 * @param originalIndex the original index of the animation frame  
 	 */
 	public void startSetAnimationFramePosition(int originalIndex) {
 		
 		Animation current = currentAnimation();
 		
 		new DetailedInputBox(
-			display.nuklear , 
+			display.nuklear() , 
 			"New Position For Frame " + originalIndex , 
 			"Set the new position of frame " + originalIndex + ", from 0 to " + current.numberFrames() ,
 			.5f - (.15f / 2f) ,
 			.5f - (.15f / 2f), 
 			.15f ,
 			.15f ,
-			CSNuklear.DECIMAL_FILTER ,
+			SCNuklear.DECIMAL_FILTER ,
 			3 ,
 			result -> {
 				
@@ -1010,7 +1106,7 @@ public final class Engine implements ShutDown {
 	public void startSetSimulationFrameRate() {
 		
 		new DetailedInputBox(
-			display.nuklear , 
+			display.nuklear() , 
 			"Set Simulation Frame Rate" ,
 			"Currently " + realtimeTargetFPS + ". This is used for viewing animations. Set this value to the number of frames per "
 			+ "second your application is targeting." ,
@@ -1018,7 +1114,7 @@ public final class Engine implements ShutDown {
 			.5f - (.15f / 2f), 
 			.15f ,
 			.15f ,
-			CSNuklear.DECIMAL_FILTER ,
+			SCNuklear.DECIMAL_FILTER ,
 			5 ,
 			result -> {
 			
@@ -1064,7 +1160,7 @@ public final class Engine implements ShutDown {
 			
 		}
 		
-		SteamWorkshopItemUploadMenu upload = new SteamWorkshopItemUploadMenu(display.nuklear , steam.friendsAPI());
+		SteamWorkshopItemUploadMenu upload = new SteamWorkshopItemUploadMenu(display.nuklear() , steam.friendsAPI());
 		
 		THE_TEMPORAL.onTrue(upload::finished , () -> {
 			
@@ -1106,7 +1202,7 @@ public final class Engine implements ShutDown {
 		 *  Upload the updates to the workshop item
 		 */
 		
-		SteamWorkshopItemUpdateMenu updateMenu = new SteamWorkshopItemUpdateMenu(display.nuklear, steam.friendsAPI() , this);
+		SteamWorkshopItemUpdateMenu updateMenu = new SteamWorkshopItemUpdateMenu(display.nuklear(), steam.friendsAPI() , this);
 		
 		THE_TEMPORAL.onTrue(updateMenu::readyToClose , () -> {
 			
@@ -1132,34 +1228,45 @@ public final class Engine implements ShutDown {
 	/**
 	 * Creates an UI element for moving the rank of a visual layer.
 	 * 
-	 * @param layer — a layer to rearrange
+	 * @param layer a layer to rearrange
 	 */
 	public void startMoveLayerRank(VisualLayer layer) {
 		
 		int rank = currentProject.currentArtboard().getLayerRank(layer);
 		
-		new InputBox(display.nuklear , "Input New Rank for Layer " + rank , 0.4f , 0.4f , 4 , CSNuklear.DECIMAL_FILTER , result -> {
+		SCBasicInputBox input = new SCBasicInputBox(
+			display.nuklear() , 
+			"Input New Rank for Layer " + rank , 
+			null , 
+			"Accept" , 
+			SCNuklear.DECIMAL_FILTER , 
+			result -> {
 			
-			if(result.equals("")) return;
-			Artboard current = currentProject.currentArtboard();
-			int res = Integer.parseInt(result);
-			if(res >= current.numberVisualLayers()) res = current.numberVisualLayers() - 1;
-			if(res < 0) res = 0;
-			
-			editor.eventPush(new MoveLayerRankEvent(current , res));
-	
-		});
+				if(result.equals("")) return;
+				Artboard current = currentProject.currentArtboard();
+				int res = Integer.parseInt(result);
+				if(res >= current.numberVisualLayers()) res = current.numberVisualLayers() - 1;
+				if(res < 0) res = 0;
+				
+				editor.eventPush(new MoveLayerRankEvent(current , res));
+		
+			} , 
+			4
+		);
+		
+		final int[] windowSize = windowSize();
+		input.ui.positioner.widthRatio(0.2f).heightRatio(0.15f).leftX(windowSize[0] / 2).topY(windowSize[1] / 2);
 			
 	}
 	
 	/**
 	 * Creates an UI element for setting the swap type of an animation frame.
 	 * 
-	 * @param frameIndex — index of an animation frame
+	 * @param frameIndex index of an animation frame
 	 */
 	public void startSetAnimationFrameSwapType(int frameIndex) {
 		
-		SetAnimationFrameSwapTypeMenu animationFrameSwapTypeMenu = new SetAnimationFrameSwapTypeMenu(display.nuklear , frameIndex);
+		SetAnimationFrameSwapTypeMenu animationFrameSwapTypeMenu = new SetAnimationFrameSwapTypeMenu(display.nuklear() , frameIndex);
 		
 		THE_TEMPORAL.onTrue(animationFrameSwapTypeMenu::finished , () -> {
 			
@@ -1173,9 +1280,9 @@ public final class Engine implements ShutDown {
 	/**
 	 * Creates an UI element for inputting arguments for scripts.
 	 * 
-	 * @param scriptName — name of a script
-	 * @param popupMessage — optional string for the UI that 
-	 * @param onFinish — code to invoke on completion of the UI element
+	 * @param scriptName name of a script
+	 * @param popupMessage optional string for the UI that 
+	 * @param onFinish code to invoke on completion of the UI element
 	 */
 	public void startScriptArgumentInput(String scriptName , Optional<String> popupMessage , Consumer<String> onFinish) {
 	
@@ -1183,14 +1290,14 @@ public final class Engine implements ShutDown {
 		if(popupMessage.isPresent()) description += popupMessage.get();
 		
 		new DetailedInputBox(
-			display.nuklear , 
+			display.nuklear() , 
 			scriptName + " Arguments" , 
 			description,
 			.5f - (.33f / 2) ,
 			.5f - (.22f / 2) ,
 			.33f ,
 			.22f ,
-			CSNuklear.NO_FILTER ,
+			SCNuklear.NO_FILTER ,
 			999 ,
 			onFinish , 
 			() -> {}
@@ -1203,7 +1310,7 @@ public final class Engine implements ShutDown {
 	 */
 	public void startLoadProject() {
 		
-		LoadProjectMenu menu = new LoadProjectMenu(display.nuklear);
+		LoadProjectMenu menu = new LoadProjectMenu(display.nuklear());
 		
 		THE_TEMPORAL.onTrue(menu::readyToFinish, () -> {
 			
@@ -1217,7 +1324,7 @@ public final class Engine implements ShutDown {
 	/**
 	 * Attempts to load the {@code CTSP} file named {@code projectFileName}.
 	 * 
-	 * @param projectFileName — name of the project to load
+	 * @param projectFileName name of the project to load
 	 * @param extension the extension of the file to load
 	 */
 	public void loadProject(String projectFileName , String extension) {
@@ -1230,7 +1337,7 @@ public final class Engine implements ShutDown {
 					
 					CTSPFile file = new CTSPFile(projectFileName);
 					file.read();
-					display.renderer.post(() -> currentProject(new CSSSProject(this , file)));
+					display.renderer().post(() -> currentProject(new CSSSProject(this , file)));
 										
 				}
 				
@@ -1238,7 +1345,7 @@ public final class Engine implements ShutDown {
 					
 					CTSP2File file = new CTSP2File(projectFileName);
 					file.read();
-					display.renderer.post(() -> currentProject(new CSSSProject(this , file)));
+					display.renderer().post(() -> currentProject(new CSSSProject(this , file)));
 										
 				}
 				
@@ -1263,7 +1370,7 @@ public final class Engine implements ShutDown {
 	 */
 	public void startExport() {
 		
-		if(currentProject != null) new ProjectExporterUI(this , display.nuklear , currentProject);
+		if(currentProject != null) new ProjectExporterUI(this , display.nuklear() , currentProject);
 		
 	}
 	
@@ -1273,7 +1380,7 @@ public final class Engine implements ShutDown {
 	public void startAddText() {
 		
 		if(currentProject == null) return;
-		VectorTextMenu menu = new VectorTextMenu(display.nuklear , this , currentProject);
+		VectorTextMenu menu = new VectorTextMenu(display.nuklear() , this , currentProject);
 		
 		THE_TEMPORAL.onTrue(menu::finished, () -> {
 			
@@ -1292,7 +1399,7 @@ public final class Engine implements ShutDown {
 	 */
 	public void startProjectSaveAs() {
 
-		new DialogueInputBox(display.nuklear , "Save As" , .4f , .4f , 999 , CSNuklear.NO_FILTER , result -> {
+		new DialogueInputBox(display.nuklear() , "Save As" , .4f , .4f , 999 , SCNuklear.NO_FILTER , result -> {
 			
 			if(result.equals("")) return;
 			saveProject(result);
@@ -1308,8 +1415,13 @@ public final class Engine implements ShutDown {
 		
 		UICustomizer customizer;
 		
-		if(currentTheme != null) customizer = new UICustomizer(display.nuklear , editor , currentTheme.palette() , currentTheme.windowColor());
-		else customizer = new UICustomizer(display.nuklear , editor , null , null);
+		if(currentTheme != null) customizer = new UICustomizer(
+			display.nuklear() , 
+			editor , 
+			currentTheme.palette() , 
+			currentTheme.windowColor()
+		);		
+		else customizer = new UICustomizer(display.nuklear() , editor , null , null);
 		
 		THE_TEMPORAL.onTrue(customizer::finished, () -> {
 			
@@ -1318,10 +1430,10 @@ public final class Engine implements ShutDown {
 			customizer.shutDown();
 			
 			new DetailedInputBox(
-				display.nuklear ,
+				display.nuklear() ,
 				"Input Theme Name" , "Input the name of this theme." ,
 				0.4f , 0.4f , 0.2f , 0.15f ,
-				CSNuklear.NO_FILTER , 1024 ,
+				SCNuklear.NO_FILTER , 1024 ,
 				result -> {
 					
 					try {
@@ -1352,7 +1464,7 @@ public final class Engine implements ShutDown {
 	 */
 	public void startSelectUITheme() {
 		
-		ThemeSelector selector = new ThemeSelector(this , display.nuklear);
+		ThemeSelector selector = new ThemeSelector(this , display.nuklear());
 		THE_TEMPORAL.onTrue(selector::finished, () -> {
 			
 			CSFile selected = selector.selected();
@@ -1369,14 +1481,14 @@ public final class Engine implements ShutDown {
 		Objects.requireNonNull(line);
 		
 		new DetailedInputBox(
-			display.nuklear, 
+			display.nuklear(), 
 			"Control Point Reorder", 
 			"Set the new position of control point " + controlPointOriginalIndex ,
 			.5f - (.3f / 2f) ,
 			.5f - (.25f / 2f) ,
 			0.25f, 
 			0.20f, 
-			CSNuklear.DECIMAL_FILTER, 
+			SCNuklear.DECIMAL_FILTER, 
 			20, 
 			input -> {
 			
@@ -1413,14 +1525,14 @@ public final class Engine implements ShutDown {
 		NkPluginFilter filter , 
 		int maxCharacters , 
 		Consumer<String> onAccept , 
-		Lambda onCancel
+		Runnable onCancel
 	) {
 		
 		float widthRatio = 0.35f;
 		float heightRatio = 0.3f;
 				
 		new DetailedInputBox(
-			display.nuklear , 
+			display.nuklear() , 
 			title,  
 			description , 
 			1f - widthRatio / 2f  , 
@@ -1442,9 +1554,9 @@ public final class Engine implements ShutDown {
 	 * @param message text to display to the user
 	 * @param onOK code to invoke when the user presses OK
 	 */
-	public void startNotification(String title , String message , Lambda onOK) {
+	public void startNotification(String title , String message , Runnable onOK) {
 	
-		new LineByLineNotificationBox(display.nuklear , title , message ,onOK);
+		new LineByLineNotificationBox(display.nuklear() , title , message ,onOK);
 		
 	}	
 	
@@ -1453,9 +1565,9 @@ public final class Engine implements ShutDown {
 	 */
 	public void resetThemeToDefault() {
 		
-		display.nuklear.context().style().set(defaultStyle);
+		display.nuklear().context().style().set(defaultStyle);
 		if(currentTheme != null) currentTheme.shutDown();
-		display.renderer.post(() -> glClearColor(.15f , .15f , .15f , 1.0f));		
+		display.renderer().post(() -> glClearColor(.15f , .15f , .15f , 1.0f));		
 		currentTheme = null;
 		
 	}
@@ -1464,20 +1576,20 @@ public final class Engine implements ShutDown {
 	 * Sets the current theme of the application from the file with the given name. {@code fileName} must be the name of a file in the 
 	 * {@code assets/themes/} folder.
 	 * 
-	 * @param fileName — name of a theme
+	 * @param fileName name of a theme
 	 */
 	public void setTheme(String fileName) {
 		
 		Objects.requireNonNull(fileName);
 		if(!fileName.endsWith(CTSS.ending)) fileName += CTSS.ending;
 
-		NkStyle style = display.nuklear.context().style();
+		NkStyle style = display.nuklear().context().style();
 		try {
 
 			CTSS reader = new CTSS(fileName , style);
 			reader.read();
 			NkColor windowColor = reader.windowColor();
-			display.renderer.post(() -> glClearColor(
+			display.renderer().post(() -> glClearColor(
 				(float)Byte.toUnsignedInt(windowColor.r()) / 255f ,
 				(float)Byte.toUnsignedInt(windowColor.g()) / 255f ,
 				(float)Byte.toUnsignedInt(windowColor.b()) / 255f ,
@@ -1514,7 +1626,7 @@ public final class Engine implements ShutDown {
 	/**
 	 * Saves the current project under {@code name}.
 	 * 
-	 * @param name — name for a save file
+	 * @param name name for a save file
 	 */
 	public void saveProject(String name) {
 
@@ -1522,12 +1634,23 @@ public final class Engine implements ShutDown {
 
 		try {
 			
-			display.renderer.post(() -> currentProject.forEachNonShallowCopiedArtboard(Artboard::undoAllLines)).await();
+			Future<?> undoLines = display.renderer().post(() -> currentProject.forEachNonShallowCopiedArtboard(Artboard::undoAllLines));
+			
+			try {
+
+				undoLines.get();
+			
+			} catch (InterruptedException | ExecutionException e) {
+
+				//shouldnt happen
+				e.printStackTrace();
+				
+			}
 			
 //			new CTSPFile(currentProject, name).write();
 			new CTSP2File(currentProject , name).write();
 
-			display.renderer.post(() -> currentProject.forEachNonShallowCopiedArtboard(Artboard::showAllLines)).await();
+			display.renderer().post(() -> currentProject.forEachNonShallowCopiedArtboard(Artboard::showAllLines));
 			
 		} catch (FileNotFoundException e) {
 			
@@ -1543,7 +1666,7 @@ public final class Engine implements ShutDown {
 
 	public void startCreateNewScript() {
 		
-		NewScriptMenu newMenu = new NewScriptMenu(display.nuklear);
+		NewScriptMenu newMenu = new NewScriptMenu(display.nuklear());
 		THE_TEMPORAL.onTrue(newMenu::finished, () -> {
 			
 			ScriptType x = newMenu.type();
@@ -1575,7 +1698,7 @@ public final class Engine implements ShutDown {
 	 */
 	public void exit() {
 		
-		display.window.close();
+		display.window().close();
 		
 	}
 	
@@ -1585,15 +1708,15 @@ public final class Engine implements ShutDown {
 	public void toggleFullScreen() {
 		
 		isFullScreen = !isFullScreen;
-		if(isFullScreen) display.window.goBorderlessFullScreen();
-		else display.window.goNonFullScreen();
+		if(isFullScreen) display.window().goBorderlessFullScreen();
+		else display.window().goNonFullScreen(25 , 25 , 800 , 600);
 		
 	}
 
 	/**
 	 * Sets the realtime mode of the application to {@code mode}.
 	 * 
-	 * @param mode — {@code true} if the realtime mode is to be enabled
+	 * @param mode {@code true} if the realtime mode is to be enabled
 	 */
 	public void realtimeMode(boolean mode) {
 		
@@ -1657,9 +1780,9 @@ public final class Engine implements ShutDown {
 	 * 
 	 * @return The camera.
 	 */
-	public CSSSCamera camera() {
+	public SCOrthographicCamera camera() {
 		
-		return camera;
+		return display.camera();
 		
 	}
 	
@@ -1676,34 +1799,44 @@ public final class Engine implements ShutDown {
 	private void openGLStateInitialize() {
 
 		//initialization of rendering
-		display.renderer.post(() -> {
-
-			GPUMemoryViewer.initialize();
+		try {
 			
-			CSSSProject.initializeArtboardShaders();
+			display.renderer().post(() -> {
 
-			glClearColor(0.15f , 0.15f , 0.15f , 1.0f);
+				GPUMemoryViewer.initialize();
+				
+				CSSSProject.initializeArtboardShaders();
 
-			glEnable(GL_BLEND);
-			glBlendEquation(GL_FUNC_ADD);
-			glBlendFunc(GL_SRC_ALPHA , GL_ONE_MINUS_SRC_ALPHA);
+				glClearColor(0.15f , 0.15f , 0.15f , 1.0f);
 
-		}).await();
+				glEnable(GL_BLEND);
+				glBlendEquation(GL_FUNC_ADD);
+				glBlendFunc(GL_SRC_ALPHA , GL_ONE_MINUS_SRC_ALPHA);
+
+			}).get();
+			
+		} catch (InterruptedException | ExecutionException e) {
+
+			//shouldnt happen
+			e.printStackTrace();
+			overrideBeginShutDown("failed to set OpenGL state.", e);
+			
+		}
 
 	}
 	
 	private void setOnScroll() {
 
-		display.window.onScroll((xOffset , yOffset) -> {
+		display.window().onScroll((xOffset , yOffset) -> {
 			
-			if(!isCursorHoveringUI()) camera.zoom(yOffset < 0);
+			if(!isCursorHoveringUI()) camera().zoom(yOffset < 0);
 			else if (editor.isAnimationPanelShowing() && currentProject.currentAnimation() != null) { 
 				
 				if(editor.cursorHoveringAnimationFramePanel()) editor.animationPanel().zoom(yOffset < 0);
 								
 			} else if (editor.cursorHoveringPaletteUI()) editor.artboardPaletteUI().zoom(yOffset < 0);
 			
-		});
+		} , 100);
 		
 	}
 	
@@ -1711,18 +1844,18 @@ public final class Engine implements ShutDown {
 
 		//this sets the wasMousePressedOverUI boolean, which stops you from clicking on a UI element, holding down, and dragging onto an 
 		//artboard, causing you to color it when you probably didnt want to.
-		display.window.onMouseButtonInput((button , action , mods) -> {
+		display.window().onMouseButtonInput((button , action , mods) -> {
 			
 			if(button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && isCursorHoveringUI()) wasMousePressedOverUI = true;
 			else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) wasMousePressedOverUI = false;
 
-		});
+		} , 101);
 	
 	}
 	
 	private void setOnFileDrop() {
 		
-		display.window.onFileDrop((files) -> {
+		display.window().onFileDrop((files) -> {
 			
 			for(String x : files) {
 				
@@ -1751,17 +1884,17 @@ public final class Engine implements ShutDown {
 			
 			if(currentProject != null) importSelectedFiles();
 			
-		});
+		} , 102);
 		
 	}
 	
 	private void setOnIconify() {
 		
-		display.window.onIconify(isIconified -> {
+		display.window().onIconify(isIconified -> {
 			
 			if(isIconified) editor.animationPanel().hide();
 			
-		});
+		} , 103);
 		
 	}
 	
@@ -1769,18 +1902,10 @@ public final class Engine implements ShutDown {
 
 		//sets a callback to invoke for controls to determine whether they are pressed or not.
 		Control.checkPressedCallback((keyCode , isKeyboard) -> isKeyboard ? 
-			display.window.isKeyPressed(keyCode) : 
-			display.window.isMouseButtonPressed(keyCode)
+			display.window().isKeyPressed(keyCode) : 
+			display.window().isMouseButtonPressed(keyCode)
 		);
 
-	}
-	
-	private void initializeCamera() {
-
-		int[] windowSize = display.window.size();
-		camera = new CSSSCamera(windowSize[0] , windowSize[1]);		
-		display.window.onFramebufferResize(camera::resetProjection);
-		
 	}
 	
 	/**
@@ -1788,7 +1913,7 @@ public final class Engine implements ShutDown {
 	 */
 	@RenderThreadOnly public void windowSwapBuffers() {
 		
-		display.window.swapBuffers();
+		display.window().swapBuffers();
 		
 	}
 	
@@ -1797,7 +1922,7 @@ public final class Engine implements ShutDown {
 	 */
 	@RenderThreadOnly public void resetViewport() {
 		
-		int[] framebufferSize = display.window.framebufferSize();
+		int[] framebufferSize = display.window().framebufferSize();
 		glViewport(0 , 0 , framebufferSize[0] , framebufferSize[1]);
 		float r = .15f , g = .15f , b = .15f , a = 1.0f;
 		if(currentTheme != null) { 
@@ -1823,7 +1948,7 @@ public final class Engine implements ShutDown {
 	 */
 	public boolean currentlyRendering() {
 		
-		return !renderScene.isFinished();
+		return !renderScene.isDone();
 		
 	}
 	
@@ -1834,7 +1959,7 @@ public final class Engine implements ShutDown {
 	 */
 	public int[] windowSize() {
 		
-		return display.window.size();
+		return display.window().size();
 		
 	}
 	
@@ -1899,7 +2024,7 @@ public final class Engine implements ShutDown {
 			File asFile = new File(x);
 			String name = asFile.getName();
 			ImageImporter importer = new ImageImporter(x , currentProject.channelsPerPixel());
-			display.renderer.post(() -> {
+			display.renderer().post(() -> {
 				
 				Artboard newArtboard = currentProject.createArtboard(name, importer.width(), importer.height() , false);
 				importer.copyToArtboard(newArtboard);
@@ -1910,20 +2035,20 @@ public final class Engine implements ShutDown {
 		});
 		
 		//will happen after all the render events are posted
-		display.renderer.post(() -> ImageImporter.clearRegisteredImportFilePaths());
+		display.renderer().post(() -> ImageImporter.clearRegisteredImportFilePaths());
 		
 	}
 	
 	/**
 	 * Creates and returns a new notification box with the given strings.
 	 * 
-	 * @param title — title for the resulting notification box
-	 * @param message — message the resulting notification box will contain
+	 * @param title title for the resulting notification box
+	 * @param message message the resulting notification box will contain
 	 * @return Newly created notification box.
 	 */
 	public NotificationBox newNotificationBox(String title , String message) {
 		
-		return new NotificationBox(title , message , display.nuklear);
+		return new NotificationBox(title , message , display.nuklear());
 		
 	}
 	
@@ -1935,7 +2060,7 @@ public final class Engine implements ShutDown {
 		new NotificationBox(
 			"Accept Workshop Legal Agreement" , 
 			"You need to accept the workshop legal agreement to upload to the workshop" ,
-			display.nuklear ,
+			display.nuklear() ,
 			() -> steam.friendsAPI().activateGameOverlayToWebPage(
 				"https://steamcommunity.com/sharedfiles/workshoplegalagreement" , 
 				OverlayToWebPageMode.Default)			
@@ -1957,12 +2082,12 @@ public final class Engine implements ShutDown {
 	/**
 	 * Sets the sizes of the window.
 	 * 
-	 * @param width — new width of the window
-	 * @param height — new height of the window
+	 * @param width new width of the window
+	 * @param height new height of the window
 	 */
 	public void setWindowSize(int width , int height) {
 		
-		display.window.size(width, height);
+		display.window().size(width, height);
 		
 	}
 	
@@ -1973,19 +2098,19 @@ public final class Engine implements ShutDown {
 	 */
 	public int[] getWindowPosition() {
 		
-		return display.window.position();
+		return display.window().position();
 		
 	}
 	
 	/**
 	 * Moves the window to the given x and y coordinates in virtual monitor space.
 	 * 
-	 * @param x — x coordiante for the top left corner of the monitor
-	 * @param y — y coordiante for the top left corner of the monitor
+	 * @param x x coordiante for the top left corner of the monitor
+	 * @param y y coordiante for the top left corner of the monitor
 	 */
 	public void setWindowPosition(int x, int y) {
 		
-		display.window.moveTo(x, y);
+		display.window().moveTo(x, y);
 		
 	}
 	
@@ -2009,7 +2134,7 @@ public final class Engine implements ShutDown {
 		
 		float[] cameraPosition = new float[2];
 		Vector3f translation = new Vector3f();
-		camera.viewTranslation().getTranslation(translation);
+		display.camera().viewTranslation().getTranslation(translation);
 		cameraPosition[0] = translation.x;
 		cameraPosition[1] = translation.y;
 		return cameraPosition;
@@ -2059,8 +2184,8 @@ public final class Engine implements ShutDown {
 			String filepath = file.getRealPath();
 			THE_THREADS.submit(() -> {
 				
-				TTF font = new TTF(14 , filepath);				
-				NanoVGTypeface nanoFont = nanoVG.createFont(font);
+				SCTTF font = new SCTTF(filepath);		
+				SCNanoVGTypeface nanoFont = nanoVG.createFont(font , 14);
 				loadedFonts.add(new NamedNanoVGTypeface(file.name() , nanoFont));
 				font.shutDown();
 				
@@ -2087,28 +2212,44 @@ public final class Engine implements ShutDown {
 		defaultStyle.free();
 		if(currentTheme != null) currentTheme.shutDown();
 		
-		display.window.detachContext();
+		SCGLFWWindow<Integer> window = display.window();
+		SCOpenGLRenderer renderer = display.renderer();
+		
+		window.detachContext();
 		sysDebugln("Detached render context.");
-		display.window.attachContext();
+		window.attachContext();
 		sysDebugln("Attached render context.");
 		
 		if(CSSSSelectingBrush.render != null) debugLoggedShutDown(() -> CSSSSelectingBrush.render.shutDown(), "Selecting Brush Render");
 		
-		if(currentProject != null) { 
-			
-			display.renderer.post(() -> debugLoggedShutDown(currentProject::shutDown, "Project")).await();
-			display.renderer.persist(false);
-			
-		} else display.renderer.persist(false);
+		if(currentProject != null) renderer.post(() -> debugLoggedShutDown(currentProject::shutDown, "Project"));
+		
+//		if(currentProject != null) {
+//			
+//			try {
+//			
+//				renderer.post(() -> debugLoggedShutDown(currentProject::shutDown, "Project")).get();
+//			
+//			} catch (InterruptedException | ExecutionException e) {
+//
+//				//shouldn't happen
+//				e.printStackTrace();
+//				
+//			}
+//			
+//			renderer.shutDown();
+//			
+//		} else renderer.shutDown();
 		
 		if(!display.isFreed()) { 
 
-			display.window.detachContext();
+			window.detachContext();
 			sysDebugln("Detached context.");
 			debugLoggedShutDown(display::shutDown, "Display");
 						
 		}
 		
+		currentFont.shutDown();		
 		if(isSteamInitialized()) steam.shutDown();
 				
 	}
@@ -2119,10 +2260,10 @@ public final class Engine implements ShutDown {
 		
 	}
 	
-	private void debugLoggedShutDown(Lambda code , String shutDownName) {
+	private void debugLoggedShutDown(Runnable code , String shutDownName) {
 		
 		sysDebugln("Shutting down " + shutDownName + "...");
-		code.invoke();
+		code.run();
 		sysDebugln(shutDownName + " shut down.");
 		
 	}

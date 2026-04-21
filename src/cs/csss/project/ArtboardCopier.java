@@ -1,7 +1,5 @@
 package cs.csss.project;
 
-import static cs.core.utils.CSUtils.specify;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -42,7 +40,7 @@ class ArtboardCopier {
 	/**
 	 * Returns an {@code Optional} containing the copy entry containing {@code possibleSource} if the source exists.
 	 * 
-	 * @param possibleSource — an artboard that may be a source or not
+	 * @param possibleSource ï¿½ an artboard that may be a source or not
 	 * @return Optional containing the copy entry attached to this source, if it exists, otherwise, the optional is empty.
 	 */
 	private Optional<CopyEntry> hasSource(Artboard possibleSource) {
@@ -60,7 +58,7 @@ class ArtboardCopier {
 	 * 	texture with another artboard. Therefore, any modifications to {@code source} will be present on the result, and vise versa.
 	 * </p>
 	 *  
-	 * @param source — source artboard for copy
+	 * @param source ï¿½ source artboard for copy
 	 * @return Resulting deep copy.
 	 */
 	Artboard copy(Artboard source) {
@@ -82,7 +80,7 @@ class ArtboardCopier {
 	/**
 	 * Returns whether {@code isCopy} is a copy of some artboard.
 	 * 
-	 * @param isCopy — an artboard whose status as a shallow copy is being queried
+	 * @param isCopy ï¿½ an artboard whose status as a shallow copy is being queried
 	 * @return {@code true} if {@code isCopy} is a shallow copy.
 	 */
 	boolean isCopy(Artboard isCopy) {
@@ -95,7 +93,7 @@ class ArtboardCopier {
 	/**
 	 * Removes a shallow copy from the storage of shallow copies. If this is the last shallow copy available, the underlying copy entry is also removed
 	 * 
-	 * @param copy — artboard to remove
+	 * @param copy ï¿½ artboard to remove
 	 * @throws NoSuchElementException if {@code copy} is not a shallow copy of any artboard
 	 */	
 	void removeCopy(Artboard copy) {
@@ -110,7 +108,7 @@ class ArtboardCopier {
 	/**
 	 * Given a shallow copied artboard, this method returns its source.
 	 * 
-	 * @param shallowCopy — a shallow copy artboard
+	 * @param shallowCopy ï¿½ a shallow copy artboard
 	 * @return The source of the shallow copy.
 	 */
 	Artboard getSourceOf(Artboard shallowCopy) {
@@ -123,7 +121,7 @@ class ArtboardCopier {
 	/**
 	 * Returns whether the given artboard is a source or not.
 	 * 
-	 * @param possibleSource — an artboard whose status as a source is being queried
+	 * @param possibleSource ï¿½ an artboard whose status as a source is being queried
 	 * @return {@code true} if {@code possibleSource} is a source.
 	 */
 	boolean isSource(Artboard possibleSource) {
@@ -135,8 +133,8 @@ class ArtboardCopier {
 	/**
 	 * Given some source, {@code callback} is invoked on each copy of that source.
 	 * 
-	 * @param source — a source artboard
-	 * @param callback — a function to invoke on each copy
+	 * @param source ï¿½ a source artboard
+	 * @param callback ï¿½ a function to invoke on each copy
 	 */
 	void forEachCopyOf(Artboard source , Consumer<Artboard> callback) {
 		
@@ -221,7 +219,7 @@ class ArtboardCopier {
 		/**
 		 * Adds {@code artboard} to this entry
 		 * 
-		 * @param artboard — a copied artboard
+		 * @param artboard ï¿½ a copied artboard
 		 */
 		void add(Artboard artboard) {
 			
@@ -232,11 +230,11 @@ class ArtboardCopier {
 		/**
 		 * Removes {@code artboard} from this entry
 		 * 
-		 * @param artboard — a copied artboard
+		 * @param artboard a copied artboard
 		 */
 		void remove(Artboard artboard) {
 			
-			specify(copies.remove(artboard) , "Artboard not found in this list of copies.");
+			assert copies.remove(artboard) : "Artboard not found in this list of copies.";
 			
 		}
 		

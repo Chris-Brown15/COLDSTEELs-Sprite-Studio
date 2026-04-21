@@ -12,7 +12,7 @@ public abstract class Position {
 	/**
 	 * Creates a position object from the given {@code positions}.
 	 * 
-	 * @param positions — position array
+	 * @param positions position array
 	 */
 	public Position(float[] positions) {
 
@@ -23,24 +23,24 @@ public abstract class Position {
 	/**
 	 * Moves this position by {@code x} along the x axis and {@code y} along the y axis.
 	 * 
-	 * @param x — amount to move horizontally
-	 * @param y — amount to move vertically
+	 * @param x amount to move horizontally
+	 * @param y amount to move vertically
 	 */
 	public abstract void translate(int x , int y);
 
 	/**
 	 * Moves this position by {@code x} along the x axis and {@code y} along the y axis.
 	 * 
-	 * @param x — amount to move horizontally
-	 * @param y — amount to move vertically
+	 * @param x amount to move horizontally
+	 * @param y amount to move vertically
 	 */
 	public abstract void translate(float x , float y);
 
 	/**
 	 * Updates the positions of this {@code Position} object. Should be called when other translations occur
 	 * 
-	 * @param x — x translation
-	 * @param y — y translation
+	 * @param x x translation
+	 * @param y y translation
 	 */
 	protected final void updatePositions(float x , float y) {
 	
@@ -58,8 +58,8 @@ public abstract class Position {
 	/**
 	 * Moves this object to the given coordinates.
 	 * 
-	 * @param xPosition — x world coordinate to move to
-	 * @param yPosition — y world coordinate to move to
+	 * @param xPosition x world coordinate to move to
+	 * @param yPosition y world coordinate to move to
 	 */
 	public void moveTo(float xPosition , float yPosition) {
 	
@@ -70,8 +70,8 @@ public abstract class Position {
 	/**
 	 * Moves this object to the given coordinates.
 	 * 
-	 * @param xPosition — x world coordinate to move to
-	 * @param yPosition — y world coordinate to move to
+	 * @param xPosition x world coordinate to move to
+	 * @param yPosition y world coordinate to move to
 	 */
 	public void moveTo(int xPosition , int yPosition) {
 	

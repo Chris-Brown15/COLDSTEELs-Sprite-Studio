@@ -1,13 +1,12 @@
 package cs.csss.ui.menus;
 
-import static cs.core.ui.CSUIConstants.*;
+import static sc.core.ui.SCUIConstants.*;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
-import cs.core.utils.Lambda;
 import cs.csss.project.AnimationSwapType;
-import cs.core.ui.CSNuklear.CSUserInterface;
+import sc.core.ui.SCElements.SCUI.SCDynamicRow;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCRadio;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
 
 /**
  * UI menu for setting the swap type of an animation frame.
@@ -15,21 +14,21 @@ import cs.core.ui.CSNuklear.CSUserInterface;
 public class SetAnimationFrameSwapTypeMenu extends Dialogue {
 
 	private AnimationSwapType swapType;
-	private final CSUserInterface ui;
+	private final SCUserInterface ui;
 	
 	/**
 	 * Creates a set swap type for animation frame menu. 
 	 * 
-	 * @param nuklear — the Nuklear factory
-	 * @param frame — index of an animation frame
+	 * @param nuklear the Nuklear factory
+	 * @param frame index of an animation frame
 	 */
-	public SetAnimationFrameSwapTypeMenu(CSNuklear nuklear , int frame) {
+	public SetAnimationFrameSwapTypeMenu(SCNuklear nuklear , int frame) {
 
-		ui = nuklear.new CSUserInterface("Set Animation Frame Swap Type" , .5f - (.22f / 2) , .5f - (.22f / 2) , .22f , .2f );
+		ui = new SCUserInterface(nuklear , "Set Animation Frame Swap Type" , .5f - (.22f / 2) , .5f - (.22f / 2) , .22f , .2f );
 
-		ui.options = UI_TITLED|UI_BORDERED;
+		ui.flags = UI_TITLED|UI_BORDERED;
 		
-		final Lambda close = () -> {
+		Runnable close = () -> {
 			
 			nuklear.removeUserInterface(ui);
 			ui.shutDown();
@@ -37,32 +36,32 @@ public class SetAnimationFrameSwapTypeMenu extends Dialogue {
 			
 		};
 		
-		ui.new CSDynamicRow(40).new CSText("Select Animation Frame " + frame + "'s animation swap type");
+		ui.new SCDynamicRow(40).new SCText("Select Animation Frame " + frame + "'s animation swap type");
 				
 		AnimationSwapType[] types = AnimationSwapType.values();
 		
-		CSRadio[] radios = new CSRadio[types.length];
+		SCRadio[] radios = new SCRadio[types.length];
 		for(int i = 0 ; i < types.length ; i++) {
 			
 			int j = i;
-			radios[i] = ui.new CSDynamicRow().new CSRadio(types[i].formattedName() , false , () -> swapType = types[j]);
+			radios[i] = ui.new SCDynamicRow().new SCRadio(types[i].formattedName() , false , () -> swapType = types[j]);
 					
 		}
 		
-		CSRadio.groupAll(radios);
+		SCRadio.groupAll(radios);
 		
-		CSDynamicRow finishRow = ui.new CSDynamicRow();
-		finishRow.new CSButton("Finish" , () -> {
+		SCDynamicRow finishRow = ui.new SCDynamicRow();
+		finishRow.new SCButton("Finish" , () -> {
 		
 			if(swapType == null) return;
-			close.invoke();
+			close.run();
 			
 		});
 		
-		finishRow.new CSButton("Cancel" , () -> {
+		finishRow.new SCButton("Cancel" , () -> {
 			
 			swapType = null;
-			close.invoke();
+			close.run();
 			
 		});
 		

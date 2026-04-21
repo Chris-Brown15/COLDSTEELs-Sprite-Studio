@@ -23,12 +23,12 @@ public class LayerPixel implements TexturePixel , LookupPixel {
 	/**
 	 * Creates a new layer pixel from the given indices.
 	 * 
-	 * @param textureX — x index into a texture/layer this pixel belongs to 
-	 * @param textureY — y index into a texture/layer this pixel belongs to 
-	 * @param lookupX — x index into a palette to lookup for selecting the color for this pixel
-	 * @param lookupY — y index into a palette to lookup for selecting the color for this pixel
+	 * @param textureX x index into a texture/layer this pixel belongs to 
+	 * @param textureY y index into a texture/layer this pixel belongs to 
+	 * @param lookupX x index into a palette to lookup for selecting the color for this pixel
+	 * @param lookupY y index into a palette to lookup for selecting the color for this pixel
 	 */
-	public LayerPixel(final int textureX , final int textureY , final byte lookupX , final byte lookupY) {
+	public LayerPixel(int textureX , int textureY , byte lookupX , byte lookupY) {
 		
 		this(textureX , textureY , (short) Byte.toUnsignedInt(lookupX) , (short) Byte.toUnsignedInt(lookupY));
 		
@@ -37,11 +37,11 @@ public class LayerPixel implements TexturePixel , LookupPixel {
 	/**
 	 * Creates a new layer pixel from the given texture indices and the existing lookup pixel.
 	 * 
-	 * @param textureX — x index into a texture/layer this pixel belongs to 
-	 * @param textureY — y index into a texture/layer this pixel belongs to 
-	 * @param source — an existing lookup pixel whose values are assigned to this one 
+	 * @param textureX x index into a texture/layer this pixel belongs to 
+	 * @param textureY y index into a texture/layer this pixel belongs to 
+	 * @param source an existing lookup pixel whose values are assigned to this one 
 	 */
-	public LayerPixel(final int textureX , final int textureY , LookupPixel source) {
+	public LayerPixel(int textureX , int textureY , LookupPixel source) {
 		
 		this(textureX , textureY , source.unsignedLookupX() , source.unsignedLookupY());
 		
@@ -50,12 +50,12 @@ public class LayerPixel implements TexturePixel , LookupPixel {
 	/**
 	 * Creates a new layer pixel from the given indices.
 	 * 
-	 * @param textureX — x index into a texture/layer this pixel belongs to 
-	 * @param textureY — y index into a texture/layer this pixel belongs to 
-	 * @param lookupX — x index into a palette to lookup for selecting the color for this pixel
-	 * @param lookupY — y index into a palette to lookup for selecting the color for this pixel
+	 * @param textureX x index into a texture/layer this pixel belongs to 
+	 * @param textureY y index into a texture/layer this pixel belongs to 
+	 * @param lookupX x index into a palette to lookup for selecting the color for this pixel
+	 * @param lookupY y index into a palette to lookup for selecting the color for this pixel
 	 */
-	public LayerPixel(final int textureX , final int textureY , final short lookupX , final short lookupY) {
+	public LayerPixel(int textureX , int textureY , short lookupX , short lookupY) {
 
 		this.textureX = textureX;
 		this.textureY = textureY;

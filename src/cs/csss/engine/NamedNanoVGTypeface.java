@@ -1,8 +1,8 @@
 package cs.csss.engine;
 
-import cs.coreext.nanovg.NanoVGTypeface;
+import sc.core.graphics.nanovg.SCNanoVGTypeface;
 
 /**
  * Used to store a name along with a {@code NanoVGTypeface}.
  */
-public record NamedNanoVGTypeface(String name , NanoVGTypeface typeface) {}
+public record NamedNanoVGTypeface(String name , SCNanoVGTypeface typeface) {}

@@ -1,18 +1,18 @@
 package cs.csss.ui.elements;
 
-import static cs.core.ui.CSUIConstants.RGB;
-import static cs.core.ui.CSUIConstants.RGBA;
+import static org.lwjgl.nuklear.Nuklear.NK_RGB;
+import static org.lwjgl.nuklear.Nuklear.NK_RGBA;
 import static org.lwjgl.nuklear.Nuklear.nk_color_pick;
 
 import org.lwjgl.nuklear.NkContext;
 
-import cs.core.ui.CSNuklear.CSUI.CSLayout;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSColorPicker;
+import sc.core.ui.SCElements.SCUI.SCLayout;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCColorPicker;
 
 /**
  * Extension of {@link CSColorPicker} in which the internal color format of the picker can be selected.
  */
-public class PublicFormatColorPicker extends CSColorPicker {
+public class PublicFormatColorPicker extends SCColorPicker {
 
 	/**
 	 * Creates a new color picker.
@@ -20,7 +20,7 @@ public class PublicFormatColorPicker extends CSColorPicker {
 	 * @param csLayout owning layout
 	 * @param format format of this picker, one of {@link cs.core.ui.CSUIConstants#RGB}, or {@link cs.core.ui.CSUIConstants#RGBA} 
 	 */
-	public PublicFormatColorPicker(NkContext context , CSLayout csLayout, int format) {
+	public PublicFormatColorPicker(NkContext context , SCLayout csLayout, int format) {
 
 		csLayout.super(format);
 		checkFormat(format);
@@ -37,26 +37,14 @@ public class PublicFormatColorPicker extends CSColorPicker {
 		return format;
 		
 	}
-
-	/**
-	 * Sets the format of this picker.
-	 * 
-	 * @param format new format of this picker, one of {@link cs.core.ui.CSUIConstants#RGB}, or {@link cs.core.ui.CSUIConstants#RGBA}
-	 * @throws IllegalArgumentException if {@code format} is invalid.
-	 */
-	public void format(int format) {
-		
-		this.format = checkFormat(format);
-		
-	}
 	
 	private int checkFormat(int format) {
 
-		if(format != RGBA && format != RGB) throw new IllegalArgumentException(String.format(
+		if(format != NK_RGBA && format != NK_RGB) throw new IllegalArgumentException(String.format(
 			"%d is invalid as a format, must be one of RGBA (%d) or RGB (%d)." , 
 			format ,
-			RGBA ,
-			RGB
+			NK_RGBA ,
+			NK_RGB
 		));			
 			
 		return format;

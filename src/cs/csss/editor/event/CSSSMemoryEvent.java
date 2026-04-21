@@ -3,32 +3,32 @@
  */
 package cs.csss.editor.event;
 
-import cs.core.utils.ShutDown;
+import sc.core.SCShutDown;
 
 /**
- * Extension of {@link CSSSEvent} for events that own native memory which must be shut down at some point. For some events, the memory must be shut down
- * when the event is removed from the editor's redo stack. In other cases, the memory should be freed when the object can no longer be undone because too
- * many more events have been pushed onto the undo stack. But in most cases, the memory should be shut down either way. Therefore, when to shut down is 
- * specified by one or both of {@link #SHUTDOWN_ON_REMOVE_FROM_REDO} and {@link #SHUTDOWN_ON_REMOVE_FROM_UNDO}. As well, the 
- * {@link #onStackClear(boolean)} method is implemented for when the event stacks are cleared in the editor. If this happens, this event will not be 
- * removed from a stack, but will no longer be available no matter what.
+ * Extension of {@link CSSSEvent} for events that own native memory which must be shut down at some point. For some events, the memory 
+ * must be shut down when the event is removed from the editor's redo stack. In other cases, the memory should be freed when the object 
+ * can no longer be undone because too many more events have been pushed onto the undo stack. But in most cases, the memory should be 
+ * shut down either way. Therefore, when to shut down is specified by one or both of {@link #SHUTDOWN_ON_REMOVE_FROM_REDO} and 
+ * {@link #SHUTDOWN_ON_REMOVE_FROM_UNDO}. As well, the {@link #onStackClear(boolean)} method is implemented for when the event stacks are
+ * cleared in the editor. If this happens, this event will not be removed from a stack, but will no longer be available no matter what.
  */
-public abstract class CSSSMemoryEvent extends CSSSEvent implements ShutDown {
+public abstract class CSSSMemoryEvent extends CSSSEvent implements SCShutDown {
 
 	/**
-	 * Notates that this event should be shut down when it is removed from the undo stack. Use this value if the event should be shut down once it's 
-	 * locked in forever.
+	 * Notates that this event should be shut down when it is removed from the undo stack. Use this value if the event should be shut 
+	 * down once it's locked in forever.
 	 */
 	public static final byte SHUTDOWN_ON_REMOVE_FROM_UNDO = 0b001;
 	
 	/**
-	 * Notates that this event should be shut down when it is removed from the redo stack. Use this value if the event should be shut down once it's lost
-	 * forever.
+	 * Notates that this event should be shut down when it is removed from the redo stack. Use this value if the event should be shut 
+	 * down once it's lost forever.
 	 */
 	public static final byte SHUTDOWN_ON_REMOVE_FROM_REDO = 0b010;
 	
 	/**
-	 * Checks a value for being a valid shutdown case identifier. It will be valid if it is one of {@link #SHUTDOWN_ON_REMOVE_FROM_REDO}, 
+	 * Checks a value for being a valid shutdown case identifier. It will be valid if it is one of {@link #SHUTDOWN_ON_REMOVE_FROM_REDO},
 	 * {@link #SHUTDOWN_ON_REMOVE_FROM_UNDO}, or {@code SHUTDOWN_ON_REMOVE_FROM_REDO|SHUTDOWN_ON_REMOVE_FROM_UNDO}.
 	 * 
 	 * @param value value to check
@@ -102,11 +102,11 @@ public abstract class CSSSMemoryEvent extends CSSSEvent implements ShutDown {
 	}
 	
 	/**
-	 * This method defines what to do when the stack owning the event is cleared. This method should call {@link #shutDown()} if needed based on the state
-	 * of {@code isUndoStack}.
+	 * This method defines what to do when the stack owning the event is cleared. This method should call {@link #shutDown()} if needed 
+	 * based on the state of {@code isUndoStack}.
 	 * 
-	 * @param isUndoStack whether this event is currently in the undo stack or redo stack; will be true if this event is in the undo stack, false 
-	 * 					  otherwise
+	 * @param isUndoStack whether this event is currently in the undo stack or redo stack; will be true if this event is in the undo 
+	 * 					  stack, false otherwise
 	 */
 	public void onStackClear(boolean isUndoStack) {
 		

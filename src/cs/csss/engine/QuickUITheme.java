@@ -4,14 +4,14 @@ import static org.lwjgl.opengl.GL30C.glClearColor;
 
 import org.lwjgl.nuklear.NkColor;
 import org.lwjgl.nuklear.NkContext;
-import cs.core.utils.ShutDown;
 import cs.csss.misc.utils.MiscUtils;
+import sc.core.SCShutDown;
 
 import static org.lwjgl.nuklear.Nuklear.*;
 
 import java.util.Objects;
 
-class QuickUITheme implements ShutDown {
+class QuickUITheme implements SCShutDown {
 
 	private NkContext context;
 	private NkColor.Buffer colors;

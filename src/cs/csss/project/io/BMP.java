@@ -6,7 +6,6 @@ package cs.csss.project.io;
 import static org.lwjgl.stb.STBImage.stbi_load;
 import static org.lwjgl.stb.STBImage.stbi_set_flip_vertically_on_load;
 import static org.lwjgl.stb.STBImage.stbi_image_free;
-import static cs.core.utils.CSUtils.specify;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
@@ -15,12 +14,12 @@ import java.nio.file.Paths;
 
 import org.lwjgl.system.MemoryStack;
 
-import cs.core.utils.files.CSGraphic;
+import sc.core.binary.SCGraphic;
 
 /**
  * Class containing image data from a bitmap file.
  */
-public class BMP implements CSGraphic {
+public class BMP extends SCGraphic {
 
 	static {
 		
@@ -35,13 +34,13 @@ public class BMP implements CSGraphic {
 	/**
 	 * Loads a bitmap file from disk.
 	 * 
-	 * @param filepath — absolute filepath to bitmap file
-	 * @param channels — the desired number of channels for pixels of the image
+	 * @param filepath ï¿½ absolute filepath to bitmap file
+	 * @param channels ï¿½ the desired number of channels for pixels of the image
 	 */
 	public BMP(String filepath , int channels) {
 		
-		specify(Files.exists(Paths.get(filepath)) , filepath + " is not a valid file path.");
-		specify(filepath.endsWith(".bmp") , filepath + " is not a bitmap file.");
+		assert Files.exists(Paths.get(filepath)) : filepath + " is not a valid file path.";
+		assert filepath.endsWith(".bmp") : filepath + " is not a bitmap file.";
 		
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			
@@ -50,7 +49,7 @@ public class BMP implements CSGraphic {
 			IntBuffer bytes = stack.callocInt(1);
 			image = stbi_load(filepath , x , y , bytes , channels);
 			
-			specify(image , "failed to load image data from bitmap file.");
+			assert image != null: "failed to load image data from bitmap file.";
 						
 			this.width = x.get();
 			this.height = y.get();
@@ -63,7 +62,7 @@ public class BMP implements CSGraphic {
 	/**
 	 * Loads a bitmap image from disk with number of channels determined by the file.
 	 * 
-	 * @param filepath — absolute filepath to a bitmap file
+	 * @param filepath ï¿½ absolute filepath to a bitmap file
 	 */
 	public BMP(String filepath) {
 		
@@ -100,27 +99,27 @@ public class BMP implements CSGraphic {
 		
 	}
 
-	@Override public int bitsPerPixel() {
-
-		return bytesPerPixel << 3;
-		
-	}
-
-	@Override public int bitsPerChannel() {
-
-		return 8;
-		
-	}
-
 	@Override public int channels() {
 
 		return bytesPerPixel;
 		
 	}
 
-	@Override public ByteBuffer imageData() {
+	@Override public ByteBuffer data() {
 
 		return image;
+		
+	}
+
+	@Override public int bytesPerPixel() {
+
+		return bytesPerPixel;
+
+	}
+
+	@Override public int bytesPerChannel() {
+
+		return 1;
 		
 	}
 

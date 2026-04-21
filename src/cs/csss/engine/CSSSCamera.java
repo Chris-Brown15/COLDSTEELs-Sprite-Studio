@@ -1,20 +1,20 @@
 package cs.csss.engine;
 
-import cs.core.graphics.CSOrthographicCamera;
+import sc.core.graphics.SCOrthographicCamera;
 
 /**
  * Camera decorator allowing the user to get the zoom level.
  * 
  */
-public class CSSSCamera extends CSOrthographicCamera {
+public class CSSSCamera extends SCOrthographicCamera {
 
 	/**
 	 * Creates a camera that is also initialized by being moved to the given coordinates. 
 	 * 
-	 * @param viewWidth — width of the view
-	 * @param viewHeight — height of the view
-	 * @param worldXMid — x midpoint of the region
-	 * @param worldYMid — y midpoint of the region
+	 * @param viewWidth width of the view
+	 * @param viewHeight height of the view
+	 * @param worldXMid x midpoint of the region
+	 * @param worldYMid y midpoint of the region
 	 * @return Newly created camera.
 	 */
 	public static CSSSCamera centeredCamera(int viewWidth , int viewHeight , float worldXMid , float worldYMid) {
@@ -28,8 +28,8 @@ public class CSSSCamera extends CSOrthographicCamera {
 	/**
 	 * Creates a camera.
 	 * 
-	 * @param viewWidth — width of the view
-	 * @param viewHeight — height of the view
+	 * @param viewWidth width of the view
+	 * @param viewHeight height of the view
 	 */
 	public CSSSCamera(int windowWidth, int windowHeight) {
 		
@@ -40,11 +40,11 @@ public class CSSSCamera extends CSOrthographicCamera {
 	/**
 	 * Creates a camera.
 	 * 
-	 * @param viewWidth — width of the view
-	 * @param viewHeight — height of the view
-	 * @param nearPlane — near viewing pane 
-	 * @param farPlane — far viewing pane 
-	 * @param zoomFactor — how much the camera zooms in or out somewhere between {@code 0 < zoomFactor < 1}
+	 * @param viewWidth width of the view
+	 * @param viewHeight height of the view
+	 * @param nearPlane near viewing pane 
+	 * @param farPlane far viewing pane 
+	 * @param zoomFactor how much the camera zooms in or out somewhere between {@code 0 < zoomFactor < 1}
 	 */
 	public CSSSCamera(int windowWidth, int windowHeight, int nearPlane, int farPlane, float zoomFactor) {
 		
@@ -66,8 +66,8 @@ public class CSSSCamera extends CSOrthographicCamera {
 	/**
 	 * translates the camera by {@code (x , y)}
 	 * 
-	 * @param x — x translation
-	 * @param y — y translation
+	 * @param x x translation
+	 * @param y y translation
 	 */
 	public void translate(float x , float y) {
 		

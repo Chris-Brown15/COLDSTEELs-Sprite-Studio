@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
 
-import cs.core.utils.CSRefInt;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.project.Animation;
 import cs.csss.project.AnimationFrame;
@@ -17,6 +16,7 @@ import cs.csss.project.AnimationSwapType;
 import cs.csss.project.Artboard;
 import cs.csss.project.CSSSProject;
 import cs.csss.utils.FloatReference;
+import sc.core.utils.SCIntReferencer;
 
 /**
  * Event for removing artboards from the program. Only nonshallow copied artboards can be removed. When removed, any shallow copies are removed and 
@@ -137,7 +137,7 @@ public class RemoveArtboardEvent extends CSSSMemoryEvent {
 		Animation animation = backup.animation;
 		int index = backup.frameIndex;
 		AnimationSwapType swapType = backup.swapType;
-		CSRefInt updatesContainer = backup.updatesContainer;
+		SCIntReferencer updatesContainer = backup.updatesContainer;
 		FloatReference timeContainer = backup.timeContainer;
 		
 		if(addLoose) project.addLooseArtboard(artboardIndex, artboard);
@@ -158,7 +158,7 @@ public class RemoveArtboardEvent extends CSSSMemoryEvent {
 		Animation animation , 
 		int frameIndex , 
 		AnimationSwapType swapType , 
-		CSRefInt updatesContainer , 
+		SCIntReferencer updatesContainer , 
 		FloatReference timeContainer
 	) {}
 

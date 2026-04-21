@@ -1,8 +1,19 @@
+/**
+ * Copyright 2025, All Rights Reserved.
+ * ————————————————————————————————————
+ * This file and any accompanying files
+ * belong to STEEL Softworks, LLC. Do 
+ * not distribute these files without 
+ * permission from Chris Brown, owner 
+ * of STEEL Softworks, at 
+ * chris@steelsoftworks.net
+ * ————————————————————————————————————
+ */
 package cs.csss.editor;
 
 import static cs.csss.utils.CollisionUtils.between;
 
-import cs.coreext.nanovg.NanoVGFrame;
+import sc.core.graphics.nanovg.SCNanoVGFrame;
 
 /**
  * NanoVG Bounder drawn on the active shape in the editor. This bounder surrounds the active shape, and has clickable boxes for dragging the active 
@@ -61,7 +72,7 @@ public class ActiveItemBounder {
 	 * 
 	 * @param frame the frame to render with
 	 */
-	public void render(NanoVGFrame frame) {
+	public void render(SCNanoVGFrame frame) {
 		
 		frame
 			.newPath()
@@ -81,7 +92,7 @@ public class ActiveItemBounder {
 		
 	}
 
-	private void renderHorizontalSideMover(NanoVGFrame frame , boolean left) {
+	private void renderHorizontalSideMover(SCNanoVGFrame frame , boolean left) {
 		
 		int x = Math.round(left ? lx - 1 : rx);
 		int y = yMid();
@@ -90,7 +101,7 @@ public class ActiveItemBounder {
 		
 	}
 
-	private void renderVerticalSideMover(NanoVGFrame frame , boolean bottom) {
+	private void renderVerticalSideMover(SCNanoVGFrame frame , boolean bottom) {
 		
 		int x = xMid();
 		int y = Math.round(bottom ? by - 1 : ty);
@@ -99,7 +110,7 @@ public class ActiveItemBounder {
 				
 	}
 
-	private void renderBox(NanoVGFrame frame , float lx , float by , int color , float thickness) {
+	private void renderBox(SCNanoVGFrame frame , float lx , float by , int color , float thickness) {
 
 		frame
 			.newPath()
@@ -112,7 +123,7 @@ public class ActiveItemBounder {
 			
 	}
 	
-	private NanoVGFrame box(NanoVGFrame frame , float lx , float by , float rx , float ty) {
+	private SCNanoVGFrame box(SCNanoVGFrame frame , float lx , float by , float rx , float ty) {
 		
 		return frame.moveTo(lx , by).lineTo(lx , ty).lineTo(rx , ty).lineTo(rx , by).lineTo(lx , by);
 		

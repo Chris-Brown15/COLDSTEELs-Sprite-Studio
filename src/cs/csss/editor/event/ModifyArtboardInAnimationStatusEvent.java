@@ -1,7 +1,5 @@
 package cs.csss.editor.event;
 
-import static cs.core.utils.CSUtils.specify;
-
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.project.Artboard;
 import cs.csss.project.CSSSProject;
@@ -20,8 +18,8 @@ import cs.csss.project.CSSSProject;
 	/**
 	 * Creates a modify artboard in animation status event.
 	 * 
-	 * @param project — the current project
-	 * @param source — an artboard whose status is to change
+	 * @param project the current project
+	 * @param source an artboard whose status is to change
 	 */
 	public ModifyArtboardInAnimationStatusEvent(CSSSProject project , Artboard source) {
 		
@@ -31,7 +29,7 @@ import cs.csss.project.CSSSProject;
 		
 		initiallyAddArtboard = !project.currentAnimation().hasArtboard(source);
 		
-		if(initiallyAddArtboard) specify(!project.isCopy(source) , "This given artboard must not be a shallow copy");
+		if(initiallyAddArtboard) assert project.isCopy(source) : "This given artboard must not be a shallow copy";
 
 		this.artboard = source;
 		

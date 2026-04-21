@@ -40,7 +40,7 @@ public class VisualLayer extends Layer {
 	 * Sets whether this layer is hiding or not directly. If {@code hiding == false}, the artboard owning this layer will not update 
 	 * automatically.
 	 * 
-	 * @param hiding — whether this layer should hide
+	 * @param hiding whether this layer should hide
 	 */
 	public void hiding(boolean hiding) {
 		
@@ -120,11 +120,17 @@ public class VisualLayer extends Layer {
 		return hiding;
 		
 	}
+
+	@Override public boolean showing() {
+		
+		return !hiding;
+		
+	}
 	
 	/**
 	 * Returns whether this layer is an instance of the given prototype.
 	 * 
-	 * @param prototype — visual layer prototype 
+	 * @param prototype visual layer prototype 
 	 * @return {@code true} if this layer is an instance of the given prototype.
 	 */
 	public boolean isInstanceOfPrototype(VisualLayerPrototype prototype) {

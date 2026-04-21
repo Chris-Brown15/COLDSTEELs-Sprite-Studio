@@ -52,9 +52,22 @@ public class Control {
 			false
 		) ,
 		TRANSLATE_CAMERA = new Control("Move Camera" , "Move the camera when pressed" , GLFW_MOUSE_BUTTON_MIDDLE , false) ,
-		INCREASE_BRUSH_SIZE = new Control("Increase Brush Size" , "Increases the brush size if the current brush has a radius." , GLFW_KEY_MINUS) ,
-		DECREASE_BRUSH_SIZE = new Control("Decrease Brush Size" , "Decreases the brush size if the current brush has a radius." , GLFW_KEY_EQUAL) ,
-		TWO_D_CURSOR_DRAG = new Control("Drag Cursor" , "Drag the cursor one direction only." , GLFW_KEY_TAB);
+		INCREASE_BRUSH_SIZE = new Control(
+			"Increase Brush Size" , 
+			"Increases the brush size if the current brush has a radius." , 
+			GLFW_KEY_MINUS
+		) ,
+		DECREASE_BRUSH_SIZE = new Control(
+			"Decrease Brush Size" , 
+			"Decreases the brush size if the current brush has a radius." , 
+			GLFW_KEY_EQUAL
+		) ,
+		TWO_D_CURSOR_DRAG = new Control("Drag Cursor" , "Drag the cursor one direction only." , GLFW_KEY_TAB) , 
+		SELECTION_AREA_UP = new Control("Move Selection Area Up" , "Moves the selection area box up." , GLFW_KEY_UP) ,
+		SELECTION_AREA_DOWN = new Control("Move Selection Area Down" , "Moves the selection area box up." , GLFW_KEY_DOWN) ,
+		SELECTION_AREA_LEFT = new Control("Move Selection Area Left" , "Moves the selection area box up." , GLFW_KEY_LEFT) ,
+		SELECTION_AREA_RIGHT = new Control("Move Selection Area Right" , "Moves the selection area box up." , GLFW_KEY_RIGHT)
+		;
 
 	/**
 	 * Returns an iterator over all controls.
@@ -70,7 +83,7 @@ public class Control {
 	/**
 	 * Sets the callback to invoke to determine whether a key is pressed or not.
 	 * 
-	 * @param _checkPressedCallback — function who takes a keycode and {@code true} if the key is a keyboard key, {@code false} if the key
+	 * @param _checkPressedCallback ï¿½ function who takes a keycode and {@code true} if the key is a keyboard key, {@code false} if the key
 	 * 								  is a mouse button, and returns true if the key is pressed
 	 */
 	static void checkPressedCallback(final BiFunction<Integer , Boolean , Boolean> _checkPressedCallback) {
@@ -108,9 +121,9 @@ public class Control {
 	/**
 	 * Creates a new control with a given tooltip and a glfw key code which is assumed to be a keyboard keycode.
 	 * 
-	 * @param name — name of this control
-	 * @param toolTipString — {@code String} representing a tooltip for this control
-	 * @param glfwKeyCode — a GLFW keycode representing the key bound to this control
+	 * @param name ï¿½ name of this control
+	 * @param toolTipString ï¿½ {@code String} representing a tooltip for this control
+	 * @param glfwKeyCode ï¿½ a GLFW keycode representing the key bound to this control
 	 */
 	public Control(final String name , final String toolTipString , final int glfwKeyCode) {
 		
@@ -125,8 +138,8 @@ public class Control {
 	 * Creates a new control with a given tooltip and no specific key assignment. This control will never be pressed or struck until a 
 	 * key is assigned to it.
 	 * 
-	 * @param name — name of this control
-	 * @param toolTipString — {@code String} representing a tooltip for this control
+	 * @param name ï¿½ name of this control
+	 * @param toolTipString ï¿½ {@code String} representing a tooltip for this control
 	 */ 
 	public Control(final String name , final String toolTipString) {
 		
@@ -139,10 +152,10 @@ public class Control {
 	/**
 	 * Creates a new control with a given tooltip, a glfw keycode, and which peripheral the key code belongs to.
 	 * 
-	 * @param name — name of this control
-	 * @param toolTipString — {@code String} representing a tooltip for this control
-	 * @param glfwKeyCode — a GLFW keycode representing the key bound to this control
-	 * @param isKeyboard — {@code true} if {@code glfwKeyCode} is a keyboard key code, {@code false} if it is a mouse key code.
+	 * @param name ï¿½ name of this control
+	 * @param toolTipString ï¿½ {@code String} representing a tooltip for this control
+	 * @param glfwKeyCode ï¿½ a GLFW keycode representing the key bound to this control
+	 * @param isKeyboard ï¿½ {@code true} if {@code glfwKeyCode} is a keyboard key code, {@code false} if it is a mouse key code.
 	 */
 	public Control(final String name , final String toolTipString , final int glfwKeyCode , final boolean isKeyboard) {
 		
@@ -168,7 +181,7 @@ public class Control {
 	/**
 	 * Sets this control's keycode bound to it.
 	 * 
-	 * @param key — glfw keycode.
+	 * @param key ï¿½ glfw keycode.
 	 */
 	public void key(int key) {
 		
@@ -179,8 +192,8 @@ public class Control {
 	/**
 	 * Assigns a key to this control, specifying whether the key is a keyboard key or a mouse key.
 	 * 
-	 * @param key — a glfw key code 
-	 * @param isKeyboard — {@code true} if {@code key} is a keyboard key code, {@code false} if it is a mouse key code
+	 * @param key ï¿½ a glfw key code 
+	 * @param isKeyboard ï¿½ {@code true} if {@code key} is a keyboard key code, {@code false} if it is a mouse key code
 	 */
 	public void key(int key , boolean isKeyboard) {
 		
@@ -204,7 +217,7 @@ public class Control {
 	/**
 	 * Sets the state of this control's {@code isKeyboard} variable.
 	 * 
-	 * @param isKeyboard — boolean notating if this control is a keyboard control
+	 * @param isKeyboard ï¿½ boolean notating if this control is a keyboard control
 	 */
 	public void isKeyboard(boolean isKeyboard) {
 		
@@ -250,7 +263,7 @@ public class Control {
 	/**
 	 * Creates an integer from the given string, which should be a textual representation of the key being queried.
 	 * 
-	 * @param source — a string to parse
+	 * @param source ï¿½ a string to parse
 	 * @return GLFW keycode for a key coorresponding to {@code source}.
 	 */
 	public int keyFromString(String source) {

@@ -18,19 +18,18 @@ import cs.csss.project.ArtboardPalette;
 	private final Artboard artboard;
 	private final int xIndex , yIndex , width , height;	
 	private final Pixel color;
-	//used to track if a new color was added to the palette. If it was, and this event is undone, we want to remove the added color from the palette.
-	private boolean addedToPalette = false , didYet = false;
+	private int numberAddedColors = 0;
 	private final LookupPixel[][] previousRegion;
 
 	/**
 	 * Creates a modify artboard image event.
 	 * 
-	 * @param artboard — an artboard to modify
-	 * @param xIndex — left x index of a region
-	 * @param yIndex — bottom y index of a region
-	 * @param width — width of a region
-	 * @param height — height of a region
-	 * @param color — color to put in the region
+	 * @param artboard an artboard to modify
+	 * @param xIndex left x index of a region
+	 * @param yIndex bottom y index of a region
+	 * @param width width of a region
+	 * @param height height of a region
+	 * @param color color to put in the region
 	 */
 	public ModifyArtboardImageEvent(Artboard artboard , int xIndex , int yIndex , int width , int height , Pixel color) {
 
@@ -68,34 +67,34 @@ import cs.csss.project.ArtboardPalette;
 
 	@Override public void _do() {
 
-		//in the first time we do this event, we check whether we added a color to the palette as a result of this event.
-		if(!didYet) {
+		ArtboardPalette palette = artboard.activeLayer().palette();
+		int currentPaletteX = palette.currentCol();
 			
-			didYet = true;
- 			ArtboardPalette palette = artboard.activeLayer().palette();
- 			int currentPaletteX = palette.currentCol();
- 			
- 			artboard.putColorInImage2(xIndex, yIndex, width, height, color);
- 			
- 			int newPaletteX = palette.currentCol(); 			
- 							 //if this is true, we have added a new color
- 			addedToPalette = newPaletteX != currentPaletteX;
- 			
-		} else artboard.putColorInImage2(xIndex, yIndex, width, height, color);		
+		artboard.putColorInImage3(xIndex, yIndex, width, height, color);
+			
+		int newPaletteX = palette.currentCol(); 			
+						
+		if(newPaletteX != currentPaletteX) {
+				
+			//get number added colors:
+			if(newPaletteX > currentPaletteX) numberAddedColors = newPaletteX - currentPaletteX;
+			else numberAddedColors = (palette.width() - currentPaletteX) + newPaletteX;
+				
+		}
 
 	}
 
 	@Override public void undo() {
 
-		if(addedToPalette) {
+		if(numberAddedColors != 0) {
 			
 			ArtboardPalette palette = artboard.activeLayer().palette();
-			palette.popRecentColor();
+			for(int i = 0 ; i < numberAddedColors ; i++) palette.popRecentColor();
 			
 		}
-		
+
 		artboard.replace(xIndex, yIndex, width, height, previousRegion);
-							
+		
 	}
 
 }

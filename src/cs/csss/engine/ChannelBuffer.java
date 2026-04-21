@@ -15,7 +15,7 @@ public class ChannelBuffer implements ColorPixel {
 	 * Convers the given pixel to a channel store. If {@code pixel} is already {@code instanceof ChannelStore}, it is casted and returned. 
 	 * Otherwise, a new channel store is created with the same contents and returned.
 	 * 
-	 * @param pixel — source pixel
+	 * @param pixel source pixel
 	 * @return {@code ChannelStore} view of {@code pixel}.
 	 */
 	public static ChannelBuffer asChannelBuffer(ColorPixel pixel) {
@@ -37,10 +37,10 @@ public class ChannelBuffer implements ColorPixel {
 	/**
 	 * Creates a new channel store with the given initial values.
 	 * 
-	 * @param r — initial red channel value
-	 * @param g — initial green channel value
-	 * @param b — initial blue channel value
-	 * @param a — initial alpha channel value
+	 * @param r initial red channel value
+	 * @param g initial green channel value
+	 * @param b initial blue channel value
+	 * @param a initial alpha channel value
 	 */
 	public ChannelBuffer(byte r , byte g , byte b , byte a) {
 		
@@ -51,10 +51,10 @@ public class ChannelBuffer implements ColorPixel {
 	/**
 	 * Sets this channel store to the given values.
 	 * 
-	 * @param r — initial red channel value
-	 * @param g — initial green channel value
-	 * @param b — initial blue channel value
-	 * @param a — initial alpha channel value
+	 * @param r initial red channel value
+	 * @param g initial green channel value
+	 * @param b initial blue channel value
+	 * @param a initial alpha channel value
 	 */
 	public synchronized void set(byte r , byte g , byte b , byte a) {
 
@@ -66,9 +66,28 @@ public class ChannelBuffer implements ColorPixel {
 	}
 
 	/**
+	 * Sets this channel store to the given values.
+	 * 
+	 * @param r initial red channel value
+	 * @param g initial green channel value
+	 * @param b initial blue channel value
+	 * @param a initial alpha channel value
+	 * @return {@code this}.
+	 */
+	public synchronized ChannelBuffer set(short r , short g , short b , short a) {
+
+		this.r = (byte)r;
+		this.g = (byte)g;
+		this.b = (byte)b;
+		this.a = (byte)a;
+		return this;
+		
+	}
+
+	/**
 	 * Sets the channel values of this pixel to {@code other}.
 	 * 
-	 * @param other — another color pixel
+	 * @param other another color pixel
 	 */
 	public synchronized void set(ColorPixel other) {
 		
@@ -81,7 +100,7 @@ public class ChannelBuffer implements ColorPixel {
 	/**
 	 * Sets the red channel value of this pixel.
 	 * 
-	 * @param r — new red channel value
+	 * @param r new red channel value
 	 */
 	public synchronized void r(byte r) {
 		
@@ -92,7 +111,7 @@ public class ChannelBuffer implements ColorPixel {
 	/**
 	 * Sets the green channel value of this pixel.
 	 * 
-	 * @param g — new green channel value
+	 * @param g new green channel value
 	 */
 	public synchronized void g(byte g) {
 		
@@ -103,7 +122,7 @@ public class ChannelBuffer implements ColorPixel {
 	/**
 	 * Sets the blue channel value of this pixel.
 	 * 
-	 * @param b — new blue channel value
+	 * @param b new blue channel value
 	 */
 	public synchronized void b(byte b) {
 		
@@ -114,7 +133,7 @@ public class ChannelBuffer implements ColorPixel {
 	/**
 	 * Sets the alpha channel value of this pixel.
 	 * 
-	 * @param a — new alpha channel value
+	 * @param a new alpha channel value
 	 */
 	public synchronized void a(byte a) {
 		
@@ -125,8 +144,8 @@ public class ChannelBuffer implements ColorPixel {
 	/**
 	 * Sets the channel value indexed by {@code i}. 
 	 *  
-	 * @param i — index of a color value to set
-	 * @param color — color value to store
+	 * @param i index of a color value to set
+	 * @param color color value to store
 	 */
 	public synchronized void i(byte i , byte color) {
 		

@@ -1,6 +1,5 @@
 package cs.csss.editor.event;
 
-import static cs.core.utils.CSUtils.specify;
 import static cs.csss.engine.Logging.*;
 import static java.lang.Math.min;
 import static java.lang.Math.max;
@@ -32,10 +31,9 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
  * </p>
  * <p>
  * 	The fill begins with an iteration to the north and south. Once a border is found (a pixel not matching either the clicked 
- * 	pixel's color or the editor's color, or the last pixel on the artboard), iteration reverses direction, going back to the clicked point.
- * 	This step is called walking back.
- * 	For each row traveled on the way back to the clicked pixel, another iteration is spun up going east and west. This step is called
- * 	fanning.
+ * 	pixel's color or the editor's color, or the last pixel on the artboard), iteration reverses direction, going back to the clicked 
+ * 	point. This step is called walking back. For each row traveled on the way back to the clicked pixel, another iteration is spun up 
+ * 	going east and west. This step is called fanning.
  * </p>
  * <p>
  * 	After the fanning, a block of space has been recorded, but:
@@ -43,15 +41,15 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
  * 		<li> any open spaces touching the bottom or top of the fan that were left or right of the clicked point that are open and </li>
  * 		<li> any interior border shapes would block the east west iterations from reaching the true border </li>
  * 	</ul>
- *  would lead to sections being missed. Therefore, during the east/west iterations of the walking back step, the pixel above or below the 
- *  iteration's current pixel (depending upon if the walk back is walking back from north or walking back from south) is checked. If it is 
- *  not a border and is not marked as full, we know there is an open space, and we keep track of all contiguous open spaces. Once the east
- *  /west iteration completes, new north or south iterations are begun at the middle of each open region.  
+ *  would lead to sections being missed. Therefore, during the east/west iterations of the walking back step, the pixel above or below 
+ *  the iteration's current pixel (depending upon if the walk back is walking back from north or walking back from south) is checked. If
+ *  it is not a border and is not marked as full, we know there is an open space, and we keep track of all contiguous open spaces. Once
+ *  the east/west iteration completes, new north or south iterations are begun at the middle of each open region.  
  * </p>
  * <p>
- * 	Any filled in regions interior to the border will be missed if they have a pixel on the same row as the clicked pixel, therefore, after checking
- * 	everything else has been done, we iterate over the rows we've created via {@code ArtboardMod} and check the pixels SOUTH of the row. If any is
- * 	not filled in but should be, a new iteration is started.
+ * 	Any filled in regions interior to the border will be missed if they have a pixel on the same row as the clicked pixel, therefore, 
+ * 	after checking everything else has been done, we iterate over the rows we've created via {@code ArtboardMod} and check the pixels 
+ * 	SOUTH of the row. If any is not filled in but should be, a new iteration is started.
  * </p>
  * 
  * @author Chris Brown
@@ -77,10 +75,10 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 	/**
 	 * Creates a floor fill event.
 	 * 
-	 * @param artboard — the artboard to fill in
-	 * @param activeColor — the color active in the left hand side panel's color picker
-	 * @param clickedX — x coordinate of the clicked pixel
-	 * @param clickedY — y coordinate of the clicked pixel
+	 * @param artboard the artboard to fill in
+	 * @param activeColor the color active in the left hand side panel's color picker
+	 * @param clickedX x coordinate of the clicked pixel
+	 * @param clickedY y coordinate of the clicked pixel
 	 */
 	public FloodFillEvent(Artboard artboard , Pixel activeColor , int clickedX , int clickedY) {
 
@@ -114,11 +112,11 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 	}
 	
 	/**
-	 * Returns whether the given region has marked as modded or not. This will return true if the given point is within the bounds defined 
-	 * by the {@code ArtboardMod}.
+	 * Returns whether the given region has marked as modded or not. This will return true if the given point is within the bounds 
+	 * defined by the {@code ArtboardMod}.
 	 *
-	 * @param xIndex — x index of a pixel
-	 * @param yIndex — y index of a pixel
+	 * @param xIndex x index of a pixel
+	 * @param yIndex y index of a pixel
 	 * @return true if this point is within a region that has been marked as modded.
 	 */
 	private boolean markedAsModded(int xIndex , int yIndex) {
@@ -143,8 +141,8 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 	/**
 	 * Pixels are valid borders if they are the edge of the artboard or are not the color the user clicked or the active color.
 	 * 
-	 * @param xIndex — x index of a pixel
-	 * @param xIndex — y index of a pixel
+	 * @param xIndex x index of a pixel
+	 * @param xIndex y index of a pixel
 	 * @return {@code true} if the given pixel is a valid border.
 	 */
 	private boolean isValidBorder(int xIndex , int yIndex) {
@@ -167,8 +165,8 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 	 * Returns the x index of a pixel that is a valid border. This method goes from the east to the end of the artboard and returns the 
 	 * index of the border itself.
 	 * 
-	 * @param startingX — x index of a point to start at
-	 * @param startingY — y index of a point to start at
+	 * @param startingX x index of a point to start at
+	 * @param startingY y index of a point to start at
 	 * @return x index of a border pixel to the east of {@code (startingX , startingY)}
 	 */
 	private int findEasternBorder(int startingX , int startingY) { 
@@ -182,8 +180,8 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 	 * Returns the x index of a pixel that is a valid border. This method goes from the west to the end of the artboard and returns the 
 	 * index of the border itself.
 	 * 
-	 * @param startingX — x index of a point to start at
-	 * @param startingY — y index of a point to start at
+	 * @param startingX x index of a point to start at
+	 * @param startingY y index of a point to start at
 	 * @return x index of a border pixel to the west of {@code (startingX , startingY)}
 	 */
 	private int findWesternBorder(int startingX , int startingY) {
@@ -205,7 +203,7 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 	
 	private int walkNorth(int startingX , int startingY) {
 		
-		specify(startingX >= 0 && startingX < artboard.width() , startingX + " is not a valid start x index.");		
+		assert (startingX >= 0 && startingX < artboard.width()) : startingX + " is not a valid start x index. Width: " + artboard.width();
 		if(startingY >= artboard.height() || startingY < 0) return startingY;
 		
 		while(!isValidBorder(startingX , startingY)) startingY++;
@@ -215,7 +213,8 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 
 	private int walkSouth(int startingX , int startingY) {
 
-		specify(startingX >= 0 && startingX < artboard.width() , startingX + " is not a valid start x index.");
+		assert (startingX >= 0 && startingX < artboard.width()) : startingX + " is not a valid start x index.";
+		
 		if(startingY >= artboard.height() || startingY < 0) return startingY;
 		
 		while(!isValidBorder(startingX , startingY)) startingY--;		
@@ -225,20 +224,20 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 	
 	/**
 	 * Main operator method for this event. This method goes from its starting position either west or east by the 
-	 * {@code horizontalDirection} parameter, looking for a border in the horizontal direction. While it looks for the border, pixels above
-	 * or below the current one determined by {@code backFrom} are checked and if they are not valid borders and are not marked as visited,
-	 * a new iteration task begins from the midpoint of the unvisited row.
+	 * {@code horizontalDirection} parameter, looking for a border in the horizontal direction. While it looks for the border, pixels 
+	 * above or below the current one determined by {@code backFrom} are checked and if they are not valid borders and are not marked as
+	 * visited, a new iteration task begins from the midpoint of the unvisited row.
 	 * 
-	 * @param startingX — starting x of a pixel
-	 * @param startingY — starting y of a pixel
-	 * @param horizontalDirection — one of {@link FloodFillEvent#EAST} or {@link FloodFillEvent#WEST}
-	 * @param backFrom — one of {@link FloodFillEvent#NORTH} or {@link FloodFillEvent#SOUTH}
+	 * @param startingX starting x of a pixel
+	 * @param startingY starting y of a pixel
+	 * @param horizontalDirection one of {@link FloodFillEvent#EAST} or {@link FloodFillEvent#WEST}
+	 * @param backFrom one of {@link FloodFillEvent#NORTH} or {@link FloodFillEvent#SOUTH}
 	 * @return Index of the pixel that touches a border when seeking a border toward the {@code horizontalDirection}.
 	 */
 	private int findHorizontalBorderWalkingBack(int startingX , int startingY , int horizontalDirection , int backFrom) {
 		
 		//verify parameters
-		specify(startingY >= 0 && startingY < artboard.height() , startingY + " is not a valid start y index.");
+		assert (startingY >= 0 && startingY < artboard.height()) : startingY + " is not a valid start y index.";
 		if(startingX >= artboard.width() || startingX < 0) return startingX;
 		
 		//store parameters as booleans
@@ -247,9 +246,8 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 		//this loop looks for a valid border on the current row
 		while(!isValidBorder(startingX , startingY) && !markedAsModded(startingX , startingY)) {
 			
-			//this section looks at pixels above or below the current row based on what we direction we are walking back from and begins a
-			//new set of iterations on those regions
-			//check index of the y index of the row above or below this one
+			//this section looks at pixels above or below the current row based on what we direction we are walking back from and begins
+			//a new set of iterations on those regions check index of the y index of the row above or below this one
 			int checkIndex = northward ? startingY + 1 : startingY - 1;
 			if(!isValidBorder(startingX, checkIndex) && !markedAsModded(startingX, checkIndex)) {
 				
@@ -260,8 +258,8 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 				int max = max(startingX , otherRowEndpoint);
 				int mid = min + (max - min) / 2;
 
-				//begin the new set of iterations on the invalid region. This starts the new iteration in the middle of the invalid row as
-				//a best guess as to what point would have the highest ceiling.
+				//begin the new set of iterations on the invalid region. This starts the new iteration in the middle of the invalid row 
+				//as a best guess as to what point would have the highest ceiling.
 				initialRow(startingX , checkIndex);				
 				if(northward) startNorthernIteration(mid , checkIndex);
 				else startSouthernIteration(mid , checkIndex);
@@ -279,11 +277,11 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 	}
 	
 	/**
-	 * Iterates over the row described by the given mod, then finds if any pixel in the check direction (which should be covered by the previous 
-	 * mod) is not a valid border or marked pixel. If such a pixel is found, a new iteration is begun. 
+	 * Iterates over the row described by the given mod, then finds if any pixel in the check direction (which should be covered by the
+	 * previous mod) is not a valid border or marked pixel. If such a pixel is found, a new iteration is begun. 
 	 * 
-	 * @param mod — the mod to check
-	 * @param checkDirection — direction to check for missing mods
+	 * @param mod the mod to check
+	 * @param checkDirection direction to check for missing mods
 	 */
 	private void verifyPreviousRow(ArtboardMod mod , int checkDirection) {
 		

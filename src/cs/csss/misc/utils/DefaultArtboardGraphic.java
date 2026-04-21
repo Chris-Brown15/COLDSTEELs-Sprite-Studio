@@ -5,10 +5,10 @@ import static org.lwjgl.system.MemoryUtil.memFree;
 
 import java.nio.ByteBuffer;
 
-import cs.core.utils.ShutDown;
-import cs.core.utils.files.CSGraphic;
+import sc.core.SCShutDown;
+import sc.core.binary.SCGraphic;
 
-public class DefaultArtboardGraphic implements ShutDown, CSGraphic {
+public class DefaultArtboardGraphic extends SCGraphic implements SCShutDown {
 
 	public final int
 		width ,
@@ -46,25 +46,13 @@ public class DefaultArtboardGraphic implements ShutDown, CSGraphic {
 		
 	}
 
-	@Override public int bitsPerPixel() {
-
-		return 8 * channelsPerPixel * bytesPerChannel;
-		
-	}
-
-	@Override public int bitsPerChannel() {
-
-		return 8 * channelsPerPixel;
-		
-	}
-
 	@Override public int channels() {
 
 		return channelsPerPixel;
 		
 	}
 
-	@Override public ByteBuffer imageData() {
+	@Override public ByteBuffer data() {
 
 		return imageData;
 		
@@ -82,6 +70,19 @@ public class DefaultArtboardGraphic implements ShutDown, CSGraphic {
 	@Override public boolean isFreed() {
 
 		return freed;
+		
+	}
+
+	@Override public int bytesPerPixel() {
+
+		return channelsPerPixel * bytesPerChannel;
+		
+	}
+
+	@Override
+	public int bytesPerChannel() {
+
+		return channelsPerPixel;
 		
 	}
 

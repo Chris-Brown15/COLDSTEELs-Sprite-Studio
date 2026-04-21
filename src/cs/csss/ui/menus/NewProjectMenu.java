@@ -1,6 +1,6 @@
 package cs.csss.ui.menus;
 
-import static cs.core.ui.CSUIConstants.*;
+import static sc.core.ui.SCUIConstants.*;
 
 import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
 import static org.lwjgl.nuklear.Nuklear.nk_text_wrap_colored;
@@ -9,27 +9,111 @@ import java.util.Iterator;
 import java.util.LinkedList;
 
 import org.lwjgl.nuklear.NkColor;
+import org.lwjgl.system.MemoryStack;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
-import cs.core.ui.CSNuklear.CSUI.CSRow;
-import cs.core.ui.CSNuklear.CSUserInterface;
-import cs.core.utils.Lambda;
 import cs.csss.engine.Engine;
 import cs.csss.misc.files.CSFile;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.project.ArtboardPalette;
+import sc.core.ui.SCElements.SCUI.SCDynamicRow;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCRadio;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCTextEditor;
+import sc.core.ui.SCElements.SCUI.SCRow;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
 
 /**
  * UI menu for creating a new project.
  */
 public class NewProjectMenu extends Dialogue {
 
-	private static final LinkedList<String> existingProjects = new LinkedList<>();
+	private final LinkedList<String> existingProjects = new LinkedList<>();
 	
-	static {
+	private volatile boolean canFinish = false;
+
+	private volatile String projectName;
+	private final SCUserInterface ui;
+	private final SCTextEditor nameInput;
+
+	private final Runnable removeUIOnFinish;
+
+	private int channelsPerPixel = 4;
+
+	private SCTextEditor widthEditor , heightEditor;
+
+	private int paletteWidth = ArtboardPalette.MAX_WIDTH;
+	private int paletteHeight = ArtboardPalette.MAX_HEIGHT;
+	
+	/**
+	 * Creates a new project menu.
+	 * 
+	 * @param nuklear the Nuklear factory
+	 */
+	public NewProjectMenu(SCNuklear nuklear) {
+
+		this.ui = new SCUserInterface(nuklear , "New Project" , 0.5f - (0.33f / 2) , 0.5f - (0.33f / 2) , 0.33f , 0.33f);
+		ui.flags = UI_TITLED|UI_BORDERED;
+
+		SCRow nameRow = ui.new SCRow(30).pushWidth(.15f).pushWidth(.8f);
+		nameRow.new SCText("Name:" , TEXT_CENTERED|TEXT_LEFT);
+		nameInput = nameRow.new SCTextEditor(100);
+		
+		ui.new SCDynamicRow(20).new SCText("Pixel Format:" , TEXT_CENTERED|TEXT_LEFT);		
+		SCDynamicRow row1 =  ui.new SCDynamicRow(25);
+		SCRadio oneChannel = row1.new SCRadio("Grayscale" , () -> channelsPerPixel == 1 , () -> channelsPerPixel = 1);
+		SCRadio threeChannels = row1.new SCRadio("RGB" , () -> channelsPerPixel == 3 , () -> channelsPerPixel = 3);
+		SCDynamicRow row2 =  ui.new SCDynamicRow(25);
+		SCRadio twoChannels = row2.new SCRadio("Grayscale + Alpha" , () -> channelsPerPixel == 2 , () -> channelsPerPixel = 2);
+		SCRadio fourChannels = row2.new SCRadio("RGB + Alpha" , () -> channelsPerPixel == 4, () -> channelsPerPixel = 4);
+		
+		channelsPerPixel = 4;
+		
+		SCRadio.groupAll(oneChannel , twoChannels , threeChannels , fourChannels);
+		
+	 	ui.attachedLayout((context) -> {
+	 		
+	 		for(String x : existingProjects) if(x.equals(nameInput.toString())) {
+	 			
+	 			try(MemoryStack stack = MemoryStack.stackPush()) {
+	 				
+	 				nk_layout_row_dynamic(context , 40 , 1);
+	 				NkColor red = NkColor.malloc(stack).set((byte)-1 , (byte)0 , (byte)0 , (byte)-1);
+	 				String warningText = x + " already names a project. Overwrites and errors may occur if this name is chosen." ;
+	 				nk_text_wrap_colored(context , warningText, red);
+	 			
+	 			}
+	 			
+	 		}
+	 		
+	 	});
+	 	
+	 	SCDynamicRow paletteSizeInputTextRow = ui.new SCDynamicRow(20);
+	 	paletteSizeInputTextRow.new SCText("Palette size for this project, leave blank for defaults.");
+	 	
+	 	SCRow paletteSizeWidthInputRow = ui.new SCRow(30);
+	 	paletteSizeWidthInputRow.pushWidth(0.15f).pushWidth(0.80f);
+	 	paletteSizeWidthInputRow.new SCText("Width:" , TEXT_CENTERED|TEXT_LEFT);
+	 	widthEditor = paletteSizeWidthInputRow.new SCTextEditor(4 , SCNuklear.DECIMAL_FILTER);
+	 		 	
+	 	SCRow paletteSizeHeightInputRow = ui.new SCRow(30);
+	 	paletteSizeHeightInputRow.pushWidth(0.15f).pushWidth(0.80f);
+	 	paletteSizeHeightInputRow.new SCText("Height:" , TEXT_CENTERED|TEXT_LEFT);
+	 	heightEditor = paletteSizeHeightInputRow.new SCTextEditor(4 , SCNuklear.DECIMAL_FILTER);
+	 	
+	 	SCDynamicRow totalPaletteSizeRow = ui.new SCDynamicRow(20);
+	 	totalPaletteSizeRow.new SCText(() -> "Total Palette Space (Pixels): " + getTotalPixelsFromInputs() , TEXT_LEFT|TEXT_MIDDLE);
+	 	
+	 	SCDynamicRow finishAndCancelRow = ui.new SCDynamicRow();
+	 	finishAndCancelRow.new SCButton("Finish" , this::finish);
+	 	finishAndCancelRow.new SCButton("Cancel" , this::cancel);
+	 	
+	 	removeUIOnFinish = () -> {
+	 		
+	 		nuklear.removeUserInterface(ui);
+	 		Engine.THE_TEMPORAL.onTrue(() -> true, ui::shutDown);	 		
+	 		super.onFinish();
+	 		
+	 	};
 		
 		Engine.THE_THREADS.submit(() -> {
 			
@@ -40,90 +124,7 @@ public class NewProjectMenu extends Dialogue {
 		 	
 		});
 		
-	}
 	
-	private volatile boolean canFinish = false;
-
-	private volatile String projectName;
-	private final CSUserInterface ui;
-	private final CSTextEditor nameInput;
-
-	private final Lambda removeUIOnFinish;
-
-	private int channelsPerPixel = 4;
-
-	private CSTextEditor widthEditor , heightEditor;
-
-	private int paletteWidth = ArtboardPalette.MAX_WIDTH;
-	private int paletteHeight = ArtboardPalette.MAX_HEIGHT;
-	
-	/**
-	 * Creates a new project menu.
-	 * 
-	 * @param nuklear — the Nuklear factory
-	 */
-	public NewProjectMenu(CSNuklear nuklear) {
-
-		this.ui = nuklear.new CSUserInterface("New Project" , 0.5f - (0.33f / 2) , 0.5f - (0.33f / 2) , 0.33f , 0.33f);
-		ui.options = UI_TITLED|UI_BORDERED;
-
-		CSRow nameRow = ui.new CSRow(30).pushWidth(.15f).pushWidth(.8f);
-		nameRow.new CSText("Name:" , TEXT_CENTERED|TEXT_LEFT);
-		nameInput = nameRow.new CSTextEditor(100);
-		
-		ui.new CSDynamicRow(20).new CSText("Pixel Format:" , TEXT_CENTERED|TEXT_LEFT);		
-		CSDynamicRow row1 =  ui.new CSDynamicRow(25);
-		CSRadio oneChannel = row1.new CSRadio("Grayscale" , () -> channelsPerPixel == 1 , () -> channelsPerPixel = 1);
-		CSRadio threeChannels = row1.new CSRadio("RGB" , () -> channelsPerPixel == 3 , () -> channelsPerPixel = 3);
-		CSDynamicRow row2 =  ui.new CSDynamicRow(25);
-		CSRadio twoChannels = row2.new CSRadio("Grayscale + Alpha" , () -> channelsPerPixel == 2 , () -> channelsPerPixel = 2);
-		CSRadio fourChannels = row2.new CSRadio("RGB + Alpha" , () -> channelsPerPixel == 4, () -> channelsPerPixel = 4);
-		
-		channelsPerPixel = 4;
-		
-		CSRadio.groupAll(oneChannel , twoChannels , threeChannels , fourChannels);
-		
-	 	ui.attachedLayout((context , stack) -> {
-	 		
-	 		for(String x : existingProjects) if(x.equals(nameInput.toString())) {
-	 			
-	 			nk_layout_row_dynamic(context , 40 , 1);
-	 			NkColor red = NkColor.malloc(stack).set((byte)-1 , (byte)0 , (byte)0 , (byte)-1);
-	 			String warningText = x + " already names a project. Overwrites and errors may occur if this name is chosen." ;
-	 			nk_text_wrap_colored(context , warningText, red);
-	 			
-	 		}
-	 		
-	 	});
-	 	
-	 	CSDynamicRow paletteSizeInputTextRow = ui.new CSDynamicRow(20);
-	 	paletteSizeInputTextRow.new CSText("Palette size for this project, leave blank for defaults.");
-	 	
-	 	CSRow paletteSizeWidthInputRow = ui.new CSRow(30);
-	 	paletteSizeWidthInputRow.pushWidth(0.15f).pushWidth(0.80f);
-	 	paletteSizeWidthInputRow.new CSText("Width:" , TEXT_CENTERED|TEXT_LEFT);
-	 	widthEditor = paletteSizeWidthInputRow.new CSTextEditor(4 , CSNuklear.DECIMAL_FILTER);
-	 		 	
-	 	CSRow paletteSizeHeightInputRow = ui.new CSRow(30);
-	 	paletteSizeHeightInputRow.pushWidth(0.15f).pushWidth(0.80f);
-	 	paletteSizeHeightInputRow.new CSText("Height:" , TEXT_CENTERED|TEXT_LEFT);
-	 	heightEditor = paletteSizeHeightInputRow.new CSTextEditor(4 , CSNuklear.DECIMAL_FILTER);
-	 	
-	 	CSDynamicRow totalPaletteSizeRow = ui.new CSDynamicRow(20);
-	 	totalPaletteSizeRow.new CSText(() -> "Total Palette Space (Pixels): " + getTotalPixelsFromInputs() , TEXT_LEFT|TEXT_MIDDLE);
-	 	
-	 	CSDynamicRow finishAndCancelRow = ui.new CSDynamicRow();
-	 	finishAndCancelRow.new CSButton("Finish" , this::finish);
-	 	finishAndCancelRow.new CSButton("Cancel" , this::cancel);
-	 	
-	 	removeUIOnFinish = () -> {
-	 		
-	 		nuklear.removeUserInterface(ui);
-	 		ui.shutDown();
-	 		super.onFinish();
-	 		
-	 	};
-		
 	}
 	
 	/**
@@ -132,21 +133,24 @@ public class NewProjectMenu extends Dialogue {
 	private void finish() {
 		
 		String input = nameInput.toString();
+		
 		if(channelsPerPixel != -1) {
 			
 			projectName = input;
-			removeUIOnFinish.invoke();
 			canFinish = true;
 			existingProjects.add(input);
 			
 			String widthString = widthEditor.toString();
+			String heightString = heightEditor.toString();
+			
 			if(!widthString.equals("")) paletteWidth = Integer.parseInt(widthString);
 			if(paletteWidth <= 0 || paletteWidth > ArtboardPalette.MAX_WIDTH) paletteWidth = ArtboardPalette.MAX_WIDTH;
 			
-			String heightString = heightEditor.toString();			
 			if(!heightString.equals("")) paletteHeight = Integer.parseInt(heightString);
 			if(paletteHeight <= 0 || paletteHeight > ArtboardPalette.MAX_HEIGHT) paletteHeight = ArtboardPalette.MAX_HEIGHT;
-						
+
+			removeUIOnFinish.run();
+			
 		}
 		
 	}
@@ -165,7 +169,7 @@ public class NewProjectMenu extends Dialogue {
 	private void cancel() {
 		
 		canFinish = true;
-		removeUIOnFinish.invoke();
+		removeUIOnFinish.run();
 		
 	}
 	

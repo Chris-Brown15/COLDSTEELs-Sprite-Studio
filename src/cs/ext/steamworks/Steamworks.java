@@ -3,6 +3,8 @@
  */
 package cs.ext.steamworks;
 
+import static sc.core.SCShutDown.shutDownIfNonNull;
+
 import static cs.csss.engine.Logging.sysDebugln;
 
 import java.io.IOException;
@@ -13,10 +15,10 @@ import com.codedisaster.steamworks.SteamFriendsCallback;
 import com.codedisaster.steamworks.SteamUGCCallback;
 import com.codedisaster.steamworks.SteamUserCallback;
 
-import cs.core.utils.ShutDown;
 import cs.csss.engine.Engine;
 import cs.ext.misc.utils.AlreadyInitializedException;
 import cs.ext.misc.utils.NotInitializedException;
+import sc.core.SCShutDown;
 //appID: 2616440
 /**
  * Wrapper over functions from the {@link com.codedisaster.steamworks.SteamAPI SteamAPI} class, and provides access to Steamworks API sublibraries.
@@ -26,7 +28,7 @@ import cs.ext.misc.utils.NotInitializedException;
  * freed via this class's {@link Steamworks#shutDown() shutDown} so there is no need to free them onself.
  * </P>
  */
-public class Steamworks implements ShutDown {
+public class Steamworks implements SCShutDown {
 	
 	private boolean isSteamworksInitialized; 
 	private boolean isShutDown = false;	
@@ -38,7 +40,7 @@ public class Steamworks implements ShutDown {
 	/**
 	 * Creates a new instance of a SteamAPI manager. 
 	 * 
-	 * @param appID — Steam ID for an application
+	 * @param appID ï¿½ Steam ID for an application
 	 */
 	public Steamworks(int appID) {
 
@@ -97,7 +99,7 @@ public class Steamworks implements ShutDown {
 	/**
 	 * Initalizes the Steam Friends API.
 	 * 
-	 * @param callbacks — callbacks for the Friends API.
+	 * @param callbacks ï¿½ callbacks for the Friends API.
 	 */
 	public void initializeFriendsAPI(SteamFriendsCallback callbacks) {
 		
@@ -121,7 +123,7 @@ public class Steamworks implements ShutDown {
 	/**
 	 * Initalizes the Steam Friends API.
 	 * 
-	 * @param callbacks — callbacks for the Friends API.
+	 * @param callbacks ï¿½ callbacks for the Friends API.
 	 */
 	public void initializeUGCAPI(SteamUGCCallback callbacks) {
 		
@@ -145,7 +147,7 @@ public class Steamworks implements ShutDown {
 	/**
 	 * Initializes the Steam User API.
 	 * 
-	 * @param callbacks — callbacks for the User API
+	 * @param callbacks ï¿½ callbacks for the User API
 	 */
 	public void initializeUserAPI(SteamUserCallback callbacks) {
 		
@@ -165,12 +167,6 @@ public class Steamworks implements ShutDown {
 		
 	}
 
-	private void shutDownIfNonNull(ShutDown object) {
-		
-		if(object != null) object.shutDown();
-		
-	}
-	
 	@Override public void shutDown() {
 
 		if(isFreed()) return;

@@ -1,35 +1,36 @@
 package cs.csss.editor.ui;
 
-import static cs.core.utils.CSFileUtils.readAllCharacters;
-
 import static cs.csss.ui.utils.UIUtils.toByte;
 
 import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
 import static org.lwjgl.nuklear.Nuklear.nk_checkbox_text;
 
 import java.util.Iterator;
+import java.util.concurrent.ExecutionException;
 import java.util.function.BooleanSupplier;
 
-import static cs.core.ui.CSUIConstants.*;
+import org.lwjgl.system.MemoryStack;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSCheckBox;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSMenuBar;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSMenuBar.CSMenu;
+import static sc.core.ui.SCUIConstants.*;
+
 import cs.csss.editor.DebugDisabledException;
 import cs.csss.editor.Editor;
 import cs.csss.editor.event.RasterizeAllShapesEvent;
 import cs.csss.editor.palette.ColorPalette;
 import cs.csss.engine.CSSSException;
 import cs.csss.engine.Engine;
-import cs.csss.misc.graphcs.memory.GPUMemoryViewer;
+import cs.csss.misc.graphics.memory.GPUMemoryViewer;
 import cs.csss.project.ArtboardPalette;
 import cs.csss.project.CSSSProject;
 import cs.csss.ui.utils.UIUtils;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
-import cs.core.ui.CSNuklear.CSUI.CSRow;
-import cs.core.ui.CSNuklear.CSUserInterface;
+import sc.core.ui.SCElements.SCUI.SCDynamicRow;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCCheckBox;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCMenuBar;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCMenuBar.SCMenu;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCTextEditor;
+import sc.core.ui.SCElements.SCUI.SCRow;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
 
 /**
  * File panel is the top bar panel. It contains some buttons and menus for doing things in Sprite Studio.
@@ -42,82 +43,86 @@ public class FilePanel {
 	/**
 	 * Creates a file panel.
 	 * 
-	 * @param editor — the editor
-	 * @param nuklear — Nuklear factory
+	 * @param editor the editor
+	 * @param nuklear Nuklear factory
 	 */
-	public FilePanel(Editor editor , CSNuklear nuklear) {
+	public FilePanel(Editor editor , SCNuklear nuklear) {
 		
-		CSUserInterface ui = nuklear.new CSUserInterface("Sprite Studio" , 0.001f , 0.001f , 0.999f , -1f);
-		ui.setDimensions(ui.xPosition(), ui.yPosition(), ui.interfaceWidth() , 70);
-		ui.options |= UI_TITLED|UI_BORDERED|UI_UNSCROLLABLE;
+		SCUserInterface ui = new SCUserInterface(nuklear , "Sprite Studio" , 0.001f , 0.001f , 0.999f , 0.0f);
+		ui.positioner.height(70);
+		ui.flags |= UI_TITLED|UI_BORDERED|UI_UNSCROLLABLE;
 		
-		CSMenuBar menuBar = ui.new CSDynamicRow().new CSMenuBar(); 
+		SCMenuBar menuBar = ui.new SCDynamicRow().new SCMenuBar(); 
 		 
-		CSMenu fileMenu = menuBar.new CSMenu("File" , 100 , 400),
-			editMenu = menuBar.new CSMenu("Edit" , 200 , 400),
-			projectMenu = menuBar.new CSMenu("Project" , 230 , 400),
-			optionsMenu = menuBar.new CSMenu("Options" , 349 , 400);
+		SCMenu fileMenu = menuBar.new SCMenu(nuklear , "File" , 100 , 400),
+			editMenu = menuBar.new SCMenu(nuklear , "Edit" , 200 , 400),
+			projectMenu = menuBar.new SCMenu(nuklear , "Project" , 230 , 400),
+			optionsMenu = menuBar.new SCMenu(nuklear , "Options" , 349 , 400);
 						
-		CSDynamicRow saveButtonRow = fileMenu.new CSDynamicRow() ; saveButtonRow.new CSButton("Save" , editor::saveProject);
-		CSDynamicRow saveAsButtonRow = fileMenu.new CSDynamicRow() ; saveAsButtonRow.new CSButton("Save As" , editor::startProjectSaveAs);
-		fileMenu.new CSDynamicRow().new CSButton("Load" , editor::startLoadProject);
+		SCDynamicRow saveButtonRow = fileMenu.new SCDynamicRow() ; saveButtonRow.new SCButton("Save" , editor::saveProject);
+		SCDynamicRow saveAsButtonRow = fileMenu.new SCDynamicRow() ; saveAsButtonRow.new SCButton("Save As" , editor::startProjectSaveAs);
+		fileMenu.new SCDynamicRow().new SCButton("Load" , editor::startLoadProject);
 		
-		CSDynamicRow exportButtonRow = fileMenu.new CSDynamicRow() ; exportButtonRow.new CSButton("Export" , editor::startExport);		
-		fileMenu.new CSDynamicRow().new CSButton("Exit" , editor::exit);
+		SCDynamicRow exportButtonRow = fileMenu.new SCDynamicRow() ; exportButtonRow.new SCButton("Export" , editor::startExport);		
+		fileMenu.new SCDynamicRow().new SCButton("Exit" , editor::exit);
 		
 		saveButtonRow.doLayout = () -> editor.project() != null;
 		saveAsButtonRow.doLayout = () -> editor.project() != null;
 		exportButtonRow.doLayout = () -> editor.project() != null;
 		
-		editMenu.new CSDynamicRow().new CSButton("Undo" , editor::undo);
-		editMenu.new CSDynamicRow().new CSButton("Redo" , editor::redo);
-		editMenu.new CSDynamicRow().new CSButton("Create New Script" , editor::startCreateNewScript);
-//		editMenu.new CSDynamicRow().new CSButton("Add Text" , editor::startAddText);
-		editMenu.new CSDynamicRow().new CSButton("Run Artboard Script" , editor::startRunArtboardScript2);
-		editMenu.new CSDynamicRow().new CSButton("Run Project Script" , editor::startRunProjectScript2);
-		editMenu.new CSDynamicRow().new CSButton("Run Palette Script" , editor::startRunPaletteScript2);
+		editMenu.new SCDynamicRow().new SCButton("Undo" , editor::undo);
+		editMenu.new SCDynamicRow().new SCButton("Redo" , editor::redo);
+		editMenu.new SCDynamicRow().new SCButton("Create New Script" , editor::startCreateNewScript);
+//		editMenu.new SCDynamicRow().new SCButton("Add Text" , editor::startAddText);
+		editMenu.new SCDynamicRow().new SCButton("Run Artboard Script" , editor::startRunArtboardScript2);
+		editMenu.new SCDynamicRow().new SCButton("Run Project Script" , editor::startRunProjectScript2);
+		editMenu.new SCDynamicRow().new SCButton("Run Palette Script" , editor::startRunPaletteScript2);
 		
-		CSDynamicRow rasterizeAllShapesRow = editMenu.new CSDynamicRow();
-		rasterizeAllShapesRow.new CSButton("Rasterize All Shapes" , () -> editor.eventPush(new RasterizeAllShapesEvent(editor.project())));
+		SCDynamicRow rasterizeAllShapesRow = editMenu.new SCDynamicRow();
+		rasterizeAllShapesRow.new SCButton("Rasterize All Shapes" , () -> editor.eventPush(new RasterizeAllShapesEvent(editor.project())));
 		rasterizeAllShapesRow.doLayout = () -> editor.project() != null;
 		
-		CSCheckBox colorInputTypeCheck = editMenu.new CSDynamicRow(20).new CSCheckBox(
+		SCCheckBox colorInputTypeCheck = editMenu.new SCDynamicRow(20).new SCCheckBox(
 			"Color Inputs Are Hex" , 
 			editor::colorInputsAreHex , 
 			editor::toggleColorInputsAreHex
 		);
 		
 		UIUtils.toolTip(colorInputTypeCheck, "Determines whether color input dialogues will expect hexadecimal or decimal input formats.");
-		editMenu.attachedLayout((context , stack) -> {
+		editMenu.attachedLayout((context) -> {
 			
-			Iterator<ColorPalette> palettes = ColorPalette.palettes();
-			while(palettes.hasNext()) {
+			try(MemoryStack stack = MemoryStack.stackPush()) {
 				
-				ColorPalette next = palettes.next();
-				nk_layout_row_dynamic(context , 20 , 1);
-				if(nk_checkbox_text(context , "Show " + next.name , toByte(stack , next.show()))) next.toggleShow();
-				
+				Iterator<ColorPalette> palettes = ColorPalette.palettes();
+				while(palettes.hasNext()) {
+					
+					ColorPalette next = palettes.next();
+					nk_layout_row_dynamic(context , 20 , 1);
+					if(nk_checkbox_text(context , "Show " + next.name , toByte(stack , next.show()))) next.toggleShow();
+					
+				}
+			
 			}
 			
 		});
 				
-		projectMenu.new CSDynamicRow().new CSButton("New Project" , editor::startNewProject);
+		projectMenu.new SCDynamicRow().new SCButton("New Project" , editor::startNewProject);
 		
 		BooleanSupplier doLayoutProjectButtons = () -> editor.project() != null;
 		
-		CSDynamicRow addArtboardRow = projectMenu.new CSDynamicRow() , 
-			addAnimationRow = projectMenu.new CSDynamicRow() ,
-			addVisualLayerRow = projectMenu.new CSDynamicRow() ,
-			addNonVisualLayerRow = projectMenu.new CSDynamicRow() ,
-			toggleAnimationPanelRow = projectMenu.new CSDynamicRow(),
-			togglePaletteUIRow = projectMenu.new CSDynamicRow();
+		SCDynamicRow addArtboardRow = projectMenu.new SCDynamicRow() , 
+			addAnimationRow = projectMenu.new SCDynamicRow() ,
+			addVisualLayerRow = projectMenu.new SCDynamicRow() ,
+			addNonVisualLayerRow = projectMenu.new SCDynamicRow() ,
+			toggleAnimationPanelRow = projectMenu.new SCDynamicRow(),
+			togglePaletteUIRow = projectMenu.new SCDynamicRow();
 		
-		addArtboardRow.new CSButton("Add Artboard" , editor::startNewArtboard);
-		addAnimationRow.new CSButton("Add Animation" , editor::startNewAnimation);
-		addVisualLayerRow.new CSButton("Add Visual Layer" , editor::startNewVisualLayer);
-		addNonVisualLayerRow.new CSButton("Add Nonvisual Layer" , editor::startNewNonVisualLayer);
-		toggleAnimationPanelRow.new CSCheckBox("Animation Panel" , false , editor::toggleAnimationPanel);
-		togglePaletteUIRow.new CSCheckBox("Palette Panel" , false , editor::togglePaletteReferenceMode);
+		addArtboardRow.new SCButton("Add Artboard" , editor::startNewArtboard);
+		addAnimationRow.new SCButton("Add Animation" , editor::startNewAnimation);
+		addVisualLayerRow.new SCButton("Add Visual Layer" , editor::startNewVisualLayer);
+		addNonVisualLayerRow.new SCButton("Add Nonvisual Layer" , editor::startNewNonVisualLayer);
+		toggleAnimationPanelRow.new SCCheckBox("Animation Panel" , false , editor::toggleAnimationPanel);
+		togglePaletteUIRow.new SCCheckBox("Palette Panel" , false , editor::togglePaletteReferenceMode);
 		
 		addAnimationRow.doLayout = doLayoutProjectButtons;
 		addVisualLayerRow.doLayout = doLayoutProjectButtons;
@@ -126,24 +131,32 @@ public class FilePanel {
 		toggleAnimationPanelRow.doLayout = doLayoutProjectButtons;
 		togglePaletteUIRow.doLayout = doLayoutProjectButtons; 
 		
-		optionsMenu.new CSDynamicRow().new CSButton("Toggle Fullscreen" , editor::toggleFullscreen);
+		optionsMenu.new SCDynamicRow().new SCButton("Toggle Fullscreen" , editor::toggleFullscreen);
 		
-		CSRow undoRedoSizeConfig = optionsMenu.new CSRow(30);
+		SCRow undoRedoSizeConfig = optionsMenu.new SCRow(30);
 		undoRedoSizeConfig.pushWidth(190).pushWidth(100).pushWidth(40);
 		
-		undoRedoSizeConfig.new CSText(() -> "Undo/Redo Size (" + editor.undoCapacity() + ", " + editor.redoCapacity() + ")");
-		CSTextEditor sizeInput = undoRedoSizeConfig.new CSTextEditor(4 , CSNuklear.DECIMAL_FILTER);
-		undoRedoSizeConfig.new CSButton("Set" , () -> editor.setUndoAndRedoCapacity(Integer.parseInt(sizeInput.toString())));
+		undoRedoSizeConfig.new SCText(() -> "Undo/Redo Size (" + editor.undoCapacity() + ", " + editor.redoCapacity() + ")");
+		SCTextEditor sizeInput = undoRedoSizeConfig.new SCTextEditor(4 , SCNuklear.DECIMAL_FILTER);
+		undoRedoSizeConfig.new SCButton("Set" , () -> editor.setUndoAndRedoCapacity(Integer.parseInt(sizeInput.toString())));
 		
-		optionsMenu.new CSDynamicRow().new CSIntProperty("Camera Move Rate" , 1 , 1 , 1 , 999 , editor.setCameraMoveRate , editor.getCameraMoveRate);
+		optionsMenu.new SCDynamicRow().new SCIntProperty(
+			"Camera Move Rate" , 
+			1 , 
+			1 , 
+			1 , 
+			999 , 
+			editor.setCameraMoveRate , 
+			editor.getCameraMoveRate
+		);
 		
-		CSDynamicRow optionsRow1 = optionsMenu.new CSDynamicRow();
-		optionsRow1.new CSButton("Controls" , editor::startEditingControls);
-		optionsRow1.new CSButton("Background" , editor::startCheckeredBackgroundSettings);
+		SCDynamicRow optionsRow1 = optionsMenu.new SCDynamicRow();
+		optionsRow1.new SCButton("Controls" , editor::startEditingControls);
+		optionsRow1.new SCButton("Background" , editor::startCheckeredBackgroundSettings);
 		
-		optionsMenu.new CSDynamicRow().new CSButton("Simulation Framerate" , editor::startSetSimulationFrameRate);
+		optionsMenu.new SCDynamicRow().new SCButton("Simulation Framerate" , editor::startSetSimulationFrameRate);
 		
-		optionsMenu.new CSDynamicRow().new CSButton("Select UI Theme" , editor::startSelectUITheme);
+		optionsMenu.new SCDynamicRow().new SCButton("Select UI Theme" , editor::startSelectUITheme);
 		
 		/*
 		 * Steam workshop Menu
@@ -151,17 +164,17 @@ public class FilePanel {
 		
 		if(editor.isSteamInitialized()) {
 			
-			 CSMenu steamMenu = menuBar.new CSMenu("Steam" , 349 , 400);
-			 steamMenu.new CSDynamicRow().new CSButton("Post to Workshop" , editor::startSteamWorkshopItemUpload);
-			 steamMenu.new CSDynamicRow().new CSButton("Update Workshop Item" , editor::startSteamWorkshopItemUpdate);
+			 SCMenu steamMenu = menuBar.new SCMenu(nuklear , "Steam" , 349 , 400);
+			 steamMenu.new SCDynamicRow().new SCButton("Post to Workshop" , editor::startSteamWorkshopItemUpload);
+			 steamMenu.new SCDynamicRow().new SCButton("Update Workshop Item" , editor::startSteamWorkshopItemUpdate);
 			
 		}
 		
 		if(Engine.isDebug()) {
 			
-			CSMenu debugMenu = menuBar.new CSMenu("Debug" , 349 , 400);
+			SCMenu debugMenu = menuBar.new SCMenu(nuklear , "Debug" , 349 , 400);
 			
-			debugMenu.new CSDynamicRow().new CSButton("Toggle Realtime Mode" , () -> {
+			debugMenu.new SCDynamicRow().new SCButton("Toggle Realtime Mode" , () -> {
 				
 				try {
 					
@@ -175,17 +188,17 @@ public class FilePanel {
 				
 			});
 			
-			CSDynamicRow paletteRow1 = debugMenu.new CSDynamicRow(20);
-			CSDynamicRow paletteRow2 = debugMenu.new CSDynamicRow(20);
+			SCDynamicRow paletteRow1 = debugMenu.new SCDynamicRow(20);
+			SCDynamicRow paletteRow2 = debugMenu.new SCDynamicRow(20);
 			paletteRow1.doLayout = () -> editor.project() != null;
 			paletteRow2.doLayout = paletteRow1.doLayout;
-			paletteRow1.new CSText(() -> {
+			paletteRow1.new SCText(() -> {
 				
 				return "Palette Size: " + editor.project().visualPalette().width() + ", " + editor.project().visualPalette().height();
 				
 			});
 			
-			paletteRow2.new CSText(() -> {
+			paletteRow2.new SCText(() -> {
 				
 				return 
 					"Palette Position: " + 
@@ -194,26 +207,22 @@ public class FilePanel {
 					editor.project().visualPalette().currentRow();
 			});
 			
-			CSDynamicRow undoRedoStatsRow = debugMenu.new CSDynamicRow(20);
-			undoRedoStatsRow.new CSText(() -> "Undo Size: " + editor.undoSize());
-			undoRedoStatsRow.new CSText(() -> "Redo Size: " + editor.redoSize());
+			SCDynamicRow undoRedoStatsRow = debugMenu.new SCDynamicRow(20);
+			undoRedoStatsRow.new SCText(() -> "Undo Size: " + editor.undoSize());
+			undoRedoStatsRow.new SCText(() -> "Redo Size: " + editor.redoSize());
 			
 			int conversion = 1024 * 1024;
-			CSDynamicRow memoryRow1 = debugMenu.new CSDynamicRow(20);
-			memoryRow1.new CSText(() -> String.format(
+			SCDynamicRow memoryRow1 = debugMenu.new SCDynamicRow(20);
+			memoryRow1.new SCText(() -> String.format(
 				"Heap Size: %d, Available: %d" ,
 				Runtime.getRuntime().totalMemory() / conversion , 
 				Runtime.getRuntime().freeMemory() / conversion
 			));
 			
-			CSDynamicRow memoryRow2 = debugMenu.new CSDynamicRow(20);
-			memoryRow2.new CSText(() -> String.format(
-				"VRAM: %d, Remaining: %d", 
-				editor.rendererMake(GPUMemoryViewer::getTotalAvailableVRAM).get() ,
-				editor.rendererMake(GPUMemoryViewer::getCurrentAvailableVRAM).get()
-			));
+			SCDynamicRow memoryRow2 = debugMenu.new SCDynamicRow(20);
+			memoryRow2.new SCText(() -> getGPUResourceString(editor));
 			
-			debugMenu.new CSDynamicRow().new CSButton("Toggle Transparent Background" , () -> {
+			debugMenu.new SCDynamicRow().new SCButton("Toggle Transparent Background" , () -> {
 				
 				showingCheckeredBackground = !showingCheckeredBackground;
 				editor.rendererPost(() -> {
@@ -225,41 +234,51 @@ public class FilePanel {
 				
 			});
 			
-			debugMenu.new CSDynamicRow().new CSButton("Reload Shaders" , () -> {
-				
-				editor.rendererPost(() -> CSSSProject.thePaletteShader().reload(
-					readAllCharacters("assets/shaders/vertexShader.glsl") , 
-					readAllCharacters("assets/shaders/fragmentPaletteShader.glsl")
-				));
-				
-			});
-			
-			debugMenu.new CSDynamicRow().new CSButton("Switch Shader" , () -> {
+			debugMenu.new SCDynamicRow().new SCButton("Switch Shader" , () -> {
 				
 				CSSSProject.setTheCurrentShader(CSSSProject.theTextureShader());
 				
 			});
 			
-			debugMenu.new CSDynamicRow().new CSButton("Throw Exception" , () -> {
+			debugMenu.new SCDynamicRow().new SCButton("Throw Exception" , () -> {
 				
 				throw new CSSSException(new RuntimeException());
 				
 			});
 			
-			debugMenu.new CSDynamicRow().new CSButton("Open Styler" , () -> {
+			debugMenu.new SCDynamicRow().new SCButton("Open Styler" , () -> {
 				
 				editor.startUICustomizer();
 				
 			});
 		
-			debugMenu.new CSDynamicRow().new CSButton(
+			debugMenu.new SCDynamicRow().new SCButton(
 				"Dump Current Palette" , 
 				() -> editor.rendererPost(() -> editor.project().currentPalette().dumpToFile())
 			);
 		
-			debugMenu.new CSDynamicRow().new CSButton("Hide lines" , () -> editor.rendererPost(() -> editor.project().currentArtboard().undoAllLines()));
+			debugMenu.new SCDynamicRow().new SCButton("Hide lines" , () -> editor.rendererPost(() -> editor.project().currentArtboard().undoAllLines()));
 			
 		}
+		
+	}
+	
+	private String getGPUResourceString(Editor editor) {
+		
+		try {
+			
+			return String.format(
+				"VRAM: %d, Remaining: %d", 
+				editor.rendererMake(GPUMemoryViewer::getTotalAvailableVRAM).get() , 
+				editor.rendererMake(GPUMemoryViewer::getCurrentAvailableVRAM).get()
+			);
+			
+		} catch (InterruptedException | ExecutionException e) {
+
+			e.printStackTrace();
+			return null;
+			
+		}		
 		
 	}
 	

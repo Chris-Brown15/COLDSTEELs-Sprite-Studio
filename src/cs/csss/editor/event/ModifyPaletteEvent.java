@@ -18,10 +18,10 @@ import cs.csss.project.Artboard;
 	/**
 	 * Creates a modify palette event.
 	 * 
-	 * @param artboard — an artboard
-	 * @param paletteXIndex — x index of the palette pixel to change
-	 * @param paletteYIndex — y index of the palette pixel to change
-	 * @param newValue — new color to write in the palette
+	 * @param artboard an artboard
+	 * @param paletteXIndex x index of the palette pixel to change
+	 * @param paletteYIndex y index of the palette pixel to change
+	 * @param newValue new color to write in the palette
 	 */
 	public ModifyPaletteEvent(Artboard artboard , int paletteXIndex , int paletteYIndex , ColorPixel newValue) {
 		

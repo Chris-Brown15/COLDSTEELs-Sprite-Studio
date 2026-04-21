@@ -49,8 +49,8 @@ class UserSettings2 {
 	/**
 	 * Writes the user setting file by binding the current state of all user setting fields and writes them to a file.
 	 * 
-	 * @param engine — the engine
-	 * @param editor — the editor
+	 * @param engine the engine
+	 * @param editor the editor
 	 */
 	@SuppressWarnings({ "unchecked", "rawtypes" }) void write(Engine engine , Editor editor) {
 
@@ -104,8 +104,8 @@ class UserSettings2 {
 	/**
 	 * Reads user setting data from the file and stores in the engine. 
 	 * 
-	 * @param engine — the engine
-	 * @param editor — the editor
+	 * @param engine the engine
+	 * @param editor the editor
 	 */
 	void read(Engine engine , Editor editor) {
 		
@@ -120,7 +120,7 @@ class UserSettings2 {
 			if(stats.containsKey(BGWidth)) IndexTexture.backgroundWidth = Integer.parseInt(stats.get(BGWidth));
 			if(stats.containsKey(BGHeight)) IndexTexture.backgroundHeight = Integer.parseInt(stats.get(BGHeight));
 			if(stats.containsKey(stackSize)) editor.setUndoAndRedoCapacity(Integer.parseInt(stats.get(stackSize)));
-			if(stats.containsKey(wasFullScreen)) {			
+			if(stats.containsKey(wasFullScreen)) {
 
 				if(Boolean.parseBoolean(stats.get(wasFullScreen))) engine.toggleFullScreen();
 				else {
@@ -169,7 +169,7 @@ class UserSettings2 {
 				float x = Float.parseFloat(stats.get(cameraX));
 				float y = Float.parseFloat(stats.get(cameraY));
 				float zoom = Float.parseFloat(stats.get(cameraZoom));
-				engine.camera().translate(x, y);
+				engine.camera().translate(x, y , 0f);
 				engine.camera().zoom(zoom);
 				
 			}

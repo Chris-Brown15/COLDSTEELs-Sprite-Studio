@@ -1,3 +1,14 @@
+/**
+ * Copyright 2025, All Rights Reserved.
+ * â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+ * This file and any accompanying files
+ * belong to STEEL Softworks, LLC. Do 
+ * not distribute these files without 
+ * permission from Chris Brown, owner 
+ * of STEEL Softworks, at 
+ * chris@steelsoftworks.net
+ * â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”â€”
+ */
 package cs.csss.editor;
 
 import java.io.File;
@@ -50,7 +61,7 @@ public class JythonScriptExecutor {
 	/**
 	 * Creates a new Jython script executor which will hot reload scripts if {@code hotReload} is <code>true</code>.
 	 * 
-	 * @param hotReload — whether to hot reload scripts
+	 * @param hotReload whether to hot reload scripts
 	 */
 	public JythonScriptExecutor(boolean hotReload) {
 
@@ -63,7 +74,7 @@ public class JythonScriptExecutor {
 	/**
 	 * Registers the Artboard script at the given path, returning whether it was sucessfully registered.
 	 * 
-	 * @param scriptName — the file containing a script to register
+	 * @param scriptName the file containing a script to register
 	 * @return Whether the script was successfully registered.
 	 */
 	public boolean registerArtboardScript(File file) {
@@ -75,7 +86,7 @@ public class JythonScriptExecutor {
 	/**
 	 * Registers the Project script at the given path, returning whether it was sucessfully registered.
 	 * 
-	 * @param scriptName — the file containing a script to register
+	 * @param scriptName the file containing a script to register
 	 * @return Whether the script was successfully registered.
 	 */
 	public boolean registerProjectScript(File file) {
@@ -87,7 +98,7 @@ public class JythonScriptExecutor {
 	/**
 	 * Registers the brush script in the given file, returning whether the registry was successful.
 	 * 
-	 * @param file — the file to register
+	 * @param file the file to register
 	 * @return Whether the script was successfully registered.
 	 */
 	public boolean registerSimpleBrushScript(File file) {
@@ -99,7 +110,7 @@ public class JythonScriptExecutor {
 	/**
 	 * Registers the brush script in the given file, returning whether the registry was successful.
 	 * 
-	 * @param file — the file to register
+	 * @param file the file to register
 	 * @return Whether the script was successfully registered.
 	 */
 	public boolean registerModifyingBrushScript(File file) {
@@ -111,7 +122,7 @@ public class JythonScriptExecutor {
 	/**
 	 * Registers the brush script in the given file, returning whether the registry was successful.
 	 * 
-	 * @param file — the file to register
+	 * @param file the file to register
 	 * @return Whether the script was successfully registered.
 	 */
 	public boolean registerSelectingBrushScript(File file) {
@@ -123,7 +134,7 @@ public class JythonScriptExecutor {
 	/**
 	 * Registers the paette script in the given file, returning whether the registry was successful.
 	 * 
-	 * @param file — the file to register
+	 * @param file the file to register
 	 * @return Whether the script was successfully registered.
 	 */
 	public boolean registerPaletteScript(File file) {
@@ -143,8 +154,8 @@ public class JythonScriptExecutor {
 	/**
 	 * Runs the artboard script registered under {@code name}.
 	 * 
-	 * @param editor — the editor
-	 * @param name — the name of the script to execute
+	 * @param editor the editor
+	 * @param name the name of the script to execute
 	 */
 	public void runArtboardScript(Editor editor , String name) {
 		
@@ -155,8 +166,8 @@ public class JythonScriptExecutor {
 	/**
 	 * Runs the project script registered under {@code name}.
 	 * 
-	 * @param editor — the editor
-	 * @param name — the name of the script to execute
+	 * @param editor the editor
+	 * @param name the name of the script to execute
 	 */
 	public void runProjectScript(Editor editor , String name) {
 		
@@ -169,8 +180,8 @@ public class JythonScriptExecutor {
 	/**
 	 * Returns a {@link cs.csss.editor.brush.CSSSBrush} implementation from the given script file.
 	 * 
-	 * @param editor — the editor
-	 * @param file — the file the script is registered under
+	 * @param editor the editor
+	 * @param file the file the script is registered under
 	 * @return Brush implementation frmo the given script file.
 	 */
 	public CSSSBrush getSimpleBrush(Editor editor , File file) {
@@ -188,8 +199,8 @@ public class JythonScriptExecutor {
 	/**
 	 * Returns a {@link cs.csss.editor.brush.CSSSModifyingBrush} implementation from the given script file.
 	 * 
-	 * @param editor — the editor
-	 * @param file — the file the script is registered under
+	 * @param editor the editor
+	 * @param file the file the script is registered under
 	 * @return Modifying brush implementation frmo the given script file.
 	 */
 	public CSSSModifyingBrush getModifyingBrush(Editor editor , File file) {
@@ -207,8 +218,8 @@ public class JythonScriptExecutor {
 	/**
 	 * Returns a {@link cs.csss.editor.brush.CSSSSelectingBrush} implementation from the given script file.
 	 * 
-	 * @param editor — the editor
-	 * @param file — the file the script is registered under
+	 * @param editor the editor
+	 * @param file the file the script is registered under
 	 * @return Selecting brush implementation frmo the given script file.
 	 */
 	public CSSSSelectingBrush getSelectingBrush(Editor editor , File file) {
@@ -240,7 +251,7 @@ public class JythonScriptExecutor {
 	/**
 	 * Returns a metadata container for the brush registered as {@code scriptName}.
 	 * 
-	 * @param scriptName — name of the script whose meta is being queried 
+	 * @param scriptName name of the script whose meta is being queried 
 	 * @return The Metadata attached to the registered script.
 	 */
 	public BrushScriptMeta getSimpleBrushInfo(String scriptName) {
@@ -252,7 +263,7 @@ public class JythonScriptExecutor {
 	/**
 	 * Returns a metadata container for the modifying brush registered as {@code scriptName}.
 	 * 
-	 * @param scriptName — name of the script whose meta is being queried 
+	 * @param scriptName name of the script whose meta is being queried 
 	 * @return The Metadata attached to the registered script.
 	 */
 	public BrushScriptMeta getModifyingBrushInfo(String scriptName) {
@@ -264,7 +275,7 @@ public class JythonScriptExecutor {
 	/**
 	 * Returns a metadata container for the selecting brush registered as {@code scriptName}.
 	 * 
-	 * @param scriptName — name of the script whose meta is being queried 
+	 * @param scriptName name of the script whose meta is being queried 
 	 * @return The Metadata attached to the registered script.
 	 */
 	public BrushScriptMeta getSelectingBrushInfo(String scriptName) {
@@ -276,8 +287,8 @@ public class JythonScriptExecutor {
 	/**
 	 * Registers a script in the given map if it was not previously, or if hot reloading is enabled. 
 	 * 
-	 * @param file — file to register
-	 * @param map — map to store the script
+	 * @param file file to register
+	 * @param map map to store the script
 	 * @return {@code true} if the script was successfully registered, equal to if a new entry was put in {@code map}.
 	 */
 	private boolean registerEventScript(File file , HashMap<String , EventAndCode> map) {
@@ -298,8 +309,8 @@ public class JythonScriptExecutor {
 	/**
 	 * Registers the script at {@code file} in the map {@code map}.
 	 * 
-	 * @param file — a file to register
-	 * @param map — the map to store the registery in
+	 * @param file a file to register
+	 * @param map the map to store the registery in
 	 * @return {@code true} if {@code file} was registered.
 	 */
 	private boolean registerBrushScript(File file , HashMap<String , BrushAndCode> map) {
@@ -322,10 +333,10 @@ public class JythonScriptExecutor {
 	/**
 	 * Handles most of the boilerplate for compiling python code and generating a metadata item.
 	 * 
-	 * @param <T> — type of metadata item
-	 * @param file — script file to compile
-	 * @param map  — map to store the item in
-	 * @param infoGetter — {@link BiFunction} responsible for creating the metadata-and-code object stored in the map
+	 * @param <T> type of metadata item
+	 * @param file script file to compile
+	 * @param map  map to store the item in
+	 * @param infoGetter {@link BiFunction} responsible for creating the metadata-and-code object stored in the map
 	 * @return {@code true} if a new item was registered into the given map, {@code false} otherwise.
 	 */
 	private <T> boolean compileCode(File file , HashMap<String , T> map , BiFunction<PythonInterpreter , PyCode , T> infoGetter) {
@@ -371,10 +382,10 @@ public class JythonScriptExecutor {
 	/**
 	 * Executes the script of the given name, which is to be found in {@code map}.
 	 * 
-	 * @param name — name of the script to execute
-	 * @param map — the map to find it in
-	 * @param editor — the editor
-	 * @param arguments — the arguments to pass to the script's name function
+	 * @param name name of the script to execute
+	 * @param map the map to find it in
+	 * @param editor the editor
+	 * @param arguments the arguments to pass to the script's name function
 	 */
 	private void pushEventScriptEvent(String name , HashMap<String , EventAndCode> map , Editor editor , List<Object> arguments) {
 		
@@ -396,9 +407,9 @@ public class JythonScriptExecutor {
 	 * Executes the function of the name {@code name} from the {@code PyCode} contained within {@code info}, passing {@code arguments} as the 
 	 * function's arguments.
 	 *  
-	 * @param name — name of a function to invoke
-	 * @param info — container for metadata and compiled code
-	 * @param arguments — arguments to pass
+	 * @param name name of a function to invoke
+	 * @param info container for metadata and compiled code
+	 * @param arguments arguments to pass
 	 * @return Event to push containing the given code.
 	 */
 	private CSSSEvent runScriptNameFunction(String name , EventAndCode info , Object[] arguments) {
@@ -414,9 +425,9 @@ public class JythonScriptExecutor {
 	 * Executes the function named {@code name}, which will receive {@code arguments}. {@code code} is the source compilation containing the function
 	 * of the given name. 
 	 * 
-	 * @param name — name of a function to execute
-	 * @param code — code containing the function
-	 * @param arguments — arguments to pass to the function
+	 * @param name name of a function to execute
+	 * @param code code containing the function
+	 * @param arguments arguments to pass to the function
 	 * @return Result of the function call.
 	 */
 	private PyObject runScriptNameFunction(String name , PyCode code,  Object[] arguments) {
@@ -454,11 +465,11 @@ public class JythonScriptExecutor {
 	/**
 	 * Gets a global variable from the given interpreter named {@code name}, if one is present. If not, {@code _default} is returned.
 	 * 
-	 * @param <T> — type of data sought after and returned
-	 * @param interpreter — interpreter to get the variable from
-	 * @param itemName — name of the variable to get
-	 * @param _default — a variable to return if none was found in {@code interpreter}
-	 * @param Tclass — {@code Class<T>} for the variable being queried for
+	 * @param <T> type of data sought after and returned
+	 * @param interpreter interpreter to get the variable from
+	 * @param itemName name of the variable to get
+	 * @param _default a variable to return if none was found in {@code interpreter}
+	 * @param Tclass {@code Class<T>} for the variable being queried for
 	 * @return The variable in {@code interpreter} named {@code itemName}, if it is found, {@code _default} otherwise.
 	 */
 	@SuppressWarnings("unchecked") private <T> T getOrDefault(PythonInterpreter interpreter , String itemName , T _default , Class<T> Tclass) {

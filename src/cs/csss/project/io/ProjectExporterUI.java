@@ -2,28 +2,28 @@ package cs.csss.project.io;
 
 import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
 import static org.lwjgl.nuklear.Nuklear.nk_text_wrap;
-import static cs.core.ui.CSUIConstants.*;
+import static sc.core.ui.SCUIConstants.*;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutionException;
 
 import org.python.core.PyObject;
 import org.python.core.adapter.ClassicPyObjectAdapter;
 import org.python.util.PythonInterpreter;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSCheckBox;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSText;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
-import cs.core.ui.CSNuklear.CSUserInterface;
-import cs.core.utils.Lambda;
 import cs.csss.engine.Engine;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.project.CSSSProject;
 import cs.csss.ui.menus.DroppedFileAcceptingDialogue;
+import sc.core.ui.SCElements.SCUI.SCDynamicRow;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCCheckBox;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCRadio;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCText;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCTextEditor;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
 
 /**
  * UI element for selecting options and begining the export of the project.
@@ -42,16 +42,16 @@ public class ProjectExporterUI extends DroppedFileAcceptingDialogue {
 	/**
 	 * Sets the file path of export locations.
 	 * 
-	 * @param absoluteFilePath — String representing absolute filep path to export to
+	 * @param absoluteFilePath String representing absolute filep path to export to
 	 */
 	public static void registerExportLocation(String absoluteFilePath) {
 
 		
 	}
 	
-	private final CSTextEditor nameInput;
+	private final SCTextEditor nameInput;
 	
-	private final CSCheckBox 
+	private final SCCheckBox 
 		exportPalette ,
 		exportHiddenLayers ,
 		hideCheckeredBackground ,
@@ -59,7 +59,7 @@ public class ProjectExporterUI extends DroppedFileAcceptingDialogue {
 		exportAnimationFiles ,
 		powerOfTwoSizes;
 	
-	private final CSRadio
+	private final SCRadio
 		exportColor ,
 		exportIndices;
 	
@@ -67,19 +67,20 @@ public class ProjectExporterUI extends DroppedFileAcceptingDialogue {
 	
 	private String scriptPath;
 	
-	private CSCheckBox doExportScript;
+	private SCCheckBox doExportScript;
 	
 	/**
 	 * Creates a project exporter UI.
 	 * 
-	 * @param engine — the engine
-	 * @param nuklear — the Nuklear factory
-	 * @param project — the project to export
+	 * @param engine the engine
+	 * @param nuklear the Nuklear factory
+	 * @param project the project to export
 	 */
-	public ProjectExporterUI(final Engine engine , CSNuklear nuklear , final CSSSProject project) {
+	public ProjectExporterUI(Engine engine , SCNuklear nuklear , final CSSSProject project) {
 	
 		int[] windowSize = engine.windowSize();
-		CSUserInterface ui = nuklear.new CSUserInterface(
+		SCUserInterface ui = new SCUserInterface(
+			nuklear,
 			"Exporter" , 
 			(windowSize[0] / 2) - (UIWidth / 2) , 
 			(windowSize[1] / 2) - (UIHeight / 2) , 
@@ -87,21 +88,21 @@ public class ProjectExporterUI extends DroppedFileAcceptingDialogue {
 			UIHeight
 		);
 		
-		ui.options = UI_TITLED|UI_BORDERED|UI_MOVABLE;
+		ui.flags = UI_TITLED|UI_BORDERED|UI_MOVABLE;
 		
-		Lambda onFinish = () -> {
+		Runnable onFinish = () -> {
 			
 			nuklear.removeUserInterface(ui);
-			ui.shutDown();
+			Engine.THE_TEMPORAL.onTrue(() -> true, ui::shutDown);
 			super.onFinish();
 			
 		};
 		
 		String description = "Drag a folder into Sprite Studio to select it as the location to export to.";
-		ui.new CSDynamicRow(20).new CSText(description , (byte)0x0 , (byte)0x79 , (byte) 0x0 , (byte)0xff);
+		ui.new SCDynamicRow(20).new SCText(description , (byte)0x0 , (byte)0x79 , (byte) 0x0 , (byte)0xff);
 				
-		ui.new CSDynamicRow(20).new CSText("Export Destination:");
-		ui.attachedLayout((context , stack) -> {
+		ui.new SCDynamicRow(20).new SCText("Export Destination:");
+		ui.attachedLayout((context) -> {
 			
 			synchronized(exportLocation) {
 				
@@ -112,19 +113,19 @@ public class ProjectExporterUI extends DroppedFileAcceptingDialogue {
 			
 		});
 		
-		ui.new CSDynamicRow(20).new CSText("File Name:");
-		nameInput = ui.new CSDynamicRow(25).new CSTextEditor(999);
+		ui.new SCDynamicRow(20).new SCText("File Name:");
+		nameInput = ui.new SCDynamicRow(25).new SCTextEditor(999);
 				
-		exportPalette = ui.new CSDynamicRow(25).new CSCheckBox("Export Palettes" , false , () -> {});
-		exportHiddenLayers = ui.new CSDynamicRow(25).new CSCheckBox("Export Hidden Layers" , false , () -> {});
-		exportNonVisualLayers = ui.new CSDynamicRow(25).new CSCheckBox("Export Nonvisual Layers" , false , () -> {});
-		hideCheckeredBackground = ui.new CSDynamicRow(25).new CSCheckBox("Hide Checkered Background" , false , () -> {});
-		exportAnimationFiles = ui.new CSDynamicRow(25).new CSCheckBox("Export Animation Files" , false , () -> {});
-		powerOfTwoSizes = ui.new CSDynamicRow(25).new CSCheckBox("Power Of Two Sizes" , false , () -> {});
+		exportPalette = ui.new SCDynamicRow(25).new SCCheckBox("Export Palettes" , false , () -> {});
+		exportHiddenLayers = ui.new SCDynamicRow(25).new SCCheckBox("Export Hidden Layers" , false , () -> {});
+		exportNonVisualLayers = ui.new SCDynamicRow(25).new SCCheckBox("Export Nonvisual Layers" , false , () -> {});
+		hideCheckeredBackground = ui.new SCDynamicRow(25).new SCCheckBox("Hide Checkered Background" , false , () -> {});
+		exportAnimationFiles = ui.new SCDynamicRow(25).new SCCheckBox("Export Animation Files" , false , () -> {});
+		powerOfTwoSizes = ui.new SCDynamicRow(25).new SCCheckBox("Power Of Two Sizes" , false , () -> {});
 		
-	 	CSDynamicRow freemoveRow = ui.new CSDynamicRow(25);
-	 	CSCheckBox freemoveCheck = freemoveRow.new CSCheckBox("Freemove Mode" , false , project::toggleFreemoveMode);
-	 	CSCheckBox freemoveCollisionCheck = freemoveRow.new CSCheckBox(
+	 	SCDynamicRow freemoveRow = ui.new SCDynamicRow(25);
+	 	SCCheckBox freemoveCheck = freemoveRow.new SCCheckBox("Freemove Mode" , false , project::toggleFreemoveMode);
+	 	SCCheckBox freemoveCollisionCheck = freemoveRow.new SCCheckBox(
 	 		"Check Collisions" , 
 	 		project.freemoveCheckCollisions() , 
 	 		project::toggleFreemoveCheckCollisions
@@ -132,18 +133,18 @@ public class ProjectExporterUI extends DroppedFileAcceptingDialogue {
 	 	
 	 	freemoveCollisionCheck.doLayout = freemoveCheck::checked; 
 	 		 	
-		exportColor = ui.new CSDynamicRow(25).new CSRadio("Export As Colors" , true , () -> {});
-		exportIndices = ui.new CSDynamicRow(25).new CSRadio("Export As Indices" , false , exportPalette::check);
+		exportColor = ui.new SCDynamicRow(25).new SCRadio("Export As Colors" , true , () -> {});
+		exportIndices = ui.new SCDynamicRow(25).new SCRadio("Export As Indices" , false , exportPalette::check);
 			
-		CSRadio.groupAll(exportColor , exportIndices);
+		SCRadio.groupAll(exportColor , exportIndices);
 		
-		ui.new CSDynamicRow(20).new CSText("Export As:");
+		ui.new SCDynamicRow(20).new SCText("Export As:");
 		
 		ExportFileTypes[] types = ExportFileTypes.values();		
 		for(int i = 0 ; i < types.length ; i ++) {
 			
 			int j = i;			 
-			ui.new CSDynamicRow(25).new CSCheckBox(types[i].toString() , false , () -> {
+			ui.new SCDynamicRow(25).new SCCheckBox(types[i].toString() , false , () -> {
 				
 				//if an item of the same extension was removed, break out, otherwise continue to add a new exporter
 				if(exporters.removeIf(item -> item.extension().equals(types[j].ending))) return;
@@ -153,18 +154,18 @@ public class ProjectExporterUI extends DroppedFileAcceptingDialogue {
 			
 		}
 		
-		CSDynamicRow scriptRow = ui.new CSDynamicRow(30);
-		doExportScript = scriptRow.new CSCheckBox("Script" , false , () -> {});
-		CSText text = scriptRow.new CSText(() -> "(" + new File(scriptPath).getName() + ")");
+		SCDynamicRow scriptRow = ui.new SCDynamicRow(30);
+		doExportScript = scriptRow.new SCCheckBox("Script" , false , () -> {});
+		SCText text = scriptRow.new SCText(() -> "(" + new File(scriptPath).getName() + ")");
 		text.doLayout = () -> scriptPath != null;
 		
-		ui.attachedLayout((context , stack) -> {
+		ui.attachedLayout((context) -> {
 			
 			if(scriptPath == null) doExportScript.uncheck();
 			
 		});
 		
-		scriptRow.new CSButton("Select" , () -> engine.startSelectScriptMenu("exporters" , file -> {
+		scriptRow.new SCButton("Select" , () -> engine.startSelectScriptMenu("exporters" , file -> {
 			
 			scriptPath = file.getAbsolutePath();
 			String filename = file.getName();
@@ -198,37 +199,47 @@ public class ProjectExporterUI extends DroppedFileAcceptingDialogue {
 
 		}));
 		
-		CSDynamicRow finishRow = ui.new CSDynamicRow();
+		SCDynamicRow finishRow = ui.new SCDynamicRow();
 		
-		finishRow.new CSButton("Export" , () -> {
+		finishRow.new SCButton("Export" , () -> {
 		
 			if(!verifyExportable()) return;
 			
-			ProjectExporter exporter = new ProjectExporter(
-				engine.renderer() , 
-				engine::windowSwapBuffers ,
-				project , 
-				exporters , 
-				exportLocation + CSFolder.separator ,
-				nameInput.toString() ,
-				engine.nanoVG() ,
-				engine.windowSize() ,
-				exportPalette.checked() ,
-				exportHiddenLayers.checked() ,
-				hideCheckeredBackground.checked() ,
-				exportNonVisualLayers.checked() ,
-				powerOfTwoSizes.checked() ,
-				exportColor.checked() ,
-				exportAnimationFiles.checked()
-			);
+			ProjectExporter exporter;
+			try {
+				
+				exporter = new ProjectExporter(
+					engine.renderer() , 
+					engine::windowSwapBuffers ,
+					project , 
+					exporters , 
+					exportLocation + CSFolder.separator ,
+					nameInput.toString() ,
+					engine.nanoVG() ,
+					engine.windowSize() ,
+					exportPalette.checked() ,
+					exportHiddenLayers.checked() ,
+					hideCheckeredBackground.checked() ,
+					exportNonVisualLayers.checked() ,
+					powerOfTwoSizes.checked() ,
+					exportColor.checked() ,
+					exportAnimationFiles.checked()
+				);
+				
+			} catch (InterruptedException | ExecutionException e) {
+				
+				e.printStackTrace();
+				return;
+				
+			}
 			
 			exporter.export();
 			
-			onFinish.invoke();
+			onFinish.run();
 			
 		});
 		
-		finishRow.new CSButton("Cancel" , onFinish);
+		finishRow.new SCButton("Cancel" , onFinish);
 		
 	}
 	

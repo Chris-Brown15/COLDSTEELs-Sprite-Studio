@@ -1,12 +1,6 @@
 package cs.csss.project;
 
-import static cs.core.graphics.StandardRendererConstants.MAG_FILTER_NEAREST;
-import static cs.core.graphics.StandardRendererConstants.MIN_FILTER_NEAREST;
-import static cs.core.graphics.StandardRendererConstants.S_WRAP_MIRRORED;
-import static cs.core.graphics.StandardRendererConstants.T_WRAP_MIRRORED;
-
-import static cs.core.utils.CSUtils.require;
-import static cs.core.utils.CSUtils.specify;
+import static sc.core.graphics.SCRendererConstants.*;
 
 import static org.lwjgl.opengl.GL30C.GL_RG;
 import static org.lwjgl.opengl.GL30C.GL_UNSIGNED_BYTE;
@@ -21,13 +15,11 @@ import java.nio.ByteBuffer;
 
 import org.lwjgl.system.MemoryStack;
 
-import cs.core.graphics.CSTexture;
-import cs.core.graphics.ThreadedRenderer;
-import cs.core.utils.files.CSGraphic;
 import cs.csss.engine.LookupPixel;
 import cs.csss.misc.utils.FlexableGraphic;
 import cs.csss.project.utils.Artboards;
 import cs.csss.project.utils.StackOrHeapAllocation;
+import sc.core.graphics.SCTexture;
 
 /**
  * Extender of {@linkplain cs.core.graphics.CSTexture CSTexture} used to allow for modification of texel data. This texture object is used
@@ -37,7 +29,7 @@ import cs.csss.project.utils.StackOrHeapAllocation;
  * @author Chris Brown
  *
  */
-public class IndexTexture extends CSTexture {
+public class IndexTexture extends SCTexture {
 
 	/**
 	 * Constant primitive data for index textures
@@ -84,7 +76,7 @@ public class IndexTexture extends CSTexture {
 	
 	void initialize(int width , int height , short[] defaultValueForPixels , boolean setCheckeredBackground) {
 
-		require(defaultValueForPixels.length == 2);
+		assert defaultValueForPixels.length == 2;
 		
 		FlexableGraphic graphic = new FlexableGraphic(
 			width , 
@@ -95,14 +87,12 @@ public class IndexTexture extends CSTexture {
 			defaultValueForPixels[1]
 		);
 
-		users.getAndIncrement();
-	
 		super.initialize(graphic, textureOptions);
-		
-		graphic.shutDown();
 		
 		this.width = graphic.width();
 		this.height = graphic.height();
+
+		graphic.shutDown();
 		
 		if(setCheckeredBackground) setCheckerBackground();
 		
@@ -111,11 +101,11 @@ public class IndexTexture extends CSTexture {
 	/**
 	 * Overwrites texels of this texture.
 	 * 
-	 * @param xIndex — bottom left pixel x coordinate of the region to modify
-	 * @param yIndex — bottom left pixel y coordinate of the region to modify
-	 * @param widthPixels — width in pixels of the region to modify, extends out from {@code xIndex}
-	 * @param heightPixels — height in pixels of the region to modify, extends out from {@code yIndex}
-	 * @param imageData — off-heap allocated pixel data, i.e., channel values used to overwrite this texture's texel data;
+	 * @param xIndex bottom left pixel x coordinate of the region to modify
+	 * @param yIndex bottom left pixel y coordinate of the region to modify
+	 * @param widthPixels width in pixels of the region to modify, extends out from {@code xIndex}
+	 * @param heightPixels height in pixels of the region to modify, extends out from {@code yIndex}
+	 * @param imageData off-heap allocated pixel data, i.e., channel values used to overwrite this texture's texel data;
 	 * 					  the layout of this buffer should be such that the first values modify the pixel at {@code (xIndex , yIndex)} and
 	 * 					  the last values modify the pixel at {@code (xIndex + width - 1 , yIndex + height - 1)}
 	 */
@@ -130,11 +120,11 @@ public class IndexTexture extends CSTexture {
 	/**
 	 * Stores the given lookup pixel in each position of the specified region
 	 * 
-	 * @param xIndex — x index of the bottom left corner of the region to recolor
-	 * @param yIndex — y index of the bottom left corner of the region to recolor
-	 * @param widthPixels — width of the region to recolor; extends from the {@code xIndex}
-	 * @param heightPixels — height of the region to recolor; extends from the {@code yIndex}
-	 * @param imageData — a pixel pointing to a position in the palette whose color will be rendered 
+	 * @param xIndex x index of the bottom left corner of the region to recolor
+	 * @param yIndex y index of the bottom left corner of the region to recolor
+	 * @param widthPixels width of the region to recolor; extends from the {@code xIndex}
+	 * @param heightPixels height of the region to recolor; extends from the {@code yIndex}
+	 * @param imageData a pixel pointing to a position in the palette whose color will be rendered 
 	 */
 	void putSubImage(int xIndex , int yIndex , int widthPixels , int heightPixels , LookupPixel imageData) {
 		
@@ -246,20 +236,20 @@ public class IndexTexture extends CSTexture {
 	 * Gets a {@code ByteBuffer} containing texels of this image. This method performs some reformatting of the buffer recieved from the 
 	 * GPU, but the caller will recieve a buffer containing the expected contents.
 	 * 
-	 * @param width — width of the region in pixels
-	 * @param height — height of the region in pixels
-	 * @param xIndex — x coordinate of the bottom left pixel to begin at
-	 * @param yIndex — y coordinate of the bottom left pixel to begin at
+	 * @param width width of the region in pixels
+	 * @param height height of the region in pixels
+	 * @param xIndex x coordinate of the bottom left pixel to begin at
+	 * @param yIndex y coordinate of the bottom left pixel to begin at
 	 * @return Buffer containing bytes of pixels at the region specified.
 	 */
 	ByteBuffer texelBufferWithReformat(int width , int height , int xIndex , int yIndex) {
 		
-		specify(width > 0 && width <= this.width , width + " is not a valid width.");
-		specify(height > 0 && height <= this.height, height + " is not a valid height.");
-		specify(xIndex >= 0 && xIndex < this.width , xIndex + " is not a valid x value.");
-		specify(yIndex >= 0 && yIndex < this.height , yIndex + " is not a valid y value.");
-		specify(xIndex + width <= this.width , (xIndex + width) + " is out of bounds x wise.");
-		specify(yIndex + height <= this.height , (yIndex + height) + " is out of bounds y wise.");
+		assert width > 0 && width <= this.width : width + " is not a valid width.";
+		assert height > 0 && height <= this.height: height + " is not a valid height.";
+		assert xIndex >= 0 && xIndex < this.width : xIndex + " is not a valid x value.";
+		assert yIndex >= 0 && yIndex < this.height : yIndex + " is not a valid y value.";
+		assert xIndex + width <= this.width : (xIndex + width) + " is out of bounds x wise.";
+		assert yIndex + height <= this.height : (yIndex + height) + " is out of bounds y wise.";
 		
 		ByteBuffer texels;
 
@@ -279,9 +269,20 @@ public class IndexTexture extends CSTexture {
 		//activates the texture we are sampling from (this class instance)
 		activate();		
 		//retreives a region of this texture into texels
-		glGetTextureSubImage(textureID , level , xIndex , yIndex , zOffset , width , height , depth , glDataFormat , glChannelType , texels);
-		//checks for GL errors
-		ThreadedRenderer.checkErrors();
+		glGetTextureSubImage(
+			textureID , 
+			level , 
+			xIndex , 
+			yIndex , 
+			zOffset , 
+			width , 
+			height , 
+			depth , 
+			glDataFormat , 
+			glChannelType , 
+			texels
+		);
+		
 		//deactivates this texture
 		deactivate();
 		
@@ -313,39 +314,40 @@ public class IndexTexture extends CSTexture {
 	/**
 	 * Gets a {@code ByteBuffer} containing texels of this image. This method does not reformat the buffer the GPU returns. This method is
 	 * not suitable for most purposes.
-	 * @param leftX — x coordinate of the bottom left pixel to begin at
-	 * @param bottomY — y coordinate of the bottom left pixel to begin at
-	 * @param width — width of the region in pixels
-	 * @param height — height of the region in pixels
+	 * @param leftX x coordinate of the bottom left pixel to begin at
+	 * @param bottomY y coordinate of the bottom left pixel to begin at
+	 * @param width width of the region in pixels
+	 * @param height height of the region in pixels
 	 * 
 	 * @return Buffer containing bytes of pixels at the region specified.
 	 */
 	ByteBuffer texelBuffer(int leftX , int bottomY , int width , int height) {
 
-		specify(width > 0 && width <= this.width , width + " is not a valid width.");
-		specify(height > 0 && height <= this.height, height + " is not a valid height.");
-		specify(leftX >= 0 && leftX < this.width , leftX + " is not a valid x value.");
-		specify(bottomY >= 0 && bottomY < this.height , bottomY + " is not a valid y value.");
-		specify(leftX + width <= this.width , (leftX + width) + " is out of bounds x wise.");
-		specify(bottomY + height <= this.height , (bottomY + height) + " is out of bounds y wise.");
+		assert width > 0 && width <= this.width : width + " is not a valid width.";
+		assert height > 0 && height <= this.height: height + " is not a valid height.";
+		assert leftX >= 0 && leftX < this.width : leftX + " is not a valid x value.";
+		assert bottomY >= 0 && bottomY < this.height : bottomY + " is not a valid y value.";
+		assert leftX + width <= this.width : (leftX + width) + " is out of bounds x wise.";
+		assert bottomY + height <= this.height : (bottomY + height) + " is out of bounds y wise.";
 		
 		ByteBuffer texels = memAlloc((width + 1) * (height + 1) * pixelSizeBytes);
 		
 		activate();
-		glGetTextureSubImage(textureID , level , leftX , bottomY , zOffset , width , height , depth , glDataFormat , glChannelType , texels);
+		glGetTextureSubImage(
+			textureID , 
+			level , 
+			leftX , 
+			bottomY , 
+			zOffset , 
+			width , 
+			height , 
+			depth , 
+			glDataFormat , 
+			glChannelType , 
+			texels
+		);
 		
 		texels.limit(width * height * pixelSizeBytes);
-		
-		boolean errored = ThreadedRenderer.checkErrors();
-		
-		if(errored) { 
-			
-			System.err.printf("Values: [%d , %d , %d , %d]\n" , leftX , bottomY , width , height);
-			
-			memFree(texels);
-			texels = null;
-			
-		}
 		
 		deactivate();
 		
@@ -368,7 +370,7 @@ public class IndexTexture extends CSTexture {
 
 	IndexPixel getPixelByIndex(ByteBuffer texelBuffer , int xIndex , int yIndex) {
 		
-		require(texelBuffer.limit() == width * height * pixelSizeBytes);		
+		assert(texelBuffer.limit() == width * height * pixelSizeBytes);		
 		ByteBuffer texelSlice = texelBuffer.slice((yIndex * width) * pixelSizeBytes + (xIndex * pixelSizeBytes) , pixelSizeBytes);		
 		IndexPixel pixelValue = getPixel(texelSlice);		
 		return pixelValue;
@@ -384,13 +386,7 @@ public class IndexTexture extends CSTexture {
 		return pixelValue;
 		
 	}
-	
-	void incrementOwners() {
 		
-		users.incrementAndGet();
-		
-	}
-	
 	/**
 	 * Expands this texture by doubling its bytes per channel, allowing for a greater number of indices to be pointed to.
 	 */

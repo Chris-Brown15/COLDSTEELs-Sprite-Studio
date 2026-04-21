@@ -1,7 +1,7 @@
 package cs.csss.editor;
 
-import cs.coreext.nanovg.NanoVGFrame;
 import cs.csss.annotation.RenderThreadOnly;
+import sc.core.graphics.nanovg.SCNanoVGFrame;
 
 /**
  * Differently handled version of {@link SelectionAreaBounder}. This class's {@link #update(float, float) update} and {@link #reset() reset} need to
@@ -24,9 +24,9 @@ public class SelectionAreaBounder2 {
 	/**
 	 * Renders this bounding box in the given {@code NanoVGFrame}.
 	 * 
-	 * @param frame — a nanovg frame
+	 * @param frame a nanovg frame
 	 */
-	@RenderThreadOnly public void render(NanoVGFrame frame) {
+	@RenderThreadOnly public void render(SCNanoVGFrame frame) {
 		
 		frame
 			.newPath()
@@ -235,10 +235,10 @@ public class SelectionAreaBounder2 {
 	/**
 	 * Forces the corners of this bounding box to be within the given coordinates in world space.
 	 * 
-	 * @param leftX — left x coordinate in world space
-	 * @param rightX — right x coordinate in world space
-	 * @param bottomY — bottom x coordinate in world space
-	 * @param topY — top x coordinate in world space
+	 * @param leftX left x coordinate in world space
+	 * @param rightX right x coordinate in world space
+	 * @param bottomY bottom x coordinate in world space
+	 * @param topY top x coordinate in world space
 	 */
 	public void snapBounderToCoordinates(float leftX , float rightX , float bottomY , float topY) {
 

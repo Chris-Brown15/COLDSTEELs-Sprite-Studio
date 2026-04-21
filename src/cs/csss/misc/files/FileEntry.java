@@ -1,7 +1,5 @@
 package cs.csss.misc.files;
 
-import static cs.core.utils.CSUtils.specify;
-
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.function.BiConsumer;
@@ -120,16 +118,16 @@ public class FileEntry {
 
 		if(getter != null) object = getter.get();
 		
-		specify(object , "Data must be bound before writing a component of a File Composition.");
+		assert object != null : "Data must be bound before writing a component of a File Composition.";
 		
 		int bufferInitialPosition = buffer.position();
 		write.accept(object, buffer);
 		
-		specify(
-			bufferInitialPosition + sizeBytes == buffer.position() , 
+		assert 
+			bufferInitialPosition + sizeBytes == buffer.position() : 
 			"Invalid write operation: " + sizeBytes + " is " + name + "'s size in bytes, but " + 
 			(buffer.position() - bufferInitialPosition) + " bytes were written by " + name + "'s write function."
-		);
+		;
 		
 	}
 	

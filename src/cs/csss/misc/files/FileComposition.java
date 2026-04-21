@@ -1,7 +1,5 @@
 package cs.csss.misc.files;
 
-import static cs.core.utils.CSUtils.require;
-import static cs.core.utils.CSUtils.specify;
 import static cs.csss.ui.utils.UIUtils.toByte;
 
 import java.io.FileInputStream;
@@ -12,16 +10,16 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
+import java.util.function.DoubleSupplier;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
+import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
-import cs.core.utils.ByteSupplier;
-import cs.core.utils.CharSupplier;
-import cs.core.utils.DoubleSupplier;
-import cs.core.utils.FloatSupplier;
-import cs.core.utils.LongSupplier;
-import cs.core.utils.ShortSupplier;
+import cs.bringover.cs.core.utils.data.ByteSupplier;
+import cs.bringover.cs.core.utils.data.CharSupplier;
+import cs.bringover.cs.core.utils.data.FloatSupplier;
+import cs.bringover.cs.core.utils.data.ShortSupplier;
 
 /**
  * Used to define a file format which can be written to or read in according to the specification defined by the {@code add} methods.
@@ -232,7 +230,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Returns the total number of bytes a list prefix will be for a list of size {@code listLength}.
 	 * 
-	 * @param listLength — arbitrary size of a list
+	 * @param listLength arbitrary size of a list
 	 * @return Number of bytes a prefix to a list of size {@code listLength} would be. 
 	 */
 	public static int listSizePrefixSize(int listLength) {
@@ -244,7 +242,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Computes the number of additional bytes a list size prefix would be for a list of size {@code length}.
 	 * 
-	 * @param length — arbitrary size of a list
+	 * @param length arbitrary size of a list
 	 * @return Number of additional bytes beyond the first a list size prefix would be for a list of size {@code length}.
 	 */
 	private static int additionalListSizePrefixBytes(int length) {
@@ -260,8 +258,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Writes a size of a list in a {@code ByteBuffer}, returning the buffer after writing. 
 	 * 
-	 * @param buffer — a buffer to write to
-	 * @param listSize — number of elements in a list
+	 * @param buffer a buffer to write to
+	 * @param listSize number of elements in a list
 	 * @return {@code ByteBuffer} containing a size of elements of a list.
 	 */
 	public static ByteBuffer writeSize(ByteBuffer buffer , int listSize) {
@@ -284,7 +282,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Reads the prefix of a list and returns the size in elements of the list.
 	 * 
-	 * @param buffer — {@code ByteBuffer} containing data
+	 * @param buffer {@code ByteBuffer} containing data
 	 * @return Size of a list.
 	 */
 	public static int readSize(ByteBuffer buffer) {
@@ -320,8 +318,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a byte and binds its value for writing.
 	 * 
-	 * @param name — name of the byte entry
-	 * @param value — value of the byte
+	 * @param name name of the byte entry
+	 * @param value value of the byte
 	 * @return {@code this}.
 	 */
 	public FileComposition addByte(String name , byte value) { 
@@ -336,8 +334,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a byte and relies on a supplier for its value.
 	 * 
-	 * @param name — name of the byte entry
-	 * @param byteGetter — getter
+	 * @param name name of the byte entry
+	 * @param byteGetter getter
 	 * @return {@code this}.
 	 */
 	public FileComposition addByte(String name , ByteSupplier byteGetter) { 
@@ -352,7 +350,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a byte entry with no bound value.
 	 * 
-	 * @param name — name of the byte entry
+	 * @param name name of the byte entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addByte(String name) {
@@ -366,8 +364,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a short and binds its value for writing.
 	 * 
-	 * @param name — name of the short entry
-	 * @param value — value of the short
+	 * @param name name of the short entry
+	 * @param value value of the short
 	 * @return {@code this}.
 	 */
 	public FileComposition addShort(String name , short value) {
@@ -382,8 +380,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a short and relies on a supplier for its value.
 	 * 
-	 * @param name — name of the short entry
-	 * @param shortGetter — getter
+	 * @param name name of the short entry
+	 * @param shortGetter getter
 	 * @return {@code this}.
 	 */
 	public FileComposition addShort(String name , ShortSupplier shortGetter) {
@@ -398,7 +396,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a short entry with no bound value.
 	 * 
-	 * @param name — name of the short entry
+	 * @param name name of the short entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addShort(String name) {
@@ -412,8 +410,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an int and binds its value for writing.
 	 * 
-	 * @param name — name of the int entry
-	 * @param value — value of the int
+	 * @param name name of the int entry
+	 * @param value value of the int
 	 * @return {@code this}.
 	 */
 	public FileComposition addInt(String name , int value) {
@@ -428,8 +426,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an int and relies on a supplier for its value.
 	 * 
-	 * @param name — name of the int entry
-	 * @param intGetter — getter
+	 * @param name name of the int entry
+	 * @param intGetter getter
 	 * @return {@code this}.
 	 */
 	public FileComposition addInt(String name , IntSupplier intGetter) {
@@ -444,7 +442,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an int entry with no bound value.
 	 * 
-	 * @param name — name of the int entry
+	 * @param name name of the int entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addInt(String name) {
@@ -458,8 +456,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a long and binds its value for writing.
 	 * 
-	 * @param name — name of the long entry
-	 * @param value — value of the long
+	 * @param name name of the long entry
+	 * @param value value of the long
 	 * @return {@code this}.
 	 */
 	public FileComposition addLong(String name , long value) {
@@ -474,8 +472,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a long and relies on a supplier for its value.
 	 * 
-	 * @param name — name of the long entry
-	 * @param longGetter — getter
+	 * @param name name of the long entry
+	 * @param longGetter getter
 	 * @return {@code this}.
 	 */
 	public FileComposition addLong(String name , LongSupplier longGetter) {
@@ -490,7 +488,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a long entry with no bound value.
 	 * 
-	 * @param name — name of the long entry
+	 * @param name name of the long entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addLong(String name) {
@@ -504,8 +502,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a float and binds its value for writing.
 	 * 
-	 * @param name — name of the float entry
-	 * @param value — value of the float
+	 * @param name name of the float entry
+	 * @param value value of the float
 	 * @return {@code this}.
 	 */
 	public FileComposition addFloat(String name , float value) {
@@ -520,8 +518,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a float and relies on a supplier for its value.
 	 * 
-	 * @param name — name of the float entry
-	 * @param value — value of the float
+	 * @param name name of the float entry
+	 * @param value value of the float
 	 * @return {@code this}.
 	 */
 	public FileComposition addFloat(String name , FloatSupplier floatGetter) {
@@ -536,7 +534,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a float entry with no bound value.
 	 * 
-	 * @param name — name of the float entry
+	 * @param name name of the float entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addFloat(String name) {
@@ -550,8 +548,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a double and binds its value for writing.
 	 * 
-	 * @param name — name of the double entry
-	 * @param value — value of the double
+	 * @param name name of the double entry
+	 * @param value value of the double
 	 * @return {@code this}.
 	 */
 	public FileComposition addDouble(String name , double value) {
@@ -566,8 +564,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a double and relies on a supplier for its value.
 	 * 
-	 * @param name — name of the short entry
-	 * @param doubleGetter — getter
+	 * @param name name of the short entry
+	 * @param doubleGetter getter
 	 * @return {@code this}.
 	 */
 	public FileComposition addDouble(String name , DoubleSupplier doubleGetter) {
@@ -582,7 +580,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a double entry with no bound value.
 	 * 
-	 * @param name — name of the double entry
+	 * @param name name of the double entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addDouble(String name) {
@@ -596,8 +594,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a boolean and binds its value for writing.
 	 * 
-	 * @param name — name of the boolean entry
-	 * @param value — value of the boolean
+	 * @param name name of the boolean entry
+	 * @param value value of the boolean
 	 * @return {@code this}.
 	 */
 	public FileComposition addBoolean(String name , boolean value) {
@@ -612,8 +610,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a boolean and relies on a supplier for its value.
 	 * 
-	 * @param name — name of the short entry
-	 * @param booleanGetter — getter
+	 * @param name name of the short entry
+	 * @param booleanGetter getter
 	 * @return {@code this}.
 	 */
 	public FileComposition addBoolean(String name , BooleanSupplier booleanGetter) {
@@ -628,7 +626,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a boolean entry with no bound value.
 	 * 
-	 * @param name — name of the boolean entry
+	 * @param name name of the boolean entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addBoolean(String name) {
@@ -642,8 +640,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a character and binds its value for writing.
 	 * 
-	 * @param name — name of the character entry
-	 * @param value — value of the character
+	 * @param name name of the character entry
+	 * @param value value of the character
 	 * @return {@code this}.
 	 */
 	public FileComposition addCharacter(String name , char value) {
@@ -658,8 +656,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a character and relies on a supplier for its value.
 	 * 
-	 * @param name — name of the short entry
-	 * @param characterGetter — getter
+	 * @param name name of the short entry
+	 * @param characterGetter getter
 	 * @return {@code this}.
 	 */
 	public FileComposition addCharacter(String name , CharSupplier charGetter) {
@@ -674,7 +672,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a character entry with no bound value.
 	 * 
-	 * @param name — name of the character entry
+	 * @param name name of the character entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addCharacter(String name) {
@@ -688,8 +686,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a String and binds its reference for writing.
 	 * 
-	 * @param name — name of the String entry
-	 * @param value — reference of the String
+	 * @param name name of the String entry
+	 * @param value reference of the String
 	 * @return {@code this}.
 	 */
 	public FileComposition addString(String name , String value) {
@@ -706,7 +704,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a String entry with no bound reference.
 	 * 
-	 * @param name — name of the String entry
+	 * @param name name of the String entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addString(String name) {
@@ -720,8 +718,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a composable entry and binds its reference for reading or writing.
 	 * 
-	 * @param name — name of the Composable entry
-	 * @param composable — instance of {@code Composable}
+	 * @param name name of the Composable entry
+	 * @param composable instance of {@code Composable}
 	 * @return {@code this}.
 	 */
 	public FileComposition addData(String name , Composable composable) {
@@ -735,8 +733,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a composable entry and binds its reference for reading or writing.
 	 * 
-	 * @param name — name of the Composable entry
-	 * @param getter — function returning an instance of a Composable
+	 * @param name name of the Composable entry
+	 * @param getter function returning an instance of a Composable
 	 * @return {@code this}.
 	 */
 	public FileComposition addData(String name , Supplier<Composable> getter) {
@@ -750,8 +748,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of bytes and binds its reference for writing.
 	 * 
-	 * @param name — name of the byte array entry
-	 * @param value — reference of the array
+	 * @param name name of the byte array entry
+	 * @param value reference of the array
 	 * @return {@code this}.
 	 */
 	public FileComposition addByteArray(String name , byte[] array) {
@@ -767,7 +765,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of bytes with no bound reference.
 	 * 
-	 * @param name — name of the byte array entry
+	 * @param name name of the byte array entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addByteArray(String name) {
@@ -781,8 +779,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of shorts and binds its reference for writing.
 	 * 
-	 * @param name — name of the short array entry
-	 * @param value — reference of the array
+	 * @param name name of the short array entry
+	 * @param value reference of the array
 	 * @return {@code this}.
 	 */
 	public FileComposition addShortArray(String name , short[] array) {
@@ -798,7 +796,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of shorts with no bound reference.
 	 * 
-	 * @param name — name of the short array entry
+	 * @param name name of the short array entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addShortArray(String name) {
@@ -812,8 +810,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of ints and binds its reference for writing.
 	 * 
-	 * @param name — name of the int array entry
-	 * @param value — reference of the array
+	 * @param name name of the int array entry
+	 * @param value reference of the array
 	 * @return {@code this}.
 	 */
 	public FileComposition addIntArray(String name , int[] array) {
@@ -829,7 +827,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of ints with no bound reference.
 	 * 
-	 * @param name — name of the int array entry
+	 * @param name name of the int array entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addIntArray(String name) {
@@ -843,8 +841,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of longs and binds its reference for writing.
 	 * 
-	 * @param name — name of the long array entry
-	 * @param value — reference of the array
+	 * @param name name of the long array entry
+	 * @param value reference of the array
 	 * @return {@code this}.
 	 */
 	public FileComposition addLongArray(String name , long[] array) {
@@ -860,7 +858,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of longs with no bound reference.
 	 * 
-	 * @param name — name of the long array entry
+	 * @param name name of the long array entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addLongArray(String name) {
@@ -874,8 +872,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of floats and binds its reference for writing.
 	 * 
-	 * @param name — name of the float array entry
-	 * @param value — reference of the array
+	 * @param name name of the float array entry
+	 * @param value reference of the array
 	 * @return {@code this}.
 	 */
 	public FileComposition addFloatArray(String name , float[] array) {
@@ -891,7 +889,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of floats with no bound reference.
 	 * 
-	 * @param name — name of the float array entry
+	 * @param name name of the float array entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addFloatArray(String name) {
@@ -905,8 +903,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of doubles and binds its reference for writing.
 	 * 
-	 * @param name — name of the double array entry
-	 * @param value — reference of the array
+	 * @param name name of the double array entry
+	 * @param value reference of the array
 	 * @return {@code this}.
 	 */
 	public FileComposition addDoubleArray(String name , double[] array) {
@@ -922,7 +920,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of doubles with no bound reference.
 	 * 
-	 * @param name — name of the double array entry
+	 * @param name name of the double array entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addDoubleArray(String name) {
@@ -936,8 +934,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of booleans and binds its reference for writing.
 	 * 
-	 * @param name — name of the boolean array entry
-	 * @param value — reference of the array
+	 * @param name name of the boolean array entry
+	 * @param value reference of the array
 	 * @return {@code this}.
 	 */
 	public FileComposition addBooleanArray(String name , boolean[] array) {
@@ -953,7 +951,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of booleans with no bound reference.
 	 * 
-	 * @param name — name of the boolean array entry
+	 * @param name name of the boolean array entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addBooleanArray(String name) {
@@ -967,8 +965,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of characters and binds its reference for writing.
 	 * 
-	 * @param name — name of the character array entry
-	 * @param value — reference of the array
+	 * @param name name of the character array entry
+	 * @param value reference of the array
 	 * @return {@code this}.
 	 */
 	public FileComposition addCharArray(String name , char[] array) {
@@ -984,7 +982,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of characters with no bound reference.
 	 * 
-	 * @param name — name of the character array entry
+	 * @param name name of the character array entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addCharArray(String name) {
@@ -998,8 +996,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of Strings and binds its reference for writing.
 	 * 
-	 * @param name — name of the String array entry
-	 * @param value — reference of the array
+	 * @param name name of the String array entry
+	 * @param value reference of the array
 	 * @return {@code this}.
 	 */
 	public FileComposition addStringArray(String name , String[] array) {
@@ -1016,7 +1014,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds an array of Strings with no bound reference.
 	 * 
-	 * @param name — name of the String array entry
+	 * @param name name of the String array entry
 	 * @return {@code this}.
 	 */
 	public FileComposition addStringArray(String name) {
@@ -1030,11 +1028,11 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a generic data entry including a reference and size in bytes.
 	 * 
-	 * @param name — name of the entry
-	 * @param data — reference to the entry
-	 * @param sizeBytes — size in bytes this entry will take
-	 * @param write — a write callback (optionally null if this is a read only {@code FileComponent}
-	 * @param read — a read callback (optionally null if this is a write only {@code FileComponent}
+	 * @param name name of the entry
+	 * @param data reference to the entry
+	 * @param sizeBytes size in bytes this entry will take
+	 * @param write a write callback (optionally null if this is a read only {@code FileComponent}
+	 * @param read a read callback (optionally null if this is a write only {@code FileComponent}
 	 * @return {@code this}.
 	 */
 	public FileComposition addData(
@@ -1045,7 +1043,7 @@ public class FileComposition implements Iterable<FileEntry> {
 		Function<ByteBuffer , Object> read
 	) {
 		
-		verifyName(name) ; require(write) ; require(read);		
+		verifyName(name) ; assert(write != null) ; assert(read != null);			
 		fileSizeBytes += sizeBytes;		
 		this.data.add(new FileEntry(data , sizeBytes , name , write , read));		
 		return this;
@@ -1055,14 +1053,14 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a generic data entry without including a reference or size in bytes of the entry.
 	 * 
-	 * @param name — name of the entry
-	 * @param write — a write callback (optionally null if this is a read only {@code FileComponent}
-	 * @param read — a read callback (optionally null if this is a write only {@code FileComponent}
+	 * @param name name of the entry
+	 * @param write a write callback (optionally null if this is a read only {@code FileComponent}
+	 * @param read a read callback (optionally null if this is a write only {@code FileComponent}
 	 * @return {@code this}.
 	 */
 	public FileComposition addData(String name , BiConsumer<Object , ByteBuffer> write, Function<ByteBuffer , Object> read) {
 		
-		verifyName(name) ; require(write) ; require(read);		
+		verifyName(name) ; assert(write != null) ; assert(read != null);		
 		data.add(new FileEntry(name , write, read));
 		return this;
 	
@@ -1071,10 +1069,10 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Adds a generic data entry without including a reference but including a size in bytes the entry occupies.
 	 * 
-	 * @param name — name of the entry
-	 * @param sizeBytes — number of bytes this entry will use
-	 * @param write — a write callback (optionally null if this is a read only {@code FileComponent}
-	 * @param read — a read callback (optionally null if this is a write only {@code FileComponent}
+	 * @param name name of the entry
+	 * @param sizeBytes number of bytes this entry will use
+	 * @param write a write callback (optionally null if this is a read only {@code FileComponent}
+	 * @param read a read callback (optionally null if this is a write only {@code FileComponent}
 	 * @return {@code this}.
 	 */
 	public FileComposition addData(
@@ -1084,7 +1082,7 @@ public class FileComposition implements Iterable<FileEntry> {
 		Function<ByteBuffer , Object> read
 	) {
 		
-		verifyName(name) ; require(write) ; require(read);		
+		verifyName(name) ; assert(write != null) ; assert(read != null);		
 		data.add(new FileEntry(sizeBytes , name , write, read));
 		return this;
 	
@@ -1093,8 +1091,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new value to the byte entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — byte value
+	 * @param name name of an entry
+	 * @param value byte value
 	 * @return {@code this}.
 	 */
 	public FileComposition bindByte(String name , byte value) {
@@ -1107,8 +1105,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new value to the short entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — short value
+	 * @param name name of an entry
+	 * @param value short value
 	 * @return {@code this}.
 	 */
 	public FileComposition bindShort(String name , short value) {
@@ -1121,8 +1119,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new value to the int entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — int value
+	 * @param name name of an entry
+	 * @param value int value
 	 * @return {@code this}.
 	 */
 	public FileComposition bindInt(String name , int value) {
@@ -1135,8 +1133,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new value to the long entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — long value
+	 * @param name name of an entry
+	 * @param value long value
 	 * @return {@code this}.
 	 */
 	public FileComposition bindLong(String name , long value) {
@@ -1149,8 +1147,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new value to the float entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — float value
+	 * @param name name of an entry
+	 * @param value float value
 	 * @return {@code this}.
 	 */
 	public FileComposition bindFloat(String name , float value) {
@@ -1163,8 +1161,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new value to the double entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — double value
+	 * @param name name of an entry
+	 * @param value double value
 	 * @return {@code this}.
 	 */
 	public FileComposition bindDouble(String name , double value) {
@@ -1177,8 +1175,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new value to the boolean entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — boolean value
+	 * @param name name of an entry
+	 * @param value boolean value
 	 * @return {@code this}.
 	 */
 	public FileComposition bindBoolean(String name , boolean value) {
@@ -1191,8 +1189,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new value to the character entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — character value
+	 * @param name name of an entry
+	 * @param value character value
 	 * @return {@code this}.
 	 */
 	public FileComposition bindChar(String name , char value) {
@@ -1205,8 +1203,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new reference to the String entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — String array reference
+	 * @param name name of an entry
+	 * @param value String array reference
 	 * @return {@code this}.
 	 */
 	public FileComposition bindString(String name , String value) {
@@ -1219,8 +1217,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new reference to the byte array entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — byte array reference
+	 * @param name name of an entry
+	 * @param value byte array reference
 	 * @return {@code this}.
 	 */
 	public FileComposition bindByteArray(String name , byte[] array) {
@@ -1233,8 +1231,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new reference to the short array entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — short array reference
+	 * @param name name of an entry
+	 * @param value short array reference
 	 * @return {@code this}.
 	 */
 	public FileComposition bindShortArray(String name , short[] array) {
@@ -1247,8 +1245,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new reference to the int array entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — int array reference
+	 * @param name name of an entry
+	 * @param value int array reference
 	 * @return {@code this}.
 	 */
 	public FileComposition bindIntArray(String name , int[] array) {
@@ -1261,8 +1259,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new reference to the long array entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — long array reference
+	 * @param name name of an entry
+	 * @param value long array reference
 	 * @return {@code this}.
 	 */
 	public FileComposition bindLongArray(String name , long[] array) {
@@ -1275,8 +1273,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new reference to the float array entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — float array reference
+	 * @param name name of an entry
+	 * @param value float array reference
 	 * @return {@code this}.
 	 */
 	public FileComposition bindFloatArray(String name , float[] array) {
@@ -1289,8 +1287,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new reference to the double array entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — double array reference
+	 * @param name name of an entry
+	 * @param value double array reference
 	 * @return {@code this}.
 	 */
 	public FileComposition bindDoubleArray(String name , double[] array) {
@@ -1303,8 +1301,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new reference to the boolean array entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — boolean array reference
+	 * @param name name of an entry
+	 * @param value boolean array reference
 	 * @return {@code this}.
 	 */
 	public FileComposition bindBooleanArray(String name , boolean[] array) {
@@ -1317,8 +1315,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new reference to the char array entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — char array reference
+	 * @param name name of an entry
+	 * @param value char array reference
 	 * @return {@code this}.
 	 */
 	public FileComposition bindCharArray(String name , char[] array) {
@@ -1331,8 +1329,8 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new reference to the String array entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — String array reference
+	 * @param name name of an entry
+	 * @param value String array reference
 	 * @return {@code this}.
 	 */
 	public FileComposition bindStringArray(String name , String[] array) {
@@ -1347,9 +1345,9 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Binds a new reference to the data entry given by {@code name}.
 	 * 
-	 * @param name — name of an entry
-	 * @param value — reference to an object
-	 * @param sizeBytes — the total number of bytes this entry wil require
+	 * @param name name of an entry
+	 * @param value reference to an object
+	 * @param sizeBytes the total number of bytes this entry wil require
 	 * @return {@code this}.
 	 */
 	public FileComposition bindData(String name , Object data , int sizeBytes) {
@@ -1373,7 +1371,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Writes this File Composition to the file located at {@code filepath}.
 	 * 
-	 * @param filePath — filepath of a write location
+	 * @param filePath filepath of a write location
 	 * @throws IOException if the IO operations of this method fail.
 	 */
 	public void write(String filePath) throws IOException {
@@ -1389,7 +1387,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Writes this File Composition to the file open by {@code writer}.
 	 * 
-	 * @param writer — a file writer
+	 * @param writer a file writer
 	 * @throws IOException if the IO operations of this method fail.
 	 */
 	public void write(final FileOutputStream writer) throws IOException {
@@ -1415,7 +1413,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Reads the file located at {@code filepath} according to {@code this}.
 	 * 
-	 * @param filepath — a file path
+	 * @param filepath a file path
 	 * @throws IOException if the IO operations of this method fail.
 	 */
 	public void read(String filepath) throws IOException {
@@ -1431,7 +1429,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Reads the file opened by {@code reader} according to {@code this}.
 	 * 
-	 * @param filepath — a file reader
+	 * @param filepath a file reader
 	 * @throws IOException if the IO operations of this method fail.
 	 */
 	public void read(FileInputStream reader) throws IOException {
@@ -1457,15 +1455,15 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Writes the data entries of {@code this} into the given {@code ByteBuffer}.
 	 * 
-	 * @param destination — buffer to write to
+	 * @param destination buffer to write to
 	 * @return {@code destination} post writing.
 	 */
 	public ByteBuffer get(ByteBuffer destination) {
 		
-		specify(
-			destination.remaining() >= fileSizeBytes , 
+		assert
+			destination.remaining() >= fileSizeBytes : 
 			"Destination Byte Buffer does not have enough space to buffer this File Composition."
-		);
+		;
 		
 		destination.mark();
 		for(FileEntry x : data) x.write(destination);
@@ -1478,7 +1476,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Returns the entry of the given name's object.
 	 * 
-	 * @param name — name of an entry
+	 * @param name name of an entry
 	 * @return Object reference to data located within the entry.
 	 */
 	public Object get(String name) {
@@ -1492,7 +1490,7 @@ public class FileComposition implements Iterable<FileEntry> {
 	/**
 	 * Finds a file entry by the given name.
 	 * 
-	 * @param name — name of an entry within this File Composition
+	 * @param name name of an entry within this File Composition
 	 * @return The File Entry whose name is {@code name}.
 	 */
 	public FileEntry getEntry(String name) {
@@ -1504,14 +1502,14 @@ public class FileComposition implements Iterable<FileEntry> {
 
 	private void verifyName(final String name) {
 		
-		specify(name , "The name of a data entry on a File Specification must not be null.");
+		assert name != null : "The name of a data entry on a File Specification must not be null.";
 		ensureNoDuplicates(name);
 		
 	}
 	
 	private void ensureNoDuplicates(final String name) {
 		
-		for(FileEntry x : data) specify(!name.equals(x.name) , "No duplicate named entries are allowed in a File Composition");
+		for(FileEntry x : data) assert !name.equals(x.name) : "No duplicate named entries are allowed in a File Composition";
 		
 	}
 	

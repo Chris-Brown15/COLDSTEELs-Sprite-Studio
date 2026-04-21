@@ -65,6 +65,12 @@ public class NonVisualLayer extends Layer {
 		
 	}
 	
+	@Override public boolean showing() {
+		
+		return !hiding;
+		
+	}
+	
 	/**
 	 * Returns the number of bytes per pixel of this layer.
 	 * 
@@ -91,7 +97,7 @@ public class NonVisualLayer extends Layer {
 	/**
 	 * Returns whether this layer is an instance of the given prototype.
 	 * 
-	 * @param prototype — a nonvisual layer prototype
+	 * @param prototype ï¿½ a nonvisual layer prototype
 	 * @return {@code true} if this layer is an instance of the given prototype.
 	 */ 
 	public boolean isInstanceOfPrototype(NonVisualLayerPrototype prototype) {

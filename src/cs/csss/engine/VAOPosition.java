@@ -1,23 +1,23 @@
 package cs.csss.engine;
 
-import cs.core.graphics.CSVAO;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.utils.VAOUtils;
+import sc.core.graphics.SCVAO;
 
 /**
  * Helper class for tracking and modifying the positions of world space objects.
  */
 public class VAOPosition extends Position {
 	
-	private final CSVAO vertices;
+	private final SCVAO vertices;
 	
 	/**
 	 * Creates a position monitor for the given VAO and its positions.
 	 * 
-	 * @param vertices — vertex array object
-	 * @param positions — float world space positions 
+	 * @param vertices vertex array object
+	 * @param positions float world space positions 
 	 */
-	public VAOPosition(CSVAO vertices , float[] positions) {
+	public VAOPosition(SCVAO vertices , float[] positions) {
 
 		super(positions);
 		this.vertices = vertices;

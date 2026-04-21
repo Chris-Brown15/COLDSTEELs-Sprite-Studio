@@ -5,16 +5,16 @@ package cs.csss.editor.event;
 
 import java.util.Objects;
 
-import cs.core.utils.ShutDown;
 import cs.csss.editor.Editor;
 import cs.csss.editor.shape.Shape;
 import cs.csss.project.Artboard;
 import cs.csss.project.Layer;
+import sc.core.SCShutDown;
 
 /**
  * Event to remove a shape from an artboard. The shape should be in the artboard when the event is created.
  */
-public class DeleteShapeEvent extends CSSSEvent implements ShutDown {
+public class DeleteShapeEvent extends CSSSEvent implements SCShutDown {
 
 	private final Layer owningLayer;
 	private final Shape shape;

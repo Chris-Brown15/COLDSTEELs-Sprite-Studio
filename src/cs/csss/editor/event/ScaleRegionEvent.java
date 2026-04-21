@@ -7,7 +7,6 @@ import java.util.Objects;
 
 import org.joml.Vector3f;
 
-import cs.core.utils.Lambda;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
 import cs.csss.editor.SelectionAreaRender;
@@ -24,7 +23,7 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 @RenderThreadOnly public class ScaleRegionEvent extends CSSSEvent {
 
 	private final Artboard artboard;
-	private final Lambda swapBuffers;
+	private final Runnable swapBuffers;
 	private final LayerPixel[][] previousRegion;
 	private final Editor editor;
 	private SelectionAreaRender render;
@@ -45,12 +44,12 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 	/**
 	 * Creates a scale region event.
 	 * 
-	 * @param artboard — the artboard 
-	 * @param editor — the editor
-	 * @param render — the object that contains the scaled region
-	 * @param swapBuffers — a callback function used to swap buffers
+	 * @param artboard the artboard 
+	 * @param editor the editor
+	 * @param render the object that contains the scaled region
+	 * @param swapBuffers a callback function used to swap buffers
 	 */
-	public ScaleRegionEvent(Artboard artboard , Editor editor , SelectionAreaRender render , Lambda swapBuffers) {
+	public ScaleRegionEvent(Artboard artboard , Editor editor , SelectionAreaRender render , Runnable swapBuffers) {
 	
 		super(true , false);
 	

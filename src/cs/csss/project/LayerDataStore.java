@@ -17,10 +17,10 @@ interface LayerDataStore  {
 	/**
 	 * Gets a two dimensional array of layer modifications representing a subregion of this layer's modification contents.
 	 * 
-	 * @param xIndex — x index of the bottom left corner of the subregion to query
-	 * @param yIndex — y index of the bottom left corner of the subregion to query
-	 * @param width — width of the subregion to query
-	 * @param height — height of the subregion to query
+	 * @param xIndex x index of the bottom left corner of the subregion to query
+	 * @param yIndex y index of the bottom left corner of the subregion to query
+	 * @param width width of the subregion to query
+	 * @param height height of the subregion to query
 	 * @return Two dimensional array containing modifications of this layer.
 	 */
 	public default LayerPixel[][] get(int xIndex , int yIndex , int width , int height) {

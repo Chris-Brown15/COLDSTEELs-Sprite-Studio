@@ -8,10 +8,9 @@ import static org.lwjgl.opengl.GL11.glClearColor;
 import static org.lwjgl.opengl.GL11.glViewport;
 
 import java.nio.ByteBuffer;
-import cs.core.utils.Lambda;
 import cs.csss.annotation.RenderThreadOnly;
-import cs.csss.misc.graphcs.framebuffer.Framebuffer;
-import cs.csss.misc.graphcs.framebuffer.RenderBuffer;
+import sc.core.graphics.SCFramebuffer;
+import sc.core.graphics.SCRenderBuffer;
 
 /**
  * Class used for utilities of rendering world space images to a framebuffer and providing access to the result of the render as a 
@@ -19,22 +18,22 @@ import cs.csss.misc.graphcs.framebuffer.RenderBuffer;
  */
 public class ImageGrabber {
 
-	private final Framebuffer framebuffer;
-	private final Lambda renderCallback;
+	private final SCFramebuffer framebuffer;
+	private final Runnable renderCallback;
 	
-	private final RenderBuffer renderbuffer;
+	private final SCRenderBuffer renderbuffer;
 	private final int width , height;
 	
 	/**
 	 * Creates an image grabber.
 	 *  
-	 * @param framebuffer — {@link cs.csss.annotation.Nullable @Nullable} framebuffer for rendering
-	 * @param renderbuffer — {@code @Nullable} renderbuffer to receive render
-	 * @param renderCallback — code to invoke to render something to the framebuffer's attachments
-	 * @param width — width of the rendered region in world space
-	 * @param height — height of the rendered region in world space
+	 * @param framebuffer {@link cs.csss.annotation.Nullable @Nullable} framebuffer for rendering
+	 * @param renderbuffer {@code @Nullable} renderbuffer to receive render
+	 * @param renderCallback code to invoke to render something to the framebuffer's attachments
+	 * @param width width of the rendered region in world space
+	 * @param height height of the rendered region in world space
 	 */
-	public ImageGrabber(Framebuffer framebuffer , RenderBuffer renderbuffer , Lambda renderCallback , int width , int height) {
+	public ImageGrabber(SCFramebuffer framebuffer , SCRenderBuffer renderbuffer , Runnable renderCallback , int width , int height) {
 
 		this.framebuffer = framebuffer;
 		this.renderbuffer = renderbuffer;
@@ -54,26 +53,26 @@ public class ImageGrabber {
 
 		int glFormat = GL_RGBA;
 
-		Framebuffer useFramebuffer = framebuffer;
+		SCFramebuffer useFramebuffer = framebuffer;
 		
 		if(framebuffer == null) { 
 		
-			useFramebuffer = new Framebuffer();
+			useFramebuffer = new SCFramebuffer();
 			useFramebuffer.initialize();
 			
 		}		
-		
-		RenderBuffer useRenderBuffer = renderbuffer != null ? renderbuffer : new RenderBuffer(width , height , glFormat);
-		useFramebuffer.addColorAttachment(useRenderBuffer);
-		
+
 		//render the scene
 		useFramebuffer.activate();
+		
+		SCRenderBuffer useRenderBuffer = renderbuffer != null ? renderbuffer : new SCRenderBuffer(width , height , glFormat);
+		useFramebuffer.addColorAttachment(useRenderBuffer);
 		
 		glViewport(0 , 0 , width , height);
 		glClearColor(0 , 0 , 0 , 0);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		renderCallback.invoke();
+		renderCallback.run();
 				
 		//resulting data
 		ByteBuffer download = useRenderBuffer.download(glFormat, GL_UNSIGNED_BYTE);
@@ -87,7 +86,7 @@ public class ImageGrabber {
 		
 		if(framebuffer == null) useFramebuffer.shutDown();
 		
-		Framebuffer.deactivate();
+		SCFramebuffer.deactivate();
 		
 		return download; 
 		

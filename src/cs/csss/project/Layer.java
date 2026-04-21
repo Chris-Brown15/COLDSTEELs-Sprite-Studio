@@ -1,14 +1,10 @@
 package cs.csss.project;
 
-import static cs.core.utils.CSUtils.specify;
-
 import static org.lwjgl.system.MemoryUtil.memFree;
 import static org.lwjgl.system.MemoryUtil.memAlloc;
 
 import static org.lwjgl.util.lz4.LZ4.LZ4_compress_default;
 import static org.lwjgl.util.lz4.LZ4.LZ4_decompress_safe;
-
-import static cs.core.utils.CSUtils.require;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;
@@ -16,7 +12,6 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import cs.core.utils.ShutDown;
 import cs.csss.annotation.FreeAfterUse;
 import cs.csss.annotation.Invalidated;
 import cs.csss.editor.line.BezierLine;
@@ -26,6 +21,7 @@ import cs.csss.editor.shape.Ellipse;
 import cs.csss.editor.shape.Rectangle;
 import cs.csss.editor.shape.Shape;
 import cs.csss.engine.ColorPixel;
+import sc.core.SCShutDown;
 
 /**
  * 
@@ -40,14 +36,14 @@ import cs.csss.engine.ColorPixel;
  * @author Chris Brown
  *
  */
-public abstract class Layer implements ShutDown {
+public abstract class Layer implements SCShutDown {
 
 	/**
 	 * Writes the contents of {@code source} into {@code destination}. Each pixel will occupy two bytes in the destination and for any 
 	 * pixels that are {@code null}, the values {@code (0 , 0)} are written.  
 	 * 
-	 * @param source — a 2D array of layer pixels
-	 * @param destination — a destination for the layer pixels
+	 * @param source a 2D array of layer pixels
+	 * @param destination a destination for the layer pixels
 	 */
 	public static void toByteBuffer(LayerPixel[][] source , ByteBuffer destination) {
 		
@@ -68,7 +64,7 @@ public abstract class Layer implements ShutDown {
 	 * Writes the contents of {@code source} to a newly allocated {@link cs.csss.annotation.FreeAfterUse @FreeAfterUse} {@code ByteBuffer}, 
 	 * returning the byte buffer after writing. 
 	 * 
-	 * @param source — a 2D array of layer pixels
+	 * @param source a 2D array of layer pixels
 	 * @return {@code @FreeAfterUse ByteBuffer} destination for layer pixel data.
 	 */
 	public static @FreeAfterUse ByteBuffer toByteBuffer(LayerPixel[][] source) {
@@ -100,7 +96,7 @@ public abstract class Layer implements ShutDown {
 	public final String name;
 	
 	/**
-	 * Palette corresponding to this palette.
+	 * Palette corresponding to this layer.
 	 */
 	protected final ArtboardPalette palette;
 	
@@ -122,12 +118,12 @@ public abstract class Layer implements ShutDown {
 	/**
 	 * Constructs a layer with the given name, palette, width and height
 	 * 
-	 * @param name — name of this layer
-	 * @param palette — palette pixels of this layer draw from
-	 * @param width — width of this layer
-	 * @param height — height of this layer
+	 * @param name name of this layer
+	 * @param palette palette pixels of this layer draw from
+	 * @param width width of this layer
+	 * @param height height of this layer
 	 */
-	public Layer(final String name , ArtboardPalette palette , final int width , final int height) {
+	public Layer(String name , ArtboardPalette palette , int width , int height) {
 		
 		this.width = width;
 		this.height = height;
@@ -141,7 +137,7 @@ public abstract class Layer implements ShutDown {
 	/**
 	 * Puts the given pixel in this layer.
 	 * 
-	 * @param pixel — a pixel to add
+	 * @param pixel a pixel to add
 	 */
 	public void put(LayerPixel pixel) {
 		
@@ -153,12 +149,12 @@ public abstract class Layer implements ShutDown {
 	/**
 	 * Removes the pixel at the given indices from this layer. The layer must contain a modification at the given indices. 
 	 * 
-	 * @param xIndex — x index of a pixel
-	 * @param yIndex — y index of a pixel
+	 * @param xIndex x index of a pixel
+	 * @param yIndex y index of a pixel
 	 */
 	public void remove(int xIndex , int yIndex) {
 		
-		specify(containsModificationTo(xIndex, yIndex) , "This layer does not modify (" + xIndex + ", " + yIndex + ")");
+		assert containsModificationTo(xIndex, yIndex) : "This layer does not modify (" + xIndex + ", " + yIndex + ")";
 		
 		layerDataStore.remove(xIndex, yIndex);
 		
@@ -168,10 +164,10 @@ public abstract class Layer implements ShutDown {
 	 * Removes the region whose bottom left coordinate is {@code (xIndex , yIndex)} and whose dimensions are {@code width} and 
 	 * {@code height}.
 	 * 
-	 * @param xIndex — x index of the bottom left corner of the region
-	 * @param yIndex — y index of the bottom left corner of the region
-	 * @param width — width of the region
-	 * @param height — height of the region
+	 * @param xIndex x index of the bottom left corner of the region
+	 * @param yIndex y index of the bottom left corner of the region
+	 * @param width width of the region
+	 * @param height height of the region
 	 */
 	public void remove(int xIndex , int yIndex , int width , int height) {
 		
@@ -182,8 +178,8 @@ public abstract class Layer implements ShutDown {
 	/**
 	 * Returns whether this layer's modification at {@code (xIndex , yIndex)} is actively visible in the artboard.
 	 * 
-	 * @param xIndex — x index of a pixel
-	 * @param yIndex — y index of a pixel
+	 * @param xIndex x index of a pixel
+	 * @param yIndex y index of a pixel
 	 * @return {@code true} if this layer modifies the pixel at {@code (xIndex , yIndex)}.
 	 */
 	public boolean isModifying(int xIndex , int yIndex) {
@@ -195,8 +191,8 @@ public abstract class Layer implements ShutDown {
 	/**
 	 * Returns whether this layer contains the modification at {@code (xIndex , yIndex)}.
 	 * 
-	 * @param xIndex — x index of a pixel
-	 * @param yIndex — y index of a pixel
+	 * @param xIndex x index of a pixel
+	 * @param yIndex y index of a pixel
 	 * @return {@code true} if this layer contains a modification at {@code (xIndex , yIndex)}.
 	 */
 	public final boolean containsModificationTo(int xIndex , int yIndex) {
@@ -214,16 +210,16 @@ public abstract class Layer implements ShutDown {
 	/**
 	 * Returns the pixel this layer modifies at {@code (xIndex , yIndex)}, or {@code null} if this layer does not modify that pixel.
 	 * 
-	 * @param xIndex — x index of a pixel
-	 * @param yIndex — y index of a pixel
+	 * @param xIndex x index of a pixel
+	 * @param yIndex y index of a pixel
 	 * @return Pixel at {@code (xIndex , yIndex)}, or {@code null} if this layer does not modify that pixel.
 	 */
 	public LayerPixel get(int xIndex , int yIndex) {
 
-		specify(xIndex >= 0 , xIndex + " is out of bounds.");
-		specify(xIndex < width , xIndex + " is out of bounds."); 
-		specify(yIndex >= 0 , xIndex + " is out of bounds.");
-		specify(yIndex < height , xIndex + " is out of bounds.");
+		assert xIndex >= 0 : xIndex + " is out of bounds.";
+		assert xIndex < width : xIndex + " is out of bounds."; 
+		assert yIndex >= 0 : xIndex + " is out of bounds.";
+		assert yIndex < height : xIndex + " is out of bounds.";
 		return layerDataStore.get(xIndex, yIndex);
 		
 	}
@@ -232,10 +228,10 @@ public abstract class Layer implements ShutDown {
 	 * Gets a region of layer pixels, where {@code (xIndex , yIndex)} is the bottom left pixel coordinate, and the region extends 
 	 * {@code width} pixels 'rightward' and {@code height} pixels 'upward.' 
 	 * 
-	 * @param xIndex — x index of a pixel
-	 * @param yIndex — y index of a pixel
-	 * @param width — width of the region
-	 * @param height — height of the region
+	 * @param xIndex x index of a pixel
+	 * @param yIndex y index of a pixel
+	 * @param width width of the region
+	 * @param height height of the region
 	 * @return 2D array of layer pixels representing this layer's contents at the specified region.
 	 */
 	public LayerPixel[][] get(int xIndex , int yIndex , int width , int height) {
@@ -276,7 +272,7 @@ public abstract class Layer implements ShutDown {
 	/**
 	 * Sets the locked value of this layer directly, doing nothing else.
 	 * 
-	 * @param locked — whether this layer is locked
+	 * @param locked whether this layer is locked
 	 */
 	void setLock(boolean locked) {
 		
@@ -287,7 +283,7 @@ public abstract class Layer implements ShutDown {
 	/**
 	 * Sets the hiding value of this layer directly, doing nothing else.
 	 * 
-	 * @param hiding — whether this layer is hiding
+	 * @param hiding whether this layer is hiding
 	 */
 	public void hiding(boolean hiding) {
 		
@@ -613,21 +609,21 @@ public abstract class Layer implements ShutDown {
 	/**
 	 * Hides this layer, making all modifications it makes which are currently visible invisible. 
 	 * 
-	 * @param artboard — the owning artboard
+	 * @param artboard the owning artboard
 	 */
 	public abstract void hide(Artboard artboard);
 	
 	/**
 	 * Shows this layer, making any modifications that would be visible visible.
 	 * 
-	 * @param artboard — the owning artboard
+	 * @param artboard the owning artboard
 	 */
 	public abstract void show(Artboard artboard);
 
 	/**
 	 * Iterates over each modification of this layer, accepting {@code callback} on each.
 	 * 
-	 * @param callback — function to invoke for each modified pixel.
+	 * @param callback function to invoke for each modified pixel.
 	 */
 	public void forEachModification(Consumer<LayerPixel> callback) {
 		
@@ -650,6 +646,13 @@ public abstract class Layer implements ShutDown {
 	 */
 	public abstract boolean hiding();
 
+	/**
+	 * Returns whether this layer is showing.
+	 * 
+	 * @return Whether this layer is showing.
+	 */
+	public abstract boolean showing();	
+	
 	/**
 	 * Returns the palette used by this layer
 	 * 
@@ -686,8 +689,8 @@ public abstract class Layer implements ShutDown {
 	/**
 	 * Copies this layer into {@code otherLayer}.
 	 *  
-	 * @param <T> — type of another layer
-	 * @param otherLayer — a destination for copying
+	 * @param <T> type of another layer
+	 * @param otherLayer a destination for copying
 	 */
 	public abstract  <T extends Layer> void copy(T otherLayer);
 	
@@ -712,10 +715,10 @@ public abstract class Layer implements ShutDown {
 	 * at the given {@code (startingX , startingY)} position within the layer, and writes a region of {@code width} width and {@code height}
 	 * height to a byte buffer which is returned.
 	 * 
-	 * @param startingX — starting x coordinate for copy  
-	 * @param startingY — starting y coordinate for copy
-	 * @param width — width of the copied region
-	 * @param height — height of the copied region
+	 * @param startingX starting x coordinate for copy  
+	 * @param startingY starting y coordinate for copy
+	 * @param width width of the copied region
+	 * @param height height of the copied region
 	 * @return {@code @FreeAfterUse ByteBuffer} containing the specified region of layer data of this layer.
 	 */
 	public final @FreeAfterUse ByteBuffer toByteBuffer(int startingX , int startingY , int width , int height) {
@@ -768,7 +771,7 @@ public abstract class Layer implements ShutDown {
 		
 		int bytes = LZ4_decompress_safe(compressed , decompressed);
 				
-		require(bytes > 0);
+		assert(bytes > 0);
 		
 		decompressed.limit(bytes);
 				

@@ -9,13 +9,13 @@ import java.util.Objects;
 import org.lwjgl.nuklear.NkColor;
 import org.lwjgl.nuklear.NkStyle;
 
-import cs.core.utils.ShutDown;
+import sc.core.SCShutDown;
 
 /**
  * Contains some basic functionality for generating UI styles. Ultimately, this class contains a specific {@code NkStyle} struct which will be set
  * once a theme is activated.
  */
-public class UITheme implements ShutDown {
+public class UITheme implements SCShutDown {
 
 	private NkStyle style;
 	private LinkedList<NkColor> palette;
@@ -25,10 +25,10 @@ public class UITheme implements ShutDown {
 	/**
 	 * Creates a new theme.
 	 * 
-	 * @param name — name of this theme
-	 * @param style — style for this theme
-	 * @param palette — list of colors for this theme
-	 * @param windowColor — color of the background window for this theme
+	 * @param name ï¿½ name of this theme
+	 * @param style ï¿½ style for this theme
+	 * @param palette ï¿½ list of colors for this theme
+	 * @param windowColor ï¿½ color of the background window for this theme
 	 */
 	public UITheme(String name , NkStyle style , LinkedList<NkColor> palette , NkColor windowColor) {
 

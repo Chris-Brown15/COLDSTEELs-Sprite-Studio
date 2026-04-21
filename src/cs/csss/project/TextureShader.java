@@ -1,9 +1,9 @@
 package cs.csss.project;
 
-import static cs.core.utils.CSFileUtils.readAllCharacters;
+import static cs.csss.utils.FileUtils.readAllCharacters;
 
-import cs.core.graphics.CSTexture;
 import cs.csss.annotation.RenderThreadOnly;
+import sc.core.graphics.SCTexture;
 
 /**
  * Impelmentation of {@link CSSSShader} used to render textures directly. This shader does not use the lookup and palette system, it renders
@@ -23,11 +23,15 @@ import cs.csss.annotation.RenderThreadOnly;
 			readAllCharacters("assets/shaders/vertexShader.glsl") , 
 			readAllCharacters("assets/shaders/fragmentTextureShader.glsl")
 		);
+
+		activate();
 		
 		textureLocation = getUniformLocation("sampler");
 		channelsLocation = getUniformLocation("channels");
 		channels(4);
-				
+
+		deactivate();
+			
 	}
 	
 	/**
@@ -37,16 +41,24 @@ import cs.csss.annotation.RenderThreadOnly;
 	 * @param channels number of channels per pixel.
 	 */
 	@RenderThreadOnly public void channels(int channels) {
+
+		activate();
 		
 		uploadInt(channelsLocation, channels);
+
+		deactivate();
 		
 	}
 	
-	@RenderThreadOnly @Override public void updateTextures(ArtboardPalette palette , CSTexture texture) {
+	@RenderThreadOnly @Override public void updateTextures(ArtboardPalette palette , SCTexture texture) {
 
 		texture.activate(0);
+		activate();
+		
 		uploadInt(textureLocation , 0);
 		channels(4);		
+		
+		deactivate();
 		
 	}
 

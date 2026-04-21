@@ -5,15 +5,15 @@ package cs.csss.editor.event;
 
 import java.util.Objects;
 
-import cs.core.utils.ShutDown;
 import cs.csss.editor.shape.Shape;
 import cs.csss.project.Artboard;
 import cs.csss.project.Layer;
+import sc.core.SCShutDown;
 
 /**
  * Event representing transferring a shape from the shape brush to the active layer of the current artboard.
  */
-public class TransferShapeEvent extends CSSSEvent implements ShutDown {
+public class TransferShapeEvent extends CSSSEvent implements SCShutDown {
 
 	private final Layer destination;
 	private final Shape shape;

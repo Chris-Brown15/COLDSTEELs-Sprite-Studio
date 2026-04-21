@@ -1,7 +1,5 @@
 package cs.csss.editor.event;
 
-import static cs.core.utils.CSUtils.require;
-
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.project.Artboard;
 import cs.csss.project.CSSSProject;
@@ -22,15 +20,15 @@ import cs.csss.project.NonVisualLayer;
 	/**
 	 * Creates a switch to nonvisual layer event.
 	 * 
-	 * @param artboard — an artboard
-	 * @param project — the project
-	 * @param nonVisualLayer — the nonvisual layer to switch to
+	 * @param artboard ï¿½ an artboard
+	 * @param project ï¿½ the project
+	 * @param nonVisualLayer ï¿½ the nonvisual layer to switch to
 	 */
 	public SwitchToNonVisualLayerEvent(Artboard artboard , CSSSProject project , NonVisualLayer nonVisualLayer) {
 		
 		super(true , false);
 		
-		require(nonVisualLayer instanceof NonVisualLayer);
+		assert(nonVisualLayer instanceof NonVisualLayer);
 		
 		this.project = project;
 		

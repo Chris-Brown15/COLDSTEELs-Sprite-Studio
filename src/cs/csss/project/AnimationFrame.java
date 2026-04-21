@@ -2,8 +2,8 @@ package cs.csss.project;
 
 import java.util.function.Supplier;
 
-import cs.core.utils.CSRefInt;
 import cs.csss.utils.FloatReference;
+import sc.core.utils.SCIntReferencer;
 
 /**
  * Class for singlular animation frames.
@@ -12,7 +12,7 @@ public class AnimationFrame {
 	
 	final Artboard board;
 	FloatReference time;
-	CSRefInt frames;
+	sc.core.utils.SCIntReferencer frames;
 	
 	/**
 	 * This is used in a similar way to the reference primitives above. If the owning animation changes its default swap type, we want
@@ -20,7 +20,7 @@ public class AnimationFrame {
 	 */
 	private Supplier<AnimationSwapType> swapTypeGetter;
 	
-	AnimationFrame(Artboard frame , CSRefInt frames , FloatReference time , Supplier<AnimationSwapType> swapType) {
+	AnimationFrame(Artboard frame , SCIntReferencer frames , FloatReference time , Supplier<AnimationSwapType> swapType) {
 		
 		this.board = frame;
 		this.time = time;
@@ -58,14 +58,14 @@ public class AnimationFrame {
 	 */
 	public int updates() {
 		
-		return frames.intValue();
+		return frames.get();
 		
 	}
 	
 	/**
 	 * Sets the time of this animation frame.
 	 * 
-	 * @param time — a new frame time
+	 * @param time ï¿½ a new frame time
 	 */
 	public void time(FloatReference time) {
 		
@@ -76,9 +76,9 @@ public class AnimationFrame {
 	/**
 	 * Sets the amount of updates this animation frame.
 	 * 
-	 * @param updates — a new amount of updates
+	 * @param updates ï¿½ a new amount of updates
 	 */
-	public void updates(CSRefInt updates) {
+	public void updates(SCIntReferencer updates) {
 		
 		this.frames = updates;
 		
@@ -111,7 +111,7 @@ public class AnimationFrame {
 	 * 
 	 * @return Container for updates for this frame.
 	 */
-	public CSRefInt updatesContainer() {
+	public SCIntReferencer updatesContainer() {
 		
 		return frames;
 		

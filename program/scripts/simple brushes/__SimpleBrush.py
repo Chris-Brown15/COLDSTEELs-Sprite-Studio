@@ -66,7 +66,7 @@ stateful = False
 isRenderEvent = True
 isTransientEvent = False
 
-def __SimpleBrush2(tooltip , stateful):
+def __SimpleBrush(tooltip , stateful):
 	return SimpleBrush(tooltip , stateful)
 
 class SimpleBrush(CSSSBrush):

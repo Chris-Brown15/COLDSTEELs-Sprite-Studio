@@ -10,21 +10,21 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.Objects;
 
-import cs.core.utils.ShutDown;
-import cs.coreext.nanovg.NanoVGFrame;
-import cs.coreext.nanovg.NanoVGTypeface;
-import cs.coreext.nanovg.utils.OffHeapText;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.SelectionAreaBounder;
+import sc.core.SCShutDown;
+import sc.core.graphics.nanovg.SCNanoVGFrame;
+import sc.core.graphics.nanovg.SCNanoVGTypeface;
+import sc.core.utils.SCOffHeapString;
 
 /**
  * Vector text powered by NanoVG. This class is not currently usable because it is unfinished.
  */
-public class VectorText implements ShutDown {
+public class VectorText implements SCShutDown {
 
 	private final SelectionAreaBounder bounder = new SelectionAreaBounder();	
-	private OffHeapText source;
-	private NanoVGTypeface typeface;
+	private SCOffHeapString source;
+	private SCNanoVGTypeface typeface;
 	private int 
 		rowHeight ,
 		charHeight;
@@ -38,9 +38,9 @@ public class VectorText implements ShutDown {
 	/**
 	 * Creates a vector text box from the given nanoVG typeface.
 	 * 
-	 * @param typeface — typeface for this text box
+	 * @param typeface ï¿½ typeface for this text box
 	 */
-	public VectorText(NanoVGTypeface typeface) {
+	public VectorText(SCNanoVGTypeface typeface) {
 
 		typeface(typeface);
 		rowHeight = typeface.charHeight();
@@ -51,10 +51,10 @@ public class VectorText implements ShutDown {
 	/**
 	 * Creates a vector text box from the given nanoVG typeface that will contain the given text.
 	 * 
-	 * @param typeface — typeface for this text box
-	 * @param sourceText — text this text box will contain
+	 * @param typeface ï¿½ typeface for this text box
+	 * @param sourceText ï¿½ text this text box will contain
 	 */
-	public VectorText(NanoVGTypeface typeface , String sourceText) {
+	public VectorText(SCNanoVGTypeface typeface , String sourceText) {
 		
 		this(typeface);
 		setSource(sourceText);
@@ -64,14 +64,14 @@ public class VectorText implements ShutDown {
 	/**
 	 * Sets the source text of this text box to {@code text}.
 	 * 
-	 * @param text — text this text box will dislpay
+	 * @param text ï¿½ text this text box will dislpay
 	 */
 	public void setSource(String text) {
 		
 		if(source != null) source.shutDown();
 		if(text == null) text = "null";
 			
-		source = new OffHeapText(text);
+		source = new SCOffHeapString(text);
 				
 		updateBuffers();
 		
@@ -80,9 +80,9 @@ public class VectorText implements ShutDown {
 	/**
 	 * Sets the typeface text of this text box will display as.
 	 * 
-	 * @param typeface — typeface text of this text box will display as 
+	 * @param typeface ï¿½ typeface text of this text box will display as 
 	 */
-	public void typeface(NanoVGTypeface typeface) {
+	public void typeface(SCNanoVGTypeface typeface) {
 		
 		Objects.requireNonNull(typeface);
 		
@@ -93,7 +93,7 @@ public class VectorText implements ShutDown {
 	/**
 	 * Sets the distance between rows of this text box.
 	 * 
-	 * @param rowHeight — height between rows of this text box
+	 * @param rowHeight ï¿½ height between rows of this text box
 	 */
 	public void rowHeight(int rowHeight) {
 		
@@ -106,7 +106,7 @@ public class VectorText implements ShutDown {
 	 * 
 	 * @return Typeface of this text box.
 	 */
-	public NanoVGTypeface typeface() {
+	public SCNanoVGTypeface typeface() {
 		
 		return typeface;
 		
@@ -117,7 +117,7 @@ public class VectorText implements ShutDown {
 	 *  
 	 * @return Offheap allocated text of this text box.
 	 */
-	public OffHeapText text() {
+	public SCOffHeapString text() {
 		
 		return source;
 		
@@ -137,9 +137,9 @@ public class VectorText implements ShutDown {
 	/**
 	 * Renders the text of this text box, and its bounder.
 	 * 
-	 * @param frame — the nanoVG frame for this application frame
+	 * @param frame ï¿½ the nanoVG frame for this application frame
 	 */
-	@RenderThreadOnly public void renderBoxAndText(NanoVGFrame frame) {
+	@RenderThreadOnly public void renderBoxAndText(SCNanoVGFrame frame) {
 		
 		renderBox(frame);
 		renderText(frame); 
@@ -149,9 +149,9 @@ public class VectorText implements ShutDown {
 	/**
 	 * Renders just the bounder of this text box.
 	 * 
-	 * @param frame — the nanoVG frame for this application frame
+	 * @param frame ï¿½ the nanoVG frame for this application frame
 	 */
-	@RenderThreadOnly public void renderBox(NanoVGFrame frame) {
+	@RenderThreadOnly public void renderBox(SCNanoVGFrame frame) {
 		
 		bounder.render(frame);
 		
@@ -160,9 +160,9 @@ public class VectorText implements ShutDown {
 	/**
 	 * Renders just the text of this text box.
 	 * 
-	 * @param frame — the nanoVG frame for this application frame
+	 * @param frame ï¿½ the nanoVG frame for this application frame
 	 */
-	@RenderThreadOnly public void renderText(NanoVGFrame frame) {
+	@RenderThreadOnly public void renderText(SCNanoVGFrame frame) {
 		
 		int charHeightAddend = charHeight - typeface.charHeight(); 
 		frame.setCurrentFontAndResize(typeface, charHeightAddend);
@@ -229,7 +229,7 @@ public class VectorText implements ShutDown {
 	/**
 	 * Sets the height of the characters of this text box.
 	 * 
-	 * @param charHeight — new height for characters of this text box
+	 * @param charHeight ï¿½ new height for characters of this text box
 	 */
 	public void charHeight(int charHeight) {
 		
@@ -240,8 +240,8 @@ public class VectorText implements ShutDown {
 	/**
 	 * Moves the bounder of this text to the given coordinates.
 	 * 
-	 * @param moveToX — world x coordinate
-	 * @param moveToY — world y coordinate
+	 * @param moveToX ï¿½ world x coordinate
+	 * @param moveToY ï¿½ world y coordinate
 	 * @see cs.csss.editor.SelectionAreaBounder#moveTo(float, float)
 	 */
 	public void moveTo(float moveToX, float moveToY) {
@@ -253,8 +253,8 @@ public class VectorText implements ShutDown {
 	/**
 	 * Moves a corner of the text bounder.
 	 * 
-	 * @param cursorX — x coordinate of the cursor in world space
-	 * @param cursorY — y coordinate of the cursor in world space
+	 * @param cursorX ï¿½ x coordinate of the cursor in world space
+	 * @param cursorY ï¿½ y coordinate of the cursor in world space
 	 * @see cs.csss.editor.SelectionAreaBounder#moveCorner(int, int)
 	 */
 	public void moveCorner(float cursorX, float cursorY) {
@@ -277,7 +277,7 @@ public class VectorText implements ShutDown {
 	/**
 	 * Sets the color of the text and bounder of this text box.
 	 * 
-	 * @param color — new color of the text and bounder of this text box
+	 * @param color ï¿½ new color of the text and bounder of this text box
 	 */
 	public void color(int color) {
 		

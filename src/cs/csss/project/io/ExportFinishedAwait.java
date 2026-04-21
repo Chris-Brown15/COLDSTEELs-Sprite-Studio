@@ -1,10 +1,12 @@
 package cs.csss.project.io;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import cs.core.utils.threads.Await;
-
-class ExportFinishedAwait extends Await {
+class ExportFinishedAwait<T> implements Future<T> {
 
 	private final AtomicInteger counter;
 	private final int requiredAmount;
@@ -16,10 +18,10 @@ class ExportFinishedAwait extends Await {
 		
 	}
 
-	@Override public void await() {
+	@Override public T get() {
 
 		Thread currentThread = Thread.currentThread();
-		while(!isFinished()) synchronized(currentThread) {
+		while(!isDone()) synchronized(currentThread) {
 			
 			try {
 				
@@ -32,13 +34,33 @@ class ExportFinishedAwait extends Await {
 			}
 			
 		}
+		
+		return null;
 
 	}
 
-	@Override public boolean isFinished() {
+	@Override public boolean isDone() {
 
 		return counter.get() != requiredAmount;
 		
+	}
+
+	@Override public boolean cancel(boolean mayInterruptIfRunning) {
+
+		throw new UnsupportedOperationException();
+
+	}
+
+	@Override public boolean isCancelled() {
+
+		throw new UnsupportedOperationException();
+
+	}
+
+	@Override public T get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+
+		throw new UnsupportedOperationException();
+
 	}
 
 }

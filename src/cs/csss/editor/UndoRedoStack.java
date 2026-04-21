@@ -1,9 +1,8 @@
 package cs.csss.editor;
 
-import cs.core.graphics.CSStandardRenderer;
-import cs.core.graphics.ThreadedRenderer;
-import cs.core.utils.ShutDown;
-import cs.core.utils.data.CSLinkedRingBuffer;
+import sc.core.SCShutDown;
+import sc.core.graphics.SCOpenGLRenderer;
+import cs.bringover.cs.core.utils.data.CSLinkedRingBuffer;
 import cs.csss.editor.event.CSSSEvent;
 
 /**
@@ -19,7 +18,7 @@ public class UndoRedoStack {
 	/**
 	 * Creates a stack of the given size. 
 	 *  
-	 * @param size — size of the stack
+	 * @param size size of the stack
 	 */
 	public UndoRedoStack(final int size) {
 		
@@ -33,7 +32,7 @@ public class UndoRedoStack {
 				
 	}
 
-	CSSSEvent undo(CSStandardRenderer renderer , UndoRedoStack redo) {
+	CSSSEvent undo(SCOpenGLRenderer renderer , UndoRedoStack redo) {
 		
 		if(queue.empty()) return null;
 		
@@ -45,7 +44,7 @@ public class UndoRedoStack {
 	
 	}
 
-	CSSSEvent redo(CSStandardRenderer renderer , UndoRedoStack redo) {
+	CSSSEvent redo(SCOpenGLRenderer renderer , UndoRedoStack redo) {
 		
 		if(queue.empty()) return null;
 		
@@ -83,11 +82,11 @@ public class UndoRedoStack {
 	 * Shuts down this stack by releasing references to the events within it and freeing any memory associated with any events still in it.
 	 * @param renderer
 	 */
-	public void shutDown(ThreadedRenderer renderer) {
+	public void shutDown(SCOpenGLRenderer renderer) {
 
 		queue.forEach(event -> {
 			
-			if(event instanceof ShutDown asShutDown) {
+			if(event instanceof SCShutDown asShutDown) {
 				
 				if(event.isRenderEvent) renderer.post(asShutDown::shutDown);
 				else asShutDown.shutDown();

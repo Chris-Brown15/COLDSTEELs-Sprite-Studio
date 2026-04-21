@@ -8,12 +8,12 @@ import java.nio.IntBuffer;
 
 import org.lwjgl.system.MemoryStack;
 
-import cs.core.utils.files.CSGraphic;
+import sc.core.binary.SCGraphic;
 
 /**
  * Class containing image data of a JPEG file.
  */
-public class JPG implements CSGraphic {
+public class JPG extends SCGraphic {
 	
 	public final ByteBuffer imageData;
 	public final int width;
@@ -24,8 +24,8 @@ public class JPG implements CSGraphic {
 	/**
 	 * Loads the file at the given path as a jpeg file.
 	 * 
-	 * @param absFilePath — absolute file path to load
-	 * @param channels — desired channels per pixel
+	 * @param absFilePath absolute file path to load
+	 * @param channels desired channels per pixel
 	 */
 	public JPG(final String absFilePath , int channels) {
 		
@@ -50,7 +50,7 @@ public class JPG implements CSGraphic {
 	/**
 	 * Loads the file at the given path as a jpeg file, reading the number of channels from the file.
 	 * 
-	 * @param absFilePath — absolute file path to load
+	 * @param absFilePath absolute file path to load
 	 */
 	public JPG(String absFilePath) {
 		
@@ -82,27 +82,28 @@ public class JPG implements CSGraphic {
 		return height;
 		
 	}
-
-	@Override public int bitsPerPixel() {
-
-		return bitsPerPixel;
-		
-	}
-
-	@Override public int bitsPerChannel() {
-
-		return bitsPerPixel / 8;
-	}
-
+	
 	@Override public int channels() {
 
 		return 3;
 		
 	}
 
-	@Override public ByteBuffer imageData() {
+	@Override public ByteBuffer data() {
 
 		return imageData;
+		
+	}
+
+	@Override public int bytesPerPixel() {
+
+		return bitsPerPixel >> 3;
+
+	}
+
+	@Override public int bytesPerChannel() {
+
+		return 1;
 		
 	}
 	

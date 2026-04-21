@@ -15,12 +15,12 @@ import com.codedisaster.steamworks.SteamUser;
 import com.codedisaster.steamworks.SteamUser.VoiceResult;
 import com.codedisaster.steamworks.SteamUserCallback;
 
-import cs.core.utils.ShutDown;
+import sc.core.SCShutDown;
 
 /**
  * The Steam API User API.
  */
-public class User implements ShutDown {
+public class User implements SCShutDown {
 
 	private final SteamUser user;
 	private boolean isFreed = false;

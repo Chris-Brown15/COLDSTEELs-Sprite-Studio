@@ -3,18 +3,18 @@ package cs.csss.project;
 import java.util.LinkedList;
 import java.util.stream.Stream;
 
-import cs.core.utils.ShutDown;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.shape.Ellipse;
 import cs.csss.editor.shape.Rectangle;
 import cs.csss.editor.shape.Shape;
-import cs.csss.engine.CSSSCamera;
 import cs.csss.engine.ColorPixel;
+import sc.core.SCShutDown;
+import sc.core.graphics.SCOrthographicCamera;
 
 /**
  * Responsible for creating, managing, and freeing shapes.
  */
-public class ShapeManager implements ShutDown {
+public class ShapeManager implements SCShutDown {
 
 	private LinkedList<Shape> shapes = new LinkedList<>();
 	
@@ -129,7 +129,7 @@ public class ShapeManager implements ShutDown {
  	 *  
  	 * @param camera a camera to use for rendering shapes
  	 */
- 	@RenderThreadOnly void renderShapes(CSSSCamera camera) {
+ 	@RenderThreadOnly void renderShapes(SCOrthographicCamera camera) {
  		
  		for(Shape x : shapes) x.render(camera);
  		
@@ -141,7 +141,7 @@ public class ShapeManager implements ShutDown {
 		
 		shutDown = true;
 		
-		for(Shape x : shapes) if(x instanceof ShutDown asShutDown) asShutDown.shutDown();
+		for(Shape x : shapes) if(x instanceof SCShutDown asShutDown) asShutDown.shutDown();
 		
 	}
 

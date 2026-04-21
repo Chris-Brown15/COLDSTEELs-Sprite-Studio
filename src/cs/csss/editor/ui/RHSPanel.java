@@ -1,6 +1,6 @@
 package cs.csss.editor.ui;
 
-import static cs.core.ui.CSUIConstants.*;
+import static sc.core.ui.SCUIConstants.*;
 
 import static cs.csss.ui.utils.UIUtils.*;
 
@@ -39,13 +39,6 @@ import org.lwjgl.nuklear.NkColorf;
 import org.lwjgl.nuklear.NkContext;
 import org.lwjgl.system.MemoryStack;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUserInterface;
-import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSButton;
-import cs.core.ui.CSNuklear.CSUI.CSRow;
-import cs.core.utils.Lambda;
-import cs.coreext.nanovg.NanoVGTypeface;
 import cs.csss.editor.Editor;
 import cs.csss.editor.SelectionAreaBounder;
 import cs.csss.editor.SelectionAreaBounder2;
@@ -67,12 +60,12 @@ import cs.csss.engine.NamedNanoVGTypeface;
 import cs.csss.project.Artboard;
 import cs.csss.project.CSSSProject;
 import cs.csss.project.Layer;
-import cs.csss.ui.elements.CSSpacer;
-import cs.csss.ui.elements.SymbolAccessSelectableText;
 import cs.csss.ui.menus.ChooseColorDialogue;
 import cs.csss.ui.menus.ConfirmationBox;
 import cs.csss.ui.menus.NotificationBox;
 import cs.csss.ui.menus.VectorTextMenu;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
 
 /**
  * Class for the right hand side panel. This class contains a drop down tree of project components.
@@ -112,27 +105,31 @@ import cs.csss.ui.menus.VectorTextMenu;
 		expandLines = false ,
 		expandLinearLines = false ,
 		expandBezierLines = false ,
-		expandBezierLinesControlPoints = false;;
+		expandBezierLinesControlPoints = false ,
+		expandArtboardStats = false
+		;
 	
 	private CSSSProject project;
-	private final CSUserInterface ui;
+	private final SCUserInterface ui;
 
 	private boolean changedColor = false;
 	
 	/**
 	 * Creates a right hand side panel.
 	 * 
-	 * @param editor — the editor
-	 * @param nuklear — Nuklear factory
-	 * @param engine — the engine
+	 * @param editor the editor
+	 * @param nuklear Nuklear factory
+	 * @param engine the engine
 	 */
-	public RHSPanel(Editor editor , CSNuklear nuklear , Engine engine) {
+	public RHSPanel(Editor editor , SCNuklear nuklear , Engine engine) {
 
-		ui = nuklear.new CSUserInterface("Project" , 0.80f , -1f , 0.199f , 0.90f);
-		ui.setDimensions(ui.xPosition(), 77, ui.interfaceWidth(), ui.interfaceHeight());
-		ui.options = UI_BORDERED|UI_TITLED|UI_ICONIFYABLE;
+		ui = new SCUserInterface(nuklear , "Project" , 0.80f , -1f , 0.199f , 0.90f);
+		ui.positioner.topY(77);		
+		ui.flags = UI_BORDERED|UI_TITLED|UI_ICONIFYABLE;
 		
-		ui.attachedLayout((context , stack) -> {
+		ui.attachedLayout((context) -> {
+			
+			MemoryStack stack = MemoryStack.stackPush();
 			
 			if((project = editor.project()) == null) {
 				
@@ -174,7 +171,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 			nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 			
 			pad(context , TIER_ONE_PADDING);
-			nk_layout_row_push(context , ui.interfaceWidth() - TIER_ONE_PADDING - 40);
+			nk_layout_row_push(context , ui.positioner.width() - TIER_ONE_PADDING - 40);
 			
 			if(nk_selectable_symbol_text(
 				context , 
@@ -199,7 +196,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 
 					pad(context , TIER_TWO_PADDING);
 					
-					nk_layout_row_push(context , ui.interfaceWidth() - TIER_TWO_PADDING - 40);
+					nk_layout_row_push(context , ui.positioner.width() - TIER_TWO_PADDING - 40);
 					if(nk_selectable_text(context , animation.name() , OPTION_TEXT , asByte(editor.isCurrentAnimation(animation)))) { 
 						
 						editor.project().currentAnimation(animation);
@@ -213,7 +210,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 						nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 						pad(context , TIER_THREE_PADDING);
 						
-						nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);
+						nk_layout_row_push(context , ui.positioner.width() - TIER_THREE_PADDING - 40);
 						if(nk_button_text(context , "Delete")) Engine.THE_TEMPORAL.onTrue(() -> true, editor.project()::deleteAnimation);
 											
 					}
@@ -229,7 +226,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 			nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 			
 			pad(context , TIER_ONE_PADDING);
-			nk_layout_row_push(context , ui.interfaceWidth() - TIER_ONE_PADDING - 40);
+			nk_layout_row_push(context , ui.positioner.width() - TIER_ONE_PADDING - 40);
 			
 			if(nk_selectable_symbol_text(context , toMenuSymbol(expandVisual) , "Visual Layers" , TEXT_MIDDLE , asByte(expandVisual))) { 
 				
@@ -243,7 +240,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 
 				pad(context , TIER_TWO_PADDING);
 					
-				int totalSize = ui.interfaceWidth() - TIER_TWO_PADDING - 40;
+				int totalSize = ui.positioner.width() - TIER_TWO_PADDING - 40;
 				nk_layout_row_push(context , totalSize / 2);
 				nk_text(context , layer.UIString() , dropdownTextOptions);
 				
@@ -276,7 +273,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 			nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 			
 			pad(context , TIER_ONE_PADDING);
-			nk_layout_row_push(context , ui.interfaceWidth() - TIER_ONE_PADDING - 40);
+			nk_layout_row_push(context , ui.positioner.width() - TIER_ONE_PADDING - 40);
 
 			if(nk_selectable_symbol_text(
 				context , 
@@ -301,7 +298,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 
 					pad(context , TIER_TWO_PADDING);
 					
-					nk_layout_row_push(context , ui.interfaceWidth() - TIER_TWO_PADDING - 40);
+					nk_layout_row_push(context , ui.positioner.width() - TIER_TWO_PADDING - 40);
 					nk_text(context , layer.UIString() , dropdownTextOptions);
 					
 					nk_layout_row_end(context);
@@ -329,7 +326,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 			nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 			
 			pad(context , TIER_ONE_PADDING);
-			nk_layout_row_push(context , ui.interfaceWidth() - TIER_ONE_PADDING - 40);
+			nk_layout_row_push(context , ui.positioner.width() - TIER_ONE_PADDING - 40);
 
 			int symbol = toMenuSymbol(expandArtboards);
 			
@@ -356,7 +353,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 						
 					boolean active = editor.currentArtboard() == artboard;
 						
-					nk_layout_row_push(context , ui.interfaceWidth() - TIER_TWO_PADDING - 40);
+					nk_layout_row_push(context , ui.positioner.width() - TIER_TWO_PADDING - 40);
 					nk_selectable_text(context , editor.getArtboardUIName(artboard) , dropdownTextOptions , toByte(stack , active));
 					nk_layout_row_end(context);				
 						
@@ -369,7 +366,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 					nk_layout_row_begin(context , NK_STATIC , 30 , 4);
 					
 					pad(context , TIER_THREE_PADDING);
-					int rowWidth = (ui.interfaceWidth() - TIER_THREE_PADDING - 54) / 2;
+					int rowWidth = (ui.positioner.width() - TIER_THREE_PADDING - 54) / 2;
 					nk_layout_row_push(context , rowWidth);
 					if(nk_button_text(context , "Copy")) editor.eventPush(new DeepCopyArtboardEvent(project , artboard));
 					
@@ -387,6 +384,18 @@ import cs.csss.ui.menus.VectorTextMenu;
 					
 					nk_layout_row_end(context);
 					
+					dropDown(context , TIER_THREE_PADDING , "Artboard Stats" , expandArtboardStats , () -> expandArtboardStats = !expandArtboardStats);
+					
+					if(expandArtboardStats) {
+						
+						nk_layout_row_begin(context , NK_STATIC , 20 , 2);
+						pad(context , TIER_FOUR_PADDING);
+						nk_layout_row_push(context , ui.positioner.width() - TIER_FOUR_PADDING - 50);
+						nk_text(context , String.format("Width: %d, Height: %d", artboard.width() , artboard.height()) , TEXT_MIDDLE);						
+						nk_layout_row_end(context);
+						
+					}
+					
 					//visual layers
 					
 					dropDown(context , TIER_THREE_PADDING , "Visual Layers" , expandVisualLayers , () -> expandVisualLayers = !expandVisualLayers);
@@ -400,7 +409,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 						
 						boolean activeLayer = artboard.isActiveLayer(layer);
 						
-						nk_layout_row_push(context , ui.interfaceWidth() - TIER_FOUR_PADDING - 50);
+						nk_layout_row_push(context , ui.positioner.width() - TIER_FOUR_PADDING - 50);
 						if(nk_radio_text(context , layer.name + " -> Rank " + rank , toByte(stack , activeLayer))) { 
 							
 							editor.eventPush(new SwitchToVisualLayerEvent(artboard , editor.project() , layer));
@@ -442,7 +451,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 						nk_layout_row_begin(context , NK_STATIC , 20 , 2);
 						pad(context , TIER_FOUR_PADDING);
 						
-						nk_layout_row_push(context , ui.interfaceWidth() - TIER_FOUR_PADDING - 40);
+						nk_layout_row_push(context , ui.positioner.width() - TIER_FOUR_PADDING - 40);
 						if(nk_radio_text(context , layer.name , toByte(stack , artboard.isActiveLayer(layer)))) { 
 							
 							editor.eventPush(new SwitchToNonVisualLayerEvent(artboard , editor.project() , layer));
@@ -743,7 +752,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 			
 //			nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 //			pad(context , TIER_ONE_PADDING);
-//			nk_layout_row_push(context , ui.interfaceWidth() - TIER_ONE_PADDING - 40);
+//			nk_layout_row_push(context , ui.positioner.width() - TIER_ONE_PADDING - 40);
 //			
 //			if(nk_selectable_symbol_text(
 //				context , 
@@ -770,7 +779,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 //					nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 //					pad(context , TIER_TWO_PADDING);
 //					
-//					nk_layout_row_push(context , ui.interfaceWidth() - TIER_TWO_PADDING - 40);
+//					nk_layout_row_push(context , ui.positioner.width() - TIER_TWO_PADDING - 40);
 //					
 //					/*
 //					 * TODO:
@@ -794,7 +803,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 //						nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 //						pad(context , TIER_THREE_PADDING);
 //						int fontSymbol = expandFonts ? SYMBOL_TRIANGLE_DOWN : SYMBOL_TRIANGLE_RIGHT; 
-//						nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);
+//						nk_layout_row_push(context , ui.positioner.width() - TIER_THREE_PADDING - 40);
 //						if(nk_selectable_symbol_text(context , fontSymbol , "Fonts" , TEXT_MIDDLE , toByte(stack , expandFonts))) {
 //							
 //							expandFonts = !expandFonts;
@@ -832,7 +841,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 //						
 //						nk_layout_row_begin(context , NK_STATIC , 150 , 2);						
 //						pad(context , TIER_THREE_PADDING);
-//						nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);						
+//						nk_layout_row_push(context , ui.positioner.width() - TIER_THREE_PADDING - 40);						
 //						nk_edit_string(
 //							context , 
 //							VectorTextMenu.TEXT_EDIT_OPTIONS , 
@@ -857,7 +866,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 //						
 //						nk_layout_row_begin(context , NK_STATIC , 150 , 2);						
 //						pad(context , TIER_THREE_PADDING);
-//						nk_layout_row_push(context , ui.interfaceWidth() - TIER_THREE_PADDING - 40);	
+//						nk_layout_row_push(context , ui.positioner.width() - TIER_THREE_PADDING - 40);	
 //						
 //						NkColorf color = NkColorf.malloc(stack);
 //						
@@ -888,6 +897,8 @@ import cs.csss.ui.menus.VectorTextMenu;
 //				
 //			}
 			
+			stack.pop();
+			
 		});
 
 	}
@@ -906,7 +917,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 	 */
 	private void shapeChanger(
 		Editor editor , 
-		CSNuklear nuklear , 
+		SCNuklear nuklear , 
 		NkContext context , 
 		int columnWidth , 
 		MemoryStack stack , 
@@ -979,57 +990,57 @@ import cs.csss.ui.menus.VectorTextMenu;
 		
 	}
 
-	private void button(NkContext context , int padding , final String buttonText , final Lambda onPress) {
+	private void button(NkContext context , int padding , final String buttonText , final Runnable onPress) {
 
 		button(context , padding , 20 , buttonText , onPress);
 		
 	}
 
-	private void button(NkContext context , int padding , int rowWidth , final String buttonText , final Lambda onPress) {
+	private void button(NkContext context , int padding , int rowWidth , final String buttonText , Runnable onPress) {
 
-		final int rowSpace =  ui.interfaceWidth() - padding - 40;
+		final int rowSpace =  ui.positioner.width() - padding - 40;
 
 		nk_layout_row_begin(context , NK_STATIC , rowWidth , 2);
 		pad(context, padding);
 		
 		nk_layout_row_push(context , rowSpace);						
-		if(nk_button_text(context , buttonText)) onPress.invoke();
+		if(nk_button_text(context , buttonText)) onPress.run();
 		
 		nk_layout_row_end(context);
 
 	}
 
-	private void checkBox(NkContext context , String text , int padding , int rowWidth , Lambda onPress , BooleanSupplier state) {
+	private void checkBox(NkContext context , String text , int padding , int rowWidth , Runnable onPress , BooleanSupplier state) {
 		
-		final int rowSpace =  ui.interfaceWidth() - padding - 40;
+		final int rowSpace =  ui.positioner.width() - padding - 40;
 
 		nk_layout_row_begin(context , NK_STATIC , rowWidth , 2);
 		pad(context, padding);
 		
 		nk_layout_row_push(context , rowSpace);
-		if(nk_checkbox_text(context , text , toByte(MemoryStack.stackGet() , state.getAsBoolean()))) onPress.invoke();
+		if(nk_checkbox_text(context , text , toByte(MemoryStack.stackGet() , state.getAsBoolean()))) onPress.run();
 		
 		nk_layout_row_end(context);
 
 	}
 
-	private void radio(NkContext context , String text , int padding , int rowWidth , Lambda onPress , BooleanSupplier state) {
+	private void radio(NkContext context , String text , int padding , int rowWidth , Runnable onPress , BooleanSupplier state) {
 		
-		final int rowSpace =  ui.interfaceWidth() - padding - 40;
+		final int rowSpace =  ui.positioner.width() - padding - 40;
 
 		nk_layout_row_begin(context , NK_STATIC , rowWidth , 2);
 		pad(context, padding);
 		
 		nk_layout_row_push(context , rowSpace);
-		if(nk_radio_text(context , text , toByte(MemoryStack.stackGet() , state.getAsBoolean()))) onPress.invoke();
+		if(nk_radio_text(context , text , toByte(MemoryStack.stackGet() , state.getAsBoolean()))) onPress.run();
 		
 		nk_layout_row_end(context);
 
 	}
 	
-	private void activeLayerCheckBox(NkContext context , final String buttonText , final boolean state , final Lambda onPress) {
+	private void activeLayerCheckBox(NkContext context , final String buttonText , final boolean state , final Runnable onPress) {
 
-		final int rowSpace =  ui.interfaceWidth() - TIER_FIVE_PADDING - 40;
+		final int rowSpace =  ui.positioner.width() - TIER_FIVE_PADDING - 40;
 
 		nk_layout_row_begin(context , NK_STATIC , 20 , 2);
 		pad(context, TIER_FIVE_PADDING);
@@ -1038,7 +1049,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 		
 		try(MemoryStack stack = MemoryStack.stackPush()) {
 			
-			if(nk_checkbox_text(context , buttonText , toByte(stack , state))) onPress.invoke();
+			if(nk_checkbox_text(context , buttonText , toByte(stack , state))) onPress.run();
 			
 		}
 		
@@ -1050,7 +1061,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 
 		nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 		pad(context , padding);			
-		nk_layout_row_push(context , ui.interfaceWidth() - padding - 40);						
+		nk_layout_row_push(context , ui.positioner.width() - padding - 40);						
 		int result = nk_propertyi(context, text , min , current , 9999, increase, increasePerPixel);			
 		nk_layout_row_end(context);
 
@@ -1062,7 +1073,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 
 		nk_layout_row_begin(context , NK_STATIC , 20 , 2);
 		pad(context , TIER_TWO_PADDING);
-		nk_layout_row_push(context  ,ui.interfaceWidth() - TIER_TWO_PADDING - 40);
+		nk_layout_row_push(context  ,ui.positioner.width() - TIER_TWO_PADDING - 40);
 		nk_text(context , "Add one in the 'Project' drop down." , TEXT_LEFT|TEXT_CENTERED);
 		nk_layout_row_end(context);
 		
@@ -1073,18 +1084,18 @@ import cs.csss.ui.menus.VectorTextMenu;
 		nk_layout_row_begin(context , NK_STATIC , 20 , 2);
 		pad(context , TIER_TWO_PADDING);
 		NkColor color = NkColor.malloc(stack).set((byte)0xee , (byte)0xee , (byte)0x0 , (byte)0xff);
-		nk_layout_row_push(context  ,ui.interfaceWidth() - TIER_TWO_PADDING - 40);
+		nk_layout_row_push(context  ,ui.positioner.width() - TIER_TWO_PADDING - 40);
 		nk_text_colored(context , text , TEXT_LEFT|TEXT_CENTERED , color);
 		nk_layout_row_end(context);
 			
 	}	
 
-	private void dropDown(NkContext context , int padding , String text , boolean currentValue , Lambda onPress) {
+	private void dropDown(NkContext context , int padding , String text , boolean currentValue , Runnable onPress) {
 
 		nk_layout_row_begin(context , NK_STATIC , 30 , 2);
 		pad(context , padding);
 		nk_layout_row_push(context , elementSpaceFromPadding(padding));
-		if(nk_selectable_symbol_text(context , toMenuSymbol(currentValue) , text , TEXT_MIDDLE , asByte(currentValue))) onPress.invoke();
+		if(nk_selectable_symbol_text(context , toMenuSymbol(currentValue) , text , TEXT_MIDDLE , asByte(currentValue))) onPress.run();
 		nk_layout_row_end(context);
 		
 	}
@@ -1120,7 +1131,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 		
 	}
 	
-	private void onTrue(Lambda onTrue) {
+	private void onTrue(Runnable onTrue) {
 		
 		Engine.THE_TEMPORAL.onTrue(() -> true , onTrue);
 		
@@ -1128,7 +1139,7 @@ import cs.csss.ui.menus.VectorTextMenu;
 	
 	private int elementSpaceFromPadding(int padding) {
 		
-		return ui.interfaceWidth() - padding - 40;
+		return ui.positioner.width() - padding - 40;
 		
 	}
 	

@@ -1,6 +1,5 @@
 package cs.csss.project;
 
-import static cs.core.utils.CSUtils.specify;
 import static org.lwjgl.system.MemoryUtil.memAlloc;
 import static org.lwjgl.system.MemoryUtil.memFree;
 
@@ -10,6 +9,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -17,10 +18,6 @@ import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 
-import cs.core.utils.CSRefInt;
-import cs.core.utils.ShutDown;
-import cs.coreext.nanovg.NanoVGFrame;
-import cs.coreext.nanovg.NanoVGTypeface;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.line.BezierLine;
 import cs.csss.editor.line.LinearLine;
@@ -49,6 +46,11 @@ import cs.csss.project.io.CTSPFile.VisualLayerDataChunk;
 import cs.csss.project.io.ProjectSizeAndPositions;
 import cs.csss.utils.CollisionUtils;
 import cs.csss.utils.FloatReference;
+import sc.core.SCDebugging;
+import sc.core.SCShutDown;
+import sc.core.graphics.nanovg.SCNanoVGFrame;
+import sc.core.graphics.nanovg.SCNanoVGTypeface;
+import sc.core.utils.SCIntReferencer;
 
 /**
  * Contains all data about the currently in-use project. 
@@ -64,7 +66,7 @@ import cs.csss.utils.FloatReference;
  * </p>
  * 
  */
-public class CSSSProject implements ShutDown {
+public class CSSSProject implements SCShutDown {
 
 	private static final PaletteShader thePaletteShader = new PaletteShader();
 	private static final TextureShader theTextureShader = new TextureShader();
@@ -74,9 +76,14 @@ public class CSSSProject implements ShutDown {
 	 * Initializes all shaders
 	 */
 	@RenderThreadOnly public static void initializeArtboardShaders() {
-		
+
+		SCDebugging.say("Palette shader initialization started.");
 		thePaletteShader.initialize();
+		SCDebugging.say("Palette shader initialized.");
+		
+		SCDebugging.say("Texture shader initialization started.");
 		theTextureShader.initialize();
+		SCDebugging.say("Texture shader initialized.");
 
 	}
 	
@@ -116,7 +123,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Sets the current shader to the given shader.
 	 * 
-	 * @param newCurrent — new current shader
+	 * @param newCurrent new current shader
 	 */
 	public static void setTheCurrentShader(CSSSShader newCurrent) {
 		
@@ -152,9 +159,9 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Creates a project.
 	 * 
-	 * @param engine — the engine
-	 * @param name — the name of this project
-	 * @param channelsPerPixel — the channels per pixel of this project
+	 * @param engine the engine
+	 * @param name the name of this project
+	 * @param channelsPerPixel the channels per pixel of this project
 	 */
 	@RenderThreadOnly public CSSSProject(Engine engine , final String name , int channelsPerPixel) {
 
@@ -165,15 +172,15 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Creates a project with the given palette dimensions.
 	 * 
-	 * @param engine — the engine
-	 * @param name — the name of this project
-	 * @param channelsPerPixel — the channels per pixel of this project
-	 * @param paletteWidth — width of all palettes
-	 * @param paletteHeight — height of all palettes
+	 * @param engine the engine
+	 * @param name the name of this project
+	 * @param channelsPerPixel the channels per pixel of this project
+	 * @param paletteWidth width of all palettes
+	 * @param paletteHeight height of all palettes
 	 */
 	public CSSSProject(Engine engine , String name , int channelsPerPixel , int paletteWidth , int paletteHeight) {
 		
-		specify(channelsPerPixel > 0 && channelsPerPixel <= 4 , channelsPerPixel + " is not a valid number of channels per pixel.");
+		assert channelsPerPixel > 0 && channelsPerPixel <= 4 : channelsPerPixel + " is not a valid number of channels per pixel.";
 
 		this.engine = engine;
 		
@@ -195,8 +202,8 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Creates a nwe projcet without specifying its channels per pixel.
 	 * 
-	 * @param engine — the engine
-	 * @param name — the name of this project
+	 * @param engine the engine
+	 * @param name the name of this project
 	 */
 	public CSSSProject(Engine engine , final String name) {
 	
@@ -210,8 +217,8 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Creates a new project by loading from the given {@link cs.csss.project.io.CTSPFile CTSPFile}.
 	 * 
-	 * @param engine — the engine
-	 * @param ctsp — a loaded CTSP file
+	 * @param engine the engine
+	 * @param ctsp a loaded CTSP file
 	 */
  	@RenderThreadOnly public CSSSProject(Engine engine , CTSPFile ctsp) {
 
@@ -284,7 +291,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Deletes and removes all instances of the layer modeled by {@code layer} from the project.
 	 * 
-	 * @param layer — layer to delete
+	 * @param layer layer to delete
 	 */
 	@RenderThreadOnly public void deleteVisualLayer(VisualLayerPrototype layer) {
 		
@@ -340,7 +347,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Appends the given artboard to the current animation
 	 * 
-	 * @param artboard — an artboard
+	 * @param artboard an artboard
 	 * @return The newly added animation frame.
 	 */
 	@RenderThreadOnly public AnimationFrame appendArtboardToCurrentAnimation(Artboard artboard) {
@@ -386,7 +393,22 @@ public class CSSSProject implements ShutDown {
 			
 		} else {
 			
-			Artboard shallowCopy = engine.renderer().make(() -> copier.copy(artboard)).get();
+			final Future<Artboard> artboardFuture = engine.renderer().make(() -> copier.copy(artboard));
+			Artboard shallowCopy = null;
+			
+			try {
+
+				shallowCopy = artboardFuture.get();
+				
+			} catch (InterruptedException | ExecutionException e) {
+
+				//shouldn't happen
+				e.printStackTrace();
+				
+			}
+			
+			assert shallowCopy != null;
+			
 			currentAnimation.appendArtboard(shallowCopy);
 			allArtboards.add(shallowCopy);
 			
@@ -408,7 +430,22 @@ public class CSSSProject implements ShutDown {
 			
 		} else {
 			
-			Artboard shallowCopy = engine.renderer().make(() -> copier.copy(artboard)).get();
+			Future<Artboard> make = engine.renderer().make(() -> copier.copy(artboard));
+			Artboard shallowCopy = null;
+			
+			try {
+			
+				shallowCopy = make.get();
+			
+			} catch (InterruptedException | ExecutionException e) {
+				
+				//Shouldn't happen
+				e.printStackTrace();
+			
+			}
+			
+			assert shallowCopy != null;
+			
 			animation.appendArtboard(shallowCopy);
 			allArtboards.add(shallowCopy);
 			
@@ -455,7 +492,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Removes the given artboard from the current animation.
 	 * 
-	 * @param artboard — an artboard
+	 * @param artboard an artboard
 	 */
 	@RenderThreadOnly public void removeArtboardFromCurrentAnimation(Artboard artboard) {
 		
@@ -466,7 +503,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Removes the animation frame at the given index from the current animation.
 	 * 
-	 * @param frameIndex — index of an animation frame for the current animation
+	 * @param frameIndex index of an animation frame for the current animation
 	 */
 	@RenderThreadOnly public void removeArtboardFromCurrentAnimation(int frameIndex) {
 
@@ -500,9 +537,9 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Draws all vector text boxes in this project
 	 *  
-	 * @param frame — NanoVG Frame for the current application frame
+	 * @param frame NanoVG Frame for the current application frame
 	 */
-	@RenderThreadOnly public void renderAllVectorTextBoxes(NanoVGFrame frame) {
+	@RenderThreadOnly public void renderAllVectorTextBoxes(SCNanoVGFrame frame) {
 		
 		vectorTextBoxes.forEach(textBox -> textBox.renderBoxAndText(frame));
 		
@@ -512,7 +549,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Renders all artboards with the given shader.
 	 * 
-	 * @param shader — a shader to use for rendering
+	 * @param shader a shader to use for rendering
 	 */
 	@RenderThreadOnly public void renderAllArtboards(CSSSShader shader) {
 		
@@ -532,10 +569,10 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Draws both all artboards and all vector text boxes. 
 	 * 
-	 * @param shader — a shader for the artboards
-	 * @param frame — the nano VG frame for the current program frame
+	 * @param shader a shader for the artboards
+	 * @param frame the nano VG frame for the current program frame
 	 */
-	@RenderThreadOnly public void renderEverything(CSSSShader shader , NanoVGFrame frame) {
+	@RenderThreadOnly public void renderEverything(CSSSShader shader , SCNanoVGFrame frame) {
 		
 		renderAllArtboards(shader);
 		renderAllVectorTextBoxes(frame);
@@ -549,7 +586,7 @@ public class CSSSProject implements ShutDown {
 
 		if(looseArtboards.size() == 0) return 0;
 		
-		return engine.renderer().make(() -> {
+		Future<Integer> event = engine.renderer().make(() -> {
 
 			Artboard previous = looseArtboards.get(0);
 			int greatestHeight = previous.height(); 
@@ -569,7 +606,20 @@ public class CSSSProject implements ShutDown {
 					
 			return greatestHeight;
 			
-		}).get();
+		});
+		
+		int result = -1;
+		try {
+		
+			result = event.get();
+		
+		} catch (InterruptedException | ExecutionException e) {
+
+			//cannot happen.
+			
+		}
+		
+		return result;
 	  
 	}
 	
@@ -581,25 +631,25 @@ public class CSSSProject implements ShutDown {
 		
 	 	engine.renderer().post(() -> {
 
-	 		CSRefInt rowHeightAccum = new CSRefInt(arrangeLooseArtboardsNew() + 25);	 		
+	 		SCIntReferencer rowHeightAccum = new SCIntReferencer(arrangeLooseArtboardsNew() + 25);	 		
 	 		animations.sort((animation1 , animation2) -> animation1.getTotalWidth() - animation2.getTotalWidth()); 
 	 		animations.stream().filter(animation -> !animation.isEmpty()).forEach(x -> {
 
 		 		Iterator<Artboard> iter = x.frames.stream().map(frame -> frame.board).iterator();
 		 		Artboard previous = iter.next() , current;
 		 		
-		 		rowHeightAccum.add(x.frameHeight() / 2);
+		 		rowHeightAccum.mutate(old -> old + x.frameHeight() / 2);
 		 		
-		 		previous.moveTo(0, rowHeightAccum.intValue());
+		 		previous.moveTo(0, rowHeightAccum.get());
 		 			 		
 		 		for( ; iter.hasNext() ; previous = current) {
 		 			
 		 			current = iter.next();
-		 			current.moveTo((int)previous.rightX() + (current.width() / 2), rowHeightAccum.intValue());
+		 			current.moveTo((int)previous.rightX() + (current.width() / 2), rowHeightAccum.get());
 		 				 			
 		 		}
 		 		
-		 		rowHeightAccum.add(x.frameHeight());
+		 		rowHeightAccum.mutate(val -> val + x.frameHeight());
 		 				 	
 	 		});
 	 			 		
@@ -610,7 +660,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Invokes {@code callback} on each animation of this project
 	 * 
-	 * @param callback — code to invoke
+	 * @param callback code to invoke
 	 */
 	public void forEachAnimation(Consumer<Animation> callback) {
 		
@@ -643,7 +693,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Invokes {@code callback} on each visual layer prototype of this project
 	 * 
-	 * @param callback — code to invoke
+	 * @param callback code to invoke
 	 */
 	public void forEachVisualLayerPrototype(Consumer<VisualLayerPrototype> callback) {
 		
@@ -654,7 +704,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Invokes {@code callback} on each nonvisual layer prototype of this project
 	 * 
-	 * @param callback — code to invoke
+	 * @param callback code to invoke
 	 */
 	public void forEachNonVisualLayerPrototype(Consumer<NonVisualLayerPrototype> callback) {
 		
@@ -687,7 +737,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Invokes {@code callback} for all existing artboards, including shallow copies.
 	 * 
-	 * @param callback — consumer of an artboard
+	 * @param callback consumer of an artboard
 	 */
 	public void forEachArtboard(Consumer<Artboard> callback) {
 		
@@ -708,8 +758,8 @@ public class CSSSProject implements ShutDown {
 	 * 	other shallow copies and source.
 	 * </p>
 	 * 
-	 * @param source — a source artboard
-	 * @param callback — code to invoke for each shallow copy
+	 * @param source a source artboard
+	 * @param callback code to invoke for each shallow copy
 	 */
 	public void forEachCopyOf(Artboard source , Consumer<Artboard> callback) {
 		
@@ -720,7 +770,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Invokes {@code callback} for all artboards that are shallow copies.
 	 * 
-	 * @param callback — code to invoke
+	 * @param callback code to invoke
 	 */
 	public void forEachShallowCopy(Consumer<Artboard> callback) {
 		
@@ -731,7 +781,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Invokes {@code callback} for each palette, of which there are 5 total.
 	 * 
-	 * @param callback — code to invoke
+	 * @param callback code to invoke
 	 */
 	public void forEachPalette(Consumer<ArtboardPalette> callback) {
 		
@@ -743,7 +793,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Invokes {@code callback} for each nonvisual palette, of which there are 4, one for each channel size.
 	 * 
-	 * @param callback — code to invoke
+	 * @param callback code to invoke
 	 */
 	public void forEachNonVisualPalette(Consumer<ArtboardPalette> callback) {
 		
@@ -754,7 +804,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Invokes {@code callback} for each vector text box.
 	 * 
-	 * @param callback — code to invoke
+	 * @param callback code to invoke
 	 */
 	public void forEachVectorTextBox(Consumer<VectorText> callback) {
 		
@@ -787,7 +837,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Gets a visual layer prototype at the given index.
 	 * 
-	 * @param index — index of a visual layer prototype within the list of visual layer prototypes
+	 * @param index index of a visual layer prototype within the list of visual layer prototypes
 	 * @return VisualLayerPrototype at the given index.
 	 */
 	public VisualLayerPrototype visualLayerPrototype(int index) {
@@ -832,7 +882,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Gets the index of the given artboard in the list of all artboards for this project.
 	 * 
-	 * @param artboard — an artboard whose index is being queried 
+	 * @param artboard an artboard whose index is being queried 
 	 * @return Index of {@code artboard} in this project.
 	 * @throws NullPointerException if {@code artboard} is <code>null</code>.
 	 * @throws IllegalStateException if {@code artboard} is not in the list of all artboards.
@@ -855,8 +905,8 @@ public class CSSSProject implements ShutDown {
 	 * Sets this project's current artboard to whichever artboard the given cursor world coordinates fall into. This will not change the 
 	 * current artboard if none is under the cursor.
 	 * 
-	 * @param cursorWorldX — x world coordinate of the cursor 
-	 * @param cursorWorldY — y world coordinate of the cursor 
+	 * @param cursorWorldX x world coordinate of the cursor 
+	 * @param cursorWorldY y world coordinate of the cursor 
 	 */
 	public void setCurrentArtboardByMouse(float cursorWorldX , float cursorWorldY) {
 		
@@ -887,7 +937,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Sets the current artboard.
 	 * 
-	 * @param currentArtboard — new current artboard
+	 * @param currentArtboard new current artboard
 	 */
 	public void currentArtboard(Artboard currentArtboard) {
 		
@@ -909,7 +959,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Sets the current animation.
 	 * 
-	 * @param newCurrent — new current animation
+	 * @param newCurrent new current animation
 	 */
 	public void currentAnimation(Animation newCurrent) {
 		
@@ -920,7 +970,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Sets the name of this project.
 	 * 
-	 * @param name — new name for this project
+	 * @param name new name for this project
 	 */
 	public void setName(String name) {
 		
@@ -958,12 +1008,12 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Gets a nonvisual palette by {@code sizeBytes}, which corresponds to the number of channels per pixel for the returned palette. 
 	 * 
-	 * @param channels — the channels per pixel of the palette being queried
+	 * @param channels the channels per pixel of the palette being queried
 	 * @return Nonvisual artboard palette used for nonvisual layers whose channel per pixel is {@code sizeBytes}.
 	 */
 	public ArtboardPalette getNonVisualPaletteBySize(int channels) {
 		
-		specify(channels > 0 && channels <= NonVisualLayerPrototype.MAX_SIZE_BYTES , "Invalid size in bytes for a nonvisual layer.");
+		assert channels > 0 && channels <= NonVisualLayerPrototype.MAX_SIZE_BYTES : "Invalid size in bytes for a nonvisual layer.";
 		
 		return nonVisualPalettes.get(channels - 1);
 		
@@ -976,7 +1026,7 @@ public class CSSSProject implements ShutDown {
 	 * 	animations.
 	 * </p>
 	 * 
-	 * @param callback — code to invoke
+	 * @param callback code to invoke
 	 */
 	public void forEachLooseArtboard(Consumer<Artboard> callback) {
 		
@@ -999,7 +1049,7 @@ public class CSSSProject implements ShutDown {
 	 * Invokes {@code callback} for each artboard in this project that is not a shallow copy of another artboard. This includes loose artboards 
 	 * (artboards that are not in any animation), and nonloose artboards.
 	 * 
-	 * @param callback — code to invoke
+	 * @param callback code to invoke
 	 */
 	public void forEachNonShallowCopiedArtboard(Consumer<Artboard> callback) {
 		
@@ -1027,8 +1077,8 @@ public class CSSSProject implements ShutDown {
 	 * animation. An artboard is valid if it is the same dimensions as artboards already in the animation, and it is not already in the 
 	 * animation. If no artboard is in the animation, all nonshallow artboards are valid.
 	 * 
-	 * @param animation — an animation
-	 * @param callback — code to invoke for each valid artboard for {@code animation}
+	 * @param animation an animation
+	 * @param callback code to invoke for each valid artboard for {@code animation}
 	 */
 	public void forValidArtboardsForAnimation(Animation animation , Consumer<Artboard> callback) {
 		
@@ -1055,7 +1105,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Returns whether the given artboard is a shallow copy of another.
 	 * 
-	 * @param artboard — an artboard
+	 * @param artboard an artboard
 	 * @return {@code true} if {@code artboard} is a shallow copy of another artboard.
 	 */
 	public boolean isCopy(Artboard artboard) {
@@ -1068,7 +1118,7 @@ public class CSSSProject implements ShutDown {
 	 * Returns whether the given artboard is a source of other shallow artboards. Artboards that are themselves shallow and artboards that
 	 * have not been used to create other artboards will return {@code false}.
 	 * 
-	 * @param artboard — an artboard
+	 * @param artboard an artboard
 	 * @return {@code true} if {@code artboard} is a source for shallow copy of another artboard.
 	 */
 	public boolean isSource(Artboard isSource) {
@@ -1080,7 +1130,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Given some shallow copied artboard, returns it's source. 
 	 * 
-	 * @param copy — a shallow copied artboard
+	 * @param copy a shallow copied artboard
 	 * @return The source artboard for the copy.
 	 */
 	public Artboard getSource(Artboard copy) {
@@ -1092,7 +1142,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Deletes the memory of {@code artboard} and removes it from this project permanently.
 	 * 
-	 * @param artboard — an artboard to remove
+	 * @param artboard an artboard to remove
 	 */
 	@RenderThreadOnly public void deleteArtboard(Artboard artboard) {
 
@@ -1226,7 +1276,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Gets an artboard by the given name. 
 	 *  
-	 * @param name — name of an artboard
+	 * @param name name of an artboard
 	 * @return An artboard of the given name.
 	 * @throws IllegalArgumentException if the given name does not belong to any artboard
 	 */
@@ -1246,18 +1296,18 @@ public class CSSSProject implements ShutDown {
 	 */
 	public int getNumberNonCopiedArtboards() {
 		
-		CSRefInt counter = new CSRefInt(0);
-		allArtboards.stream().filter(artboard -> !copier.isCopy(artboard)).forEach(artboard -> counter.inc());
-		return counter.intValue();
+		SCIntReferencer counter = new SCIntReferencer(0);
+		allArtboards.stream().filter(artboard -> !copier.isCopy(artboard)).forEach(artboard -> counter.mutate(x -> x + 1));
+		return counter.get();
 		
 	}
 	
 	/**
 	 * Creates a new artboard.
 	 * 
-	 * @param name — name of the artboard
-	 * @param width — width of the artboard
-	 * @param height — height of the artboard
+	 * @param name name of the artboard
+	 * @param width width of the artboard
+	 * @param height height of the artboard
 	 * @return The new Artboard.
 	 */
 	@RenderThreadOnly public Artboard createArtboard(String name , int width , int height) {
@@ -1269,10 +1319,10 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Creates a new artboard.
 	 * 
-	 * @param name — name of the artboard
-	 * @param width — width of the artboard
-	 * @param height — height of the artboard
-	 * @param setCheckeredBackground — whether to set the checkered background
+	 * @param name name of the artboard
+	 * @param width width of the artboard
+	 * @param height height of the artboard
+	 * @param setCheckeredBackground whether to set the checkered background
 	 * @return The new Artboard.
 	 */
 	@RenderThreadOnly public Artboard createArtboard(String name , int width , int height , boolean setCheckeredBackground) {
@@ -1286,10 +1336,10 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Creates a new artboard but does not rearrange artboards.
 	 * 
-	 * @param name — name of the artboard
-	 * @param width — width of the artboard
-	 * @param height — height of the artboard
-	 * @param setCheckeredBackground — whether to set the texture to a checkered background
+	 * @param name name of the artboard
+	 * @param width width of the artboard
+	 * @param height height of the artboard
+	 * @param setCheckeredBackground whether to set the texture to a checkered background
 	 * @return The new Artboard
 	 */
 	private Artboard createArtboardDontArrange(String name , int width , int height , boolean setCheckeredBackground) {
@@ -1319,9 +1369,9 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Creates a new artboard with a default name.
 	 * 
-	 * @param name — name of the artboard
-	 * @param width — width of the artboard
-	 * @param height — height of the artboard
+	 * @param name name of the artboard
+	 * @param width width of the artboard
+	 * @param height height of the artboard
 	 * @return The new Artboard.
 	 */
 	@RenderThreadOnly public Artboard createArtboard(int width , int height) {
@@ -1333,8 +1383,8 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Deep copies the source artboard, naming the copy the given name.
 	 * 
-	 * @param source — an existing artboard to make a deep copy of
-	 * @param newArtboardName — name of the copied artboard
+	 * @param source an existing artboard to make a deep copy of
+	 * @param newArtboardName name of the copied artboard
 	 * @return The result of the copy.
 	 */
 	@RenderThreadOnly public Artboard deepCopy(Artboard source , String newArtboardName) {
@@ -1348,7 +1398,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Deep copies the source artboard, giving the result a default name.
 	 * 
-	 * @param source — an existing artboard to make a deep copy of
+	 * @param source an existing artboard to make a deep copy of
 	 * @return The result of the deep copy.
 	 */
 	@RenderThreadOnly public Artboard deepCopy(Artboard source) {
@@ -1360,7 +1410,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Creates a new animation with the given name.
 	 * 
-	 * @param name — name of this animation 
+	 * @param name name of this animation 
 	 * @return The new Animation.
 	 */
 	public Animation createAnimation(String name) {
@@ -1374,8 +1424,8 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Creates a new nonvisual layer prototype from the given parameters and gives a new copy of it to each artboard.
 	 * 
-	 * @param name — name of the nonvisual layer
-	 * @param sizeBytes — size in bytes of pixels of the nonvisual layer
+	 * @param name name of the nonvisual layer
+	 * @param sizeBytes size in bytes of pixels of the nonvisual layer
 	 * @return Instance of the nonvisual layer prototype.
 	 */
 	public NonVisualLayerPrototype createNonVisualLayer(String name , int sizeBytes) {
@@ -1397,7 +1447,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Creates a new visual layer prototype from the given parameters and gives a new copy of it to each artboard.
 	 * 
-	 * @param name — name of the visual layer prototype
+	 * @param name name of the visual layer prototype
 	 * @return New visual layer prototype.
 	 */
 	public VisualLayerPrototype createVisualLayer(String name) {
@@ -1520,7 +1570,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Adds the given visual layer prototype to this project's list of visual layer prototypes.
 	 * 
-	 * @param newVisualLayerPrototype — visual layer prototype to add
+	 * @param newVisualLayerPrototype visual layer prototype to add
 	 */
 	public void addVisualLayerPrototype(VisualLayerPrototype newVisualLayerPrototype) {
 		
@@ -1531,7 +1581,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 * Adds the given animation to this project's list of animations.
 	 * 
-	 * @param newAnimation — animation to add
+	 * @param newAnimation animation to add
 	 */
 	private void addAnimation(Animation newAnimation) {
 		
@@ -1606,9 +1656,9 @@ public class CSSSProject implements ShutDown {
  	/**
  	 * Adds a vector text box to the project which will use the given typeface.
  	 * 
- 	 * @param typeface — a nanoVG typeface
+ 	 * @param typeface a nanoVG typeface
  	 */
- 	public void addVectorTextBox(NanoVGTypeface typeface) {
+ 	public void addVectorTextBox(SCNanoVGTypeface typeface) {
  		
  		vectorTextBoxes.add(new VectorText(typeface));
  		
@@ -1617,10 +1667,10 @@ public class CSSSProject implements ShutDown {
  	/**
  	 * Adds a vector text box containing the given text to the project which will use the given typeface.
  	 * 
- 	 * @param typeface — a nanoVG typeface
- 	 * @param sourceText — text for the textbox to contain
+ 	 * @param typeface a nanoVG typeface
+ 	 * @param sourceText text for the textbox to contain
  	 */
- 	public void addVectorTextBox(NanoVGTypeface typeface , String sourceText) {
+ 	public void addVectorTextBox(SCNanoVGTypeface typeface , String sourceText) {
  		
  		vectorTextBoxes.add(new VectorText(typeface , sourceText));
  		
@@ -1640,7 +1690,7 @@ public class CSSSProject implements ShutDown {
  	/**
  	 * Sets the current vector text box to {@code newCurrent}.
  	 * 
- 	 * @param newCurrent — vector text box to make current
+ 	 * @param newCurrent vector text box to make current
  	 */
  	public void currentTextBox(VectorText newCurrent) {
  		
@@ -1652,7 +1702,7 @@ public class CSSSProject implements ShutDown {
  	/**
  	 * Handles freemove mode.
  	 * 
- 	 * @param cursorWorldCoords — cursor world coordinates
+ 	 * @param cursorWorldCoords cursor world coordinates
  	 */
  	@RenderThreadOnly public void runFreemove(float[] cursorWorldCoords) {
 		
@@ -1744,7 +1794,7 @@ public class CSSSProject implements ShutDown {
  	/**
  	 * Returns whether {@code artboard} is a loose artboard.
  	 * 
- 	 * @param artboard — an artboard
+ 	 * @param artboard an artboard
  	 * @return {@code true} if {@code artboard} is loose.
  	 */
  	public boolean isLoose(Artboard artboard) {
@@ -1776,7 +1826,7 @@ public class CSSSProject implements ShutDown {
  	/**
  	 * Removes the given text box from this project.
  	 * 
- 	 * @param text — text bxo to remove
+ 	 * @param text text bxo to remove
  	 */
  	public void removeTextBox(VectorText text) {
  		
@@ -1808,7 +1858,7 @@ public class CSSSProject implements ShutDown {
 	/**
 	 *  Sets the state of moving text.
 	 * 
-	 * @param movingText — whether to move text around
+	 * @param movingText whether to move text around
 	 */
 	public void movingText(boolean movingText) {
 		
@@ -1970,7 +2020,7 @@ public class CSSSProject implements ShutDown {
  			else frame.time(new FloatReference(y.frameTime()));
  			
  			if(y.frameUpdates() == animation.getUpdates.getAsInt()) frame.updates(animation.defaultUpdateAmount());
- 			else frame.updates(new CSRefInt(y.frameUpdates()));
+ 			else frame.updates(new SCIntReferencer(y.frameUpdates()));
  			
  		}
  		

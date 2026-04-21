@@ -1,8 +1,5 @@
 package cs.csss.project;
 
-import static cs.core.utils.CSUtils.require;
-import static cs.core.utils.CSUtils.specify;
-
 import java.nio.ByteBuffer;
 
 import cs.csss.engine.LookupPixel;
@@ -21,12 +18,12 @@ public class IndexPixel implements LookupPixel {
 	/**
 	 * Creates an index pixel with the given values.
 	 * 
-	 * @param xIndex — x lookup of this index pixel
-	 * @param yIndex — y lookup of this index pixel
+	 * @param xIndex x lookup of this index pixel
+	 * @param yIndex y lookup of this index pixel
 	 */
 	public IndexPixel(short xIndex , short yIndex) {
 	
-		specify(xIndex >= 0 , xIndex + " is an invalid x index") ; specify(yIndex >= 0 , yIndex + " is an invalid y index");
+		assert xIndex >= 0 : xIndex + " is an invalid x index" ; assert yIndex >= 0 : yIndex + " is an invalid y index";
 		
 		this.xIndex = xIndex;
 		this.yIndex = yIndex;
@@ -36,12 +33,12 @@ public class IndexPixel implements LookupPixel {
 	/**
 	 * Creates an index pixel with the given values.
 	 * 
-	 * @param xIndex — x lookup of this index pixel
-	 * @param yIndex — y lookup of this index pixel
+	 * @param xIndex x lookup of this index pixel
+	 * @param yIndex y lookup of this index pixel
 	 */
 	public IndexPixel(int xIndex , int yIndex) {
 
-		specify(xIndex >= 0 , xIndex + " is an invalid x index") ; specify(yIndex >= 0 , yIndex + " is an invalid y index");
+		assert xIndex >= 0 : xIndex + " is an invalid x index" ; assert yIndex >= 0 : yIndex + " is an invalid y index";
 		
 		this.xIndex = (short) xIndex;
 		this.yIndex = (short) yIndex;
@@ -51,7 +48,7 @@ public class IndexPixel implements LookupPixel {
 	/**
 	 * Creates an index pixel that uses the given buffer's next two bytes as its values.
 	 * 
-	 * @param buffer — a bytebuffer to read from
+	 * @param buffer a bytebuffer to read from
 	 */
 	public IndexPixel(ByteBuffer buffer) {
 		
@@ -63,12 +60,12 @@ public class IndexPixel implements LookupPixel {
 	/**
 	 * Puts the contents of this index pixel into the next two bytes of {@code buffer}.
 	 *  
-	 * @param buffer — destination for the values of this pixel
+	 * @param buffer destination for the values of this pixel
 	 */
 	public void buffer(ByteBuffer buffer) {
 
 		//2 is used because each pixel of the image is always two bytes.
-		require(buffer.remaining() >= 2);
+		assert buffer.remaining() >= 2;
 		
 		buffer.put((byte)xIndex);
 		buffer.put((byte)yIndex);

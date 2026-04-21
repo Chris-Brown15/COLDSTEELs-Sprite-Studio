@@ -1,6 +1,5 @@
 package cs.csss.editor.brush;
 
-import cs.coreext.nanovg.NanoVGFrame;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
 import cs.csss.editor.SelectionAreaBounder;
@@ -9,6 +8,7 @@ import cs.csss.engine.Control;
 import cs.csss.project.Artboard;
 import cs.csss.project.CSSSProject;
 import cs.csss.project.LayerPixel;
+import sc.core.graphics.nanovg.SCNanoVGFrame;
 
 /**
  * Brush unifying the API for all brushes who utilize {@link cs.csss.editor.SelectionAreaBounder SelectionAreaBounder} and 
@@ -54,7 +54,7 @@ import cs.csss.project.LayerPixel;
 	/**
 	 * Creates a new selecting brush with the given tooltip.
 	 * 
-	 * @param tooltip — a tooltip for this brush
+	 * @param tooltip a tooltip for this brush
 	 */
 	public CSSSSelectingBrush(String tooltip) {
 		
@@ -65,8 +65,8 @@ import cs.csss.project.LayerPixel;
 	/**
 	 * Moves a corner of the bounder of this selector by dragging whatever corner is closest to the given coordinates
 	 * 
-	 * @param cursorWorldX — x coordinate of the cursor
-	 * @param cursorWorldY — y coordinate of the cursor
+	 * @param cursorWorldX x coordinate of the cursor
+	 * @param cursorWorldY y coordinate of the cursor
 	 */
 	public final void updateBounder(int cursorWorldX , int cursorWorldY) {
 		
@@ -77,9 +77,9 @@ import cs.csss.project.LayerPixel;
 	/**
 	 * Renders the bounder of the selection bruhs.
 	 * 
-	 * @param frame — the NanoVG frame for rendering
+	 * @param frame the NanoVG frame for rendering
 	 */
-	public final void renderBounder(NanoVGFrame frame) {
+	public final void renderBounder(SCNanoVGFrame frame) {
 		
 		selectionBounder.render(frame);
 		
@@ -88,9 +88,9 @@ import cs.csss.project.LayerPixel;
 	/**
 	 * Creates a new render for the selected region.
 	 * 
-	 * @param current — the current artboard
-	 * @param editor — the editor
-	 * @param cursor — int array containing the cursor's positions
+	 * @param current the current artboard
+	 * @param editor the editor
+	 * @param cursor int array containing the cursor's positions
 	 */
 	public void newRender(Artboard current , Editor editor , int[] cursor) {
 		
@@ -128,8 +128,8 @@ import cs.csss.project.LayerPixel;
 	/**
 	 * Creates a new render for the selected region.
 	 * 
-	 * @param current — the current artboard
-	 * @param editor — the editor
+	 * @param current the current artboard
+	 * @param editor the editor
 	 */
 	public void newRender(Artboard current , Editor editor) {
 		
@@ -142,12 +142,24 @@ import cs.csss.project.LayerPixel;
 	/**
 	 * Default implementation for moving the selection bounder. 
 	 *  
-	 * @param x — world x coordinate
-	 * @param y — world y coordinate
+	 * @param x world x coordinate
+	 * @param y world y coordinate
 	 */
 	public final void defaultUpdateBounder(int x , int y) {
 		
 		if(Control.MOVE_SELECTION_AREA.pressed()) updateBounder(x, y);
+		
+	}
+	
+	/**
+	 * Translates this entire bounder by ({@code x , y}).
+	 * 
+	 * @param x translation amount about the x axis
+	 * @param y translation amount about the y axis
+	 */
+	public void translate(int x , int y) {
+		
+		selectionBounder.translate(x, y);
 		
 	}
 

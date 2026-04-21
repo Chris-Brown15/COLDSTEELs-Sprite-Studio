@@ -1,11 +1,12 @@
 package cs.csss.ui.menus;
 
-import static cs.core.ui.CSUIConstants.*;
+import static sc.core.ui.SCUIConstants.*;
 
-import cs.core.ui.CSNuklear;
 import cs.csss.editor.Editor;
 import cs.csss.editor.event.ChangeBackgroundCheckerSizeEvent;
 import cs.csss.project.IndexTexture;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
 import cs.csss.project.CSSSProject;
 
 /**
@@ -18,13 +19,14 @@ public class CheckeredBackgroundSettingsMenu extends OptionMenu {
 	/**
 	 * Creates a new checkered background settings menu.
 	 * 
-	 * @param editor — the editor
-	 * @param nuklear — the Nuklear factory
-	 * @param project — the current project
+	 * @param editor the editor
+	 * @param nuklear the Nuklear factory
+	 * @param project the current project
 	 */
-	public CheckeredBackgroundSettingsMenu(Editor editor , CSNuklear nuklear , CSSSProject project) {
+	public CheckeredBackgroundSettingsMenu(Editor editor , SCNuklear nuklear , CSSSProject project) {
 
-		super(nuklear.new CSUserInterface(
+		super(new SCUserInterface(
+			nuklear ,
 			"Transparent Background Options" , 
 			0.5f - (0.33f / 2) , 
 			0.5f - (0.35f / 2) , 
@@ -32,13 +34,13 @@ public class CheckeredBackgroundSettingsMenu extends OptionMenu {
 			0.35f
 		));
 		
-		ui.options = UI_TITLED|UI_BORDERED|UI_UNSCROLLABLE;		
+		ui.flags = UI_TITLED|UI_BORDERED|UI_UNSCROLLABLE;		
 		
 		super.addOptionEntry(
 			"Width:" , 
 			() -> backgroundWidth + "" , 
 			4 , 
-			CSNuklear.DECIMAL_FILTER , 
+			SCNuklear.DECIMAL_FILTER , 
 			res -> backgroundWidth = Integer.parseInt(res)
 		);
 		
@@ -46,11 +48,11 @@ public class CheckeredBackgroundSettingsMenu extends OptionMenu {
 			"Height:" , 
 			() -> backgroundHeight + "" , 
 			4 , 
-			CSNuklear.DECIMAL_FILTER , 
+			SCNuklear.DECIMAL_FILTER , 
 			res -> backgroundHeight = Integer.parseInt(res)
 		);
 		
-		ui.new CSDynamicRow().new CSButton("Finish" , () -> {
+		ui.new SCDynamicRow().new SCButton("Finish" , () -> {
 
 			if(project != null) editor.eventPush(new ChangeBackgroundCheckerSizeEvent(project , backgroundWidth , backgroundHeight));
 			

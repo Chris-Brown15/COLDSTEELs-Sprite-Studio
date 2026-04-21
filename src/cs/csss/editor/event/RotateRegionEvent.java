@@ -4,7 +4,6 @@ import static org.lwjgl.system.MemoryUtil.memFree;
 
 import java.nio.ByteBuffer;
 
-import cs.core.utils.Lambda;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
 import cs.csss.editor.SelectionAreaBounder;
@@ -27,7 +26,7 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 
 	private final Artboard artboard;
 	private final Editor editor;
-	private final Lambda swapBuffersCallback;
+	private final Runnable swapBuffersCallback;
 	private SelectionAreaRender render;
 	private IndexPixel[][] rotatedRegion;
 	private LayerPixel[][] 
@@ -49,18 +48,18 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 	/**
 	 * Creates a rotate region event.
 	 * 
-	 * @param artboard — an artboard to contain the rotation
-	 * @param editor — the editor
-	 * @param render — render object who will be rendered to a framebuffer and put into {@code artboard}
-	 * @param bounder — the selection bounder for the original region
-	 * @param swapBuffersCallback — callback containing code used to swap buffers
+	 * @param artboard ï¿½ an artboard to contain the rotation
+	 * @param editor ï¿½ the editor
+	 * @param render ï¿½ render object who will be rendered to a framebuffer and put into {@code artboard}
+	 * @param bounder ï¿½ the selection bounder for the original region
+	 * @param swapBuffersCallback ï¿½ callback containing code used to swap buffers
 	 */
 	public RotateRegionEvent(
 		Artboard artboard , 
 		Editor editor , 
 		SelectionAreaRender render , 
 		SelectionAreaBounder bounder , 
-		Lambda swapBuffersCallback
+		Runnable swapBuffersCallback
 	) {
 		
 		super(true , false);
@@ -149,8 +148,8 @@ import cs.csss.utils.ByteBufferUtils.CorrectedResult;
 	 * 		</a>
 	 * </p>
 	 * 
-	 * @param render — selection area render which should be rotated
-	 * @param bounder — selection bounder containing the render
+	 * @param render ï¿½ selection area render which should be rotated
+	 * @param bounder ï¿½ selection bounder containing the render
 	 * @return Dimensions of the bounding box who bounds the non axis aligned region.
 	 */
 	static float[] dimensionsOfBoundingBoxOverRotation(SelectionAreaRender render , SelectionAreaBounder bounder) {

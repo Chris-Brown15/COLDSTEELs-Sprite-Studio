@@ -7,26 +7,26 @@ import java.util.Objects;
 
 import org.lwjgl.nuklear.NkImage;
 
-import cs.core.graphics.CSTexture;
-import cs.core.utils.ShutDown;
 import cs.csss.annotation.RenderThreadOnly;
+import sc.core.SCShutDown;
+import sc.core.graphics.SCTexture;
 
 /**
- * Container for an {@code NkImage} and a {@code CSTexture}.
+ * Container for an {@code NkImage} and a {@code SCTexture}.
  */
-public class NkImageAndTexture implements ShutDown {
+public class NkImageAndTexture implements SCShutDown {
 
 	private NkImage image;
-	private final CSTexture texture;
+	private final SCTexture texture;
 
 	/**
 	 * Creates a new {@code NkImageAndTexture}.
 	 * 
-	 * @param image — image struct
-	 * @param texture — texture for the image
+	 * @param image image struct
+	 * @param texture texture for the image
 	 * @throws NullPointerException if either parameter is {@code null}.
 	 */
-	public NkImageAndTexture(NkImage image , CSTexture texture) {
+	public NkImageAndTexture(NkImage image , SCTexture texture) {
 		
 		Objects.requireNonNull(image);
 		Objects.requireNonNull(texture);

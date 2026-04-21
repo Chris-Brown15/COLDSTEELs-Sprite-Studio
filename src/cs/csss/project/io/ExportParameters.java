@@ -1,7 +1,5 @@
 package cs.csss.project.io;
 
-import static cs.core.utils.CSUtils.specify;
-
 /**
  * Class containing data for exporters.
  */
@@ -18,11 +16,11 @@ public final class ExportParameters {
 	/**
 	 * Sets JPEG export quality, a value from 1 , 100, where larger values result in better quality, at higher file sizes.
 	 * 
-	 * @param quality — a JPEG export quality value
+	 * @param quality a JPEG export quality value
 	 */
 	public static void JPEGQuality(int quality) {
 		
-		specify(quality > 0 && quality <= 100 , quality + " out of bounds for [1 , 100]");
+		assert quality > 0 && quality <= 100 : quality + " out of bounds for [1 , 100]";
 		
 		JPEGQuality = quality;
 		

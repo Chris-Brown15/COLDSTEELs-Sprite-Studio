@@ -14,26 +14,26 @@ import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.joml.Vector4f;
 import org.lwjgl.system.MemoryStack;
 
-import cs.core.graphics.CSOrthographicCamera;
-import cs.core.graphics.CSStandardRenderer;
-import cs.core.utils.Lambda;
-import cs.coreext.nanovg.NanoVG;
-import cs.coreext.nanovg.NanoVGFrame;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.engine.Engine;
 import cs.csss.engine.Logging;
-import cs.csss.misc.graphcs.framebuffer.Framebuffer;
-import cs.csss.misc.graphcs.framebuffer.RenderBuffer;
 import cs.csss.project.ArtboardPalette;
 import cs.csss.project.CSSSProject;
 import cs.csss.project.CSSSShader;
 import cs.csss.project.Layer;
 import cs.csss.utils.ByteBufferUtils;
+import sc.core.graphics.SCFramebuffer;
+import sc.core.graphics.SCOpenGLRenderer;
+import sc.core.graphics.SCOrthographicCamera;
+import sc.core.graphics.SCRenderBuffer;
+import sc.core.graphics.nanovg.SCNanoVG;
+import sc.core.graphics.nanovg.SCNanoVGFrame;
 
 /**
  * Class responsible for exporting projects as images.
@@ -103,12 +103,12 @@ import cs.csss.utils.ByteBufferUtils;
  */
 @RenderThreadOnly public class ProjectExporter {
 
-	private final CSStandardRenderer renderer;
+	private final SCOpenGLRenderer renderer;
 	private final CSSSProject project;
 	
-	private final Framebuffer framebuffer;	
+	private final SCFramebuffer framebuffer;	
 	
-	private final Lambda swapBuffersCallback;
+	private final Runnable swapBuffersCallback;
 	
 	private final String 
 		exportFolderPath ,
@@ -137,37 +137,39 @@ import cs.csss.utils.ByteBufferUtils;
 	
 	private final ImageGrabber imager;
 	
-	private final NanoVG nanoVG;
+	private final SCNanoVG nanoVG;
 	
 	private Vector4f previousClearColor = new Vector4f();
 	
 	/**
 	 * Creates a project exporter which will export a project by the given parameters.
 	 * 
-	 * @param renderer — the standard renderer of the application 
-	 * @param swapBuffersCallback — a callback to swap buffers after rendering
-	 * @param project — a project to export
-	 * @param exporters — a list of exporters for the project; each will be used when the project is exported
-	 * @param exportFolderPath — absolute file path of the folder to export to
-	 * @param exportName — name given to exported files
-	 * @param nanoVG — the NanoVG object
-	 * @param windowSize — size in pixels of the window
-	 * @param exportPalettes — if {@code true}, the palettes will be exported alongside images
-	 * @param exportHiddenLayers — if {@code true}, layers that are currently hidden will also be exported
-	 * @param hideCheckeredBackground — if {@code true}, the checkered backgrounds will be hidden where possible.
-	 * @param exportNonVisualLayers — if {@code true}, nonvisual layers will be exported alongside other exported files
-	 * @param powerOfTwoSizes — if {@code true}, the width and height of the exported project will be powers of two
-	 * @param exportAsColor — if {@code true}, the resulting image is colors, not indices
-	 * @param exportAnimations — if {@code true}, the animations of the project will be exported as {@code .ctsa} files
+	 * @param renderer the standard renderer of the application 
+	 * @param swapBuffersCallback a callback to swap buffers after rendering
+	 * @param project a project to export
+	 * @param exporters a list of exporters for the project; each will be used when the project is exported
+	 * @param exportFolderPath absolute file path of the folder to export to
+	 * @param exportName name given to exported files
+	 * @param nanoVG the NanoVG object
+	 * @param windowSize size in pixels of the window
+	 * @param exportPalettes if {@code true}, the palettes will be exported alongside images
+	 * @param exportHiddenLayers if {@code true}, layers that are currently hidden will also be exported
+	 * @param hideCheckeredBackground if {@code true}, the checkered backgrounds will be hidden where possible.
+	 * @param exportNonVisualLayers if {@code true}, nonvisual layers will be exported alongside other exported files
+	 * @param powerOfTwoSizes if {@code true}, the width and height of the exported project will be powers of two
+	 * @param exportAsColor if {@code true}, the resulting image is colors, not indices
+	 * @param exportAnimations if {@code true}, the animations of the project will be exported as {@code .ctsa} files
+	 * @throws ExecutionException 
+	 * @throws InterruptedException 
 	 */
 	public ProjectExporter(
-		CSStandardRenderer renderer , 
-		Lambda swapBuffersCallback ,
+		SCOpenGLRenderer renderer , 
+		Runnable swapBuffersCallback ,
 		CSSSProject project , 
 		ArrayList<ExportCallbackAndName> exporters ,
 		String exportFolderPath ,
 		String exportName ,
-		NanoVG nanoVG ,
+		SCNanoVG nanoVG ,
 		int[] windowSize ,
 		boolean exportPalettes , 
 		boolean exportHiddenLayers , 
@@ -176,7 +178,7 @@ import cs.csss.utils.ByteBufferUtils;
 		boolean powerOfTwoSizes ,
 		boolean exportAsColor ,
 		boolean exportAnimations
-	) {
+	) throws InterruptedException, ExecutionException {
 
 		this.renderer = renderer;
 		this.project = project;
@@ -205,7 +207,7 @@ import cs.csss.utils.ByteBufferUtils;
 				
 			}
 			
-			Framebuffer newFramebuffer = new Framebuffer();
+			SCFramebuffer newFramebuffer = new SCFramebuffer();
 			newFramebuffer.initialize();
 			return newFramebuffer;
 			
@@ -228,13 +230,14 @@ import cs.csss.utils.ByteBufferUtils;
 		exportMidX = exportInfo.midpointX();
 		exportMidY = exportInfo.midpointY();
 		
-		RenderBuffer renderbuffer = renderer.make(() -> {
+		SCRenderBuffer renderbuffer;
+		renderbuffer = renderer.make(() -> {
 			
-			RenderBuffer newRenderbuffer = new RenderBuffer(exportWidth , exportHeight , GL_RGBA);
+			SCRenderBuffer newRenderbuffer = new SCRenderBuffer(exportWidth , exportHeight , GL_RGBA);
 			return newRenderbuffer;
 			
 		}).get();
-
+		
 		imager = new ImageGrabber(framebuffer , renderbuffer , this::render , exportWidth , exportHeight);
 		
 	}
@@ -272,7 +275,7 @@ import cs.csss.utils.ByteBufferUtils;
 			
 			project.forEachPalette(ArtboardPalette::showCheckeredBackground);
 			framebuffer.shutDown();
-			Framebuffer.deactivate();
+			SCFramebuffer.deactivate();
 			
 			project.arrangeArtboards();
 
@@ -285,26 +288,41 @@ import cs.csss.utils.ByteBufferUtils;
 
 	private void exportVisual() {
 		
-		ByteBuffer download = renderer.make(() -> {
+		ByteBuffer download;
+		try {
+			
+			download = renderer.make(() -> {
 
-			project.forEachArtboard(artboard -> {
+				project.forEachArtboard(artboard -> {
+					
+					artboard.setToCheckeredBackground();
+					artboard.switchToVisualLayers();					
+					artboard.showAllNonHiddenVisualLayers();
+					
+				});
+				 
+				if(exportHiddenLayers) project.forEachNonShallowCopiedArtboard(artboard -> artboard.forEachVisualLayer(layer -> {
+					
+					if(layer.hiding()) layer.show(artboard);
+					
+				}));
 				
-				artboard.setToCheckeredBackground();
-				artboard.switchToVisualLayers();					
-				artboard.showAllNonHiddenVisualLayers();
+				//resulting data
+				return imager.renderImage();
 				
-			});
-			 
-			if(exportHiddenLayers) project.forEachNonShallowCopiedArtboard(artboard -> artboard.forEachVisualLayer(layer -> {
-				
-				if(layer.hiding()) layer.show(artboard);
-				
-			}));
+			}).get();
 			
-			//resulting data
-			return imager.renderImage();
+		} catch (InterruptedException e) {
+
+			e.printStackTrace();
+			return;
 			
-		}).get();
+		} catch (ExecutionException e) {
+			
+			e.printStackTrace();
+			return;
+			
+		}
 		
 		exportDownload(exportName , download , exportColor ? visualChannels : 2);
 
@@ -314,22 +332,37 @@ import cs.csss.utils.ByteBufferUtils;
 		
 		project.forEachNonVisualLayerPrototype(prototype -> {
 			
-			ByteBuffer download = renderer.make(() -> {
-							
-				//set each artboard to show the current nonvisual layer
-				project.forEachNonShallowCopiedArtboard(artboard -> {
-					
-					artboard.setToCheckeredBackground();
-					
-					Layer thisLayer = artboard.getLayer(prototype.name());
-					artboard.setActiveLayer(thisLayer);
-					thisLayer.show(artboard);
-					
-				});
-			
-				return imager.renderImage();
-			
-			}).get();
+			ByteBuffer download;
+			try {
+				
+				download = renderer.make(() -> {
+								
+					//set each artboard to show the current nonvisual layer
+					project.forEachNonShallowCopiedArtboard(artboard -> {
+						
+						artboard.setToCheckeredBackground();
+						
+						Layer thisLayer = artboard.getLayer(prototype.name());
+						artboard.setActiveLayer(thisLayer);
+						thisLayer.show(artboard);
+						
+					});
+				
+					return imager.renderImage();
+				
+				}).get();
+				
+			} catch (InterruptedException e) {
+
+				e.printStackTrace();
+				return;
+				
+			} catch (ExecutionException e) {
+
+				e.printStackTrace();
+				return;
+				
+			}
 			
 			exportDownload(exportName + " " + prototype.name() , download , exportColor ? prototype.sizeBytes() : 2);
 			
@@ -340,11 +373,11 @@ import cs.csss.utils.ByteBufferUtils;
 	/**
 	 * Exports a single downloaded frame. 
 	 * 
-	 * @param name — name of the resulting file
-	 * @param download — data to export
-	 * @param channels — channels per pixel of the download
+	 * @param name name of the resulting file
+	 * @param download data to export
+	 * @param channels channels per pixel of the download
 	 */
-	private ExportFinishedAwait exportDownload(String name , ByteBuffer download , int channels) {
+	private ExportFinishedAwait<?> exportDownload(String name , ByteBuffer download , int channels) {
 
 		AtomicInteger finishedExporters = new AtomicInteger(0);						
 		
@@ -369,7 +402,7 @@ import cs.csss.utils.ByteBufferUtils;
 		
 		});
 		
-		return new ExportFinishedAwait(finishedExporters , exporters.size());
+		return new ExportFinishedAwait<>(finishedExporters , exporters.size());
 		
 	}
 
@@ -397,10 +430,10 @@ import cs.csss.utils.ByteBufferUtils;
 	/**
 	 * Exports the given palette with the given exporter.
 	 * 
-	 * @param palette — palette to export
-	 * @param exporter — exporter to use
-	 * @param filePath — filepath to export to
-	 * @param paletteName — palette name
+	 * @param palette palette to export
+	 * @param exporter exporter to use
+	 * @param filePath filepath to export to
+	 * @param paletteName palette name
 	 */
 	private void exportPalette(ArtboardPalette palette , ExportCallbackAndName exporter , String filePath , String paletteName) {
 		
@@ -434,28 +467,28 @@ import cs.csss.utils.ByteBufferUtils;
 
 	private void render() {
 	
-		CSOrthographicCamera camera = new CSOrthographicCamera(exportWidth / 2 , exportHeight / 2);
+		SCOrthographicCamera camera = new SCOrthographicCamera(exportWidth / 2 , exportHeight / 2);
 		camera.translate(-exportMidX, -exportMidY , 0);
 		CSSSShader shader = exportColor ? CSSSProject.thePaletteShader() : CSSSProject.theTextureShader();
 		shader.updatePassVariables(camera.projection(), camera.viewTranslation());
 
-		try(NanoVGFrame frame = nanoVG.frame()) {
+		try(SCNanoVGFrame frame = nanoVG.getFrame()) {
 			
 			project.renderEverything(shader , frame);
 		
 		}
 		
-		swapBuffersCallback.invoke();
+		swapBuffersCallback.run();
 	
 	}
 	
 	/**
 	 * Creates a list of {@code Lambda} to be passed to the thread pool.
 	 * 
-	 * @param exportName — name of the resulting file
-	 * @param download — buffer downloaded from the GPU 
-	 * @param channels — number of channels of the download 
-	 * @param finishedExporters — atomic counter for completed exports 
+	 * @param exportName name of the resulting file
+	 * @param download buffer downloaded from the GPU 
+	 * @param channels number of channels of the download 
+	 * @param finishedExporters atomic counter for completed exports 
 	 * @return Array of functions to be passed to the thread pool
 	 */
 	private Callable<Object>[] constructExportTasks(String exportName , ByteBuffer download , int channels , AtomicInteger finishedExporters) {

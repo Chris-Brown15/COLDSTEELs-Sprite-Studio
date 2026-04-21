@@ -1,8 +1,8 @@
 package cs.csss.project;
 
-import static cs.core.utils.CSFileUtils.readAllCharacters;
+import static cs.csss.utils.FileUtils.readAllCharacters;
 
-import cs.core.graphics.CSTexture;
+import sc.core.graphics.SCTexture;
 import cs.csss.annotation.RenderThreadOnly;
 
 /**
@@ -21,23 +21,29 @@ import cs.csss.annotation.RenderThreadOnly;
 	 */
 	public void initialize() {
 		
-		super.initialize(
-			readAllCharacters("assets/shaders/vertexShader.glsl") , 
-			readAllCharacters("assets/shaders/fragmentPaletteShader.glsl")
-		);
+		String vertexSource = readAllCharacters("assets/shaders/vertexShader.glsl");
+		String fragmentSource = readAllCharacters("assets/shaders/fragmentPaletteShader.glsl");
+		
+		super.initialize(vertexSource , fragmentSource);
+		
+		activate();
 		
 		paletteTextureLocation = getUniformLocation("paletteTexture");
 		imageTextureLocation = getUniformLocation("imageTexture");    
 		channelsLocation = getUniformLocation("channels");            
 		paletteWidthLocation = getUniformLocation("paletteWidth");    
 		paletteHeightLocation = getUniformLocation("paletteHeight");
+
+		deactivate();
 		
 	}
 	
-	@Override public void updateTextures(ArtboardPalette palette , CSTexture texture) {
+	@Override public void updateTextures(ArtboardPalette palette , SCTexture texture) {
 
 		palette.activate(0);
 		texture.activate(1);
+
+		activate();
 		
 		uploadInt(paletteTextureLocation , 0);
 		uploadInt(imageTextureLocation , 1);
@@ -46,18 +52,8 @@ import cs.csss.annotation.RenderThreadOnly;
 		uploadInt(paletteHeightLocation , palette.height());
 	
 		uploadInt(channelsLocation , palette.channelsPerPixel());
-		
-	}
-	
-	@Override public String vertexSource() {
-		
-		return vertexSource;
-		
-	}
-	
-	@Override public String fragmentSource() {
-		
-		return fragmentSource;
+
+		deactivate();
 		
 	}
 	

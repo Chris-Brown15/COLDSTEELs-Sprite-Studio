@@ -1,18 +1,16 @@
 package cs.csss.project;
 
-import static cs.core.graphics.StandardRendererConstants.POSITION_2D;
-import static cs.core.graphics.StandardRendererConstants.STATIC_VAO;
-import static cs.core.graphics.StandardRendererConstants.UINT;
-import static cs.core.graphics.StandardRendererConstants.UV;
+import static sc.core.utils.SCChecks.alive;
 
-import static cs.core.utils.CSUtils.specify;
-import static cs.core.utils.CSUtils.require;
+import static sc.core.graphics.SCRendererConstants.*;
 
 import static org.lwjgl.system.MemoryUtil.memFree;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -20,8 +18,6 @@ import java.util.function.Consumer;
 import org.joml.Random;
 import org.lwjgl.system.MemoryStack;
 
-import cs.core.graphics.utils.VertexBufferBuilder;
-import cs.core.utils.ShutDown;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.line.BezierLine;
 import cs.csss.editor.line.Line;
@@ -29,7 +25,6 @@ import cs.csss.editor.line.LinearLine;
 import cs.csss.editor.shape.Ellipse;
 import cs.csss.editor.shape.Rectangle;
 import cs.csss.editor.shape.Shape;
-import cs.csss.engine.CSSSCamera;
 import cs.csss.engine.ChannelBuffer;
 import cs.csss.engine.ColorPixel;
 import cs.csss.engine.Logging;
@@ -42,31 +37,52 @@ import cs.csss.project.utils.RegionIterator;
 import cs.csss.project.utils.RegionPosition;
 import cs.csss.project.utils.StackOrHeapAllocation;
 import cs.csss.utils.ByteBufferUtils.CorrectedResult;
+import sc.core.SCShutDown;
+import sc.core.graphics.SCOrthographicCamera;
+import sc.core.graphics.SCVAO;
+import sc.core.graphics.utils.SCVertexBufferBuilder;
 
 /**
  * Artboard contains the data needed to display and edit a graphic in CSSS and have methods to operate on pixels and layers.
  * <p>
- * 	One or many artboards may be created for a CSSS project. The {@link CSSSProject} is responsible for creating and managing artboards. One 
- * 	artboard is active at a time and this is the one that is modified by brushes and scripts.
+ * 	One or many artboards may be created for a CSSS project. The {@link CSSSProject} is responsible for creating and managing artboards. 
+ * 	One artboard is active at a time and this is the one that is modified by brushes and scripts.
  * </p>
  * <p>
- * 	Artboards are GPU textures. The textures are 2-channel, 1 byte per channel textures. Thus, the total number of bytes needed for an artboard is
- * 	{@code 2 * width * height}. Each pixel is referred to as a {@link LookupPixel}. Lookup pixels store one byte x and y coordinates. These coordinates 
- * 	are used to index into a palette of colors. Whichever color is located at the given coordinate is what is rendered in the place of the lookup pixel.
+ * 	Artboards are GPU textures. The textures are 2-channel, 1 byte per channel textures. Thus, the total number of bytes needed for an 
+ * 	artboard is {@code 2 * width * height}. Each pixel is referred to as a {@link LookupPixel}. Lookup pixels store one byte x and y 
+ * 	coordinates. These coordinates are used to index into a palette of colors. Whichever color is located at the given coordinate is what
+ * 	is rendered in the place of the lookup pixel.
  * </p>
  * 
  * @author Chris Brown
  *
  */
-public class Artboard implements ShutDown {
+public class Artboard implements SCShutDown {
+
+	/**
+	 * Returns the alpha channel of a pixel given a number of channels the pixel is understood to have. 
+	 * 
+	 * @param channels number of channels to interpret {@code colorPixel} as having
+	 * @param colorPixel pixel whose alpha is being queried
+	 * @return Alpha value as an unsigned {@code short} .
+	 * @throws IllegalStateException if there is no alpha value for {@code channels}.
+	 */
+	public static short getAlphaForChannels(int channels, ColorPixel colorPixel) {
+		
+		if(channels % 2 != 0) throw new IllegalStateException("No alpha component for channels " + channels);
+		
+		return channels == 2 ? colorPixel.ug() : colorPixel.ua();
+		
+	}
 	
 	/**
 	 * Deep copies the visual layers of {@code source} into {@code destination}. They will be independent of one another for the purposes
 	 * of layer modification.
 	 * 
-	 * @param project — the project 
-	 * @param source — the source artboard 
-	 * @param destination — the destination artboard
+	 * @param project the project 
+	 * @param source the source artboard 
+	 * @param destination the destination artboard
 	 */
 	@RenderThreadOnly private static void deepCopyVisualLayers(CSSSProject project , Artboard source , Artboard destination) {
 
@@ -98,9 +114,9 @@ public class Artboard implements ShutDown {
 	 * Deep copies the nonvisual layers of {@code source} into {@code destination}. They will be independent of one another for the 
 	 * purposes of layer modification.
 	 * 
-	 * @param project — the project 
-	 * @param source — the source artboard 
-	 * @param destination — the destination artboard
+	 * @param project the project 
+	 * @param source the source artboard 
+	 * @param destination the destination artboard
 	 */
 	private static void deepCopyNonVisualLayers(CSSSProject project , Artboard source , Artboard destination) {
 
@@ -115,7 +131,12 @@ public class Artboard implements ShutDown {
 		
 	}
 
-	@RenderThreadOnly private static void copyLayer(Layer source , Layer destination , Artboard sourceArtboard , Artboard destinationArtboard) {
+	@RenderThreadOnly private static void copyLayer(
+		Layer source , 
+		Layer destination , 
+		Artboard sourceArtboard , 
+		Artboard destinationArtboard
+	) {
 	
 		if(destination instanceof VisualLayer asVisual) destinationArtboard.addVisualLayer(asVisual);
 		else destinationArtboard.addNonVisualLayer((NonVisualLayer)destination);
@@ -149,8 +170,8 @@ public class Artboard implements ShutDown {
 	/**
 	 * Creates a deep copy of the source artboard, using the source artboard and the project.
 	 * 
-	 * @param source — source artboard
-	 * @param project — owning project
+	 * @param source source artboard
+	 * @param project owning project
 	 * @return Copied project.
 	 */
 	@RenderThreadOnly static Artboard deepCopy(String newArtboardName , Artboard source , CSSSProject project) {
@@ -185,8 +206,8 @@ public class Artboard implements ShutDown {
 	 * {@link cs.csss.project.CSSSProject CSSSProject}. 
 	 * </p>
 	 * 
-	 * @param newArtboardName — name of the copy
-	 * @param source — a source artboard for copy
+	 * @param newArtboardName name of the copy
+	 * @param source a source artboard for copy
 	 * @return Shallow copy artboard of {@code source}.
 	 */
 	@RenderThreadOnly static Artboard shallowCopy(String newArtboardName , Artboard source) {
@@ -222,7 +243,7 @@ public class Artboard implements ShutDown {
 		
 	}
 	
-	private CSSSVAO vao = new CSSSVAO();
+	private SCVAO vao = new SCVAO();
 	
 	private IndexTexture indexTexture;	
 	
@@ -250,9 +271,9 @@ public class Artboard implements ShutDown {
 	/**
 	 * Initializes a new artboard.
 	 * 
-	 * @param name — name of this artboard
-	 * @param width — width of this artboard
-	 * @param height — height of this artboard
+	 * @param name name of this artboard
+	 * @param width width of this artboard
+	 * @param height height of this artboard
 	 */
 	@RenderThreadOnly Artboard(String name , int width , int height) {
  		
@@ -263,10 +284,10 @@ public class Artboard implements ShutDown {
 	/**
 	 * Initializes a new artboard.
 	 * 
-	 * @param name — name of this artboard
-	 * @param width — width of this artboard
-	 * @param height — height of this artboard
-	 * @param setCheckeredBackground — whether to set the texture to a checkered background 
+	 * @param name name of this artboard
+	 * @param width width of this artboard
+	 * @param height height of this artboard
+	 * @param setCheckeredBackground whether to set the texture to a checkered background 
 	 */
 	@RenderThreadOnly Artboard(String name , int width , int height , boolean setCheckeredBackground) {
  		
@@ -277,37 +298,38 @@ public class Artboard implements ShutDown {
 	/**
 	 * Initializes a new artboard.
 	 * 
-	 * @param name — name of this artboard
-	 * @param texture — an index texture this artboard will use, if <code>null</code>, a new one is created
-	 * @param width — width of this artboard
-	 * @param height — height of this artboard
-	 * @param setCheckeredBackground — if {@code true}, the index texture will be set to a checkered background
+	 * @param name name of this artboard
+	 * @param texture an index texture this artboard will use, if <code>null</code>, a new one is created
+	 * @param width width of this artboard
+	 * @param height height of this artboard
+	 * @param setCheckeredBackground if {@code true}, the index texture will be set to a checkered background
 	 */
-  	@RenderThreadOnly Artboard(String name , IndexTexture texture , int width , int height , boolean setCheckeredBackground , boolean isShallowCopy) {
+  	@RenderThreadOnly Artboard(
+  		String name , 
+  		IndexTexture texture , 
+  		int width , 
+  		int height , 
+  		boolean setCheckeredBackground , 
+  		boolean isShallowCopy
+  	) {
 		
 		this.name = name;
 		this.isShallowCopy = isShallowCopy;
 		
-		VertexBufferBuilder vertexBuffer = new VertexBufferBuilder(POSITION_2D|UV);
-		vertexBuffer.size(width , height); 
+		SCVertexBufferBuilder vertexBuffer = new SCVertexBufferBuilder(POSITION_2D|UV);
+		vertexBuffer.dimensions(width , height); 
 		
-		vao.initialize(vertexBuffer.attributes, STATIC_VAO, vertexBuffer.get());
+		vao.initialize(vertexBuffer.attributes, STATIC_DRAW, vertexBuffer.get());
 		vao.drawAsElements(6, UINT);
-		
+
 		positions = new VAOPosition(vao , vertexBuffer.attribute(POSITION_2D));
 
 		if(texture == null) {
 			
 			indexTexture = new IndexTexture();
-			
-		} else {
-			
-			indexTexture = texture;
-			indexTexture.incrementOwners();
+			indexTexture.initialize(width , height , setCheckeredBackground);
 
-		}
-		
-		if(!indexTexture.isInitialized()) indexTexture.initialize(width , height , setCheckeredBackground);
+		} else indexTexture = texture;
 		
 	}
 	
@@ -316,7 +338,7 @@ public class Artboard implements ShutDown {
 	 * @param camera {@link cs.csss.annotation.Nullable @Nullable} camera which will be used to render the shapes of this artboard, or 
 	 * 				 <code>null</code> to not render shapes
 	 */
-	@RenderThreadOnly public void draw(CSSSCamera camera) {
+	@RenderThreadOnly public void draw(SCOrthographicCamera camera) {
 		
 		vao.activate();
 		vao.draw(); 
@@ -325,8 +347,8 @@ public class Artboard implements ShutDown {
 		if(camera != null) {
 		
 			//render shapes			
-			if(isActiveLayerVisual) visualLayers.stream().filter(layer -> !layer.hiding()).forEach(layer -> layer.shapes.renderShapes(camera));
-			else if(!activeLayer.hiding()) activeLayer.shapes.renderShapes(camera);
+			if(isActiveLayerVisual) visualLayers.stream().filter(VisualLayer::hiding).forEach(layer -> layer.shapes.renderShapes(camera));
+			else if(activeLayer.showing()) activeLayer.shapes.renderShapes(camera);
 		
 		}
 		
@@ -335,8 +357,8 @@ public class Artboard implements ShutDown {
 	/**
 	 * Moves this artboard by {@code x} along the x axis and {@code y} along the y axis.
 	 * 
-	 * @param x — amount to move this artboard horizontally
-	 * @param y — amount to move this artboard vertically
+	 * @param x amount to move this artboard horizontally
+	 * @param y amount to move this artboard vertically
 	 */
 	@RenderThreadOnly public void translate(int x , int y) {
 		
@@ -348,8 +370,8 @@ public class Artboard implements ShutDown {
 	/**
 	 * Moves this artboard such that its midpoint will be {@code (x , y)} after transformation.
 	 * 
-	 * @param x — x position to move to
-	 * @param y — y position to move to
+	 * @param x x position to move to
+	 * @param y y position to move to
 	 */
 	@RenderThreadOnly public void moveTo(int x , int y) {
 		
@@ -361,7 +383,7 @@ public class Artboard implements ShutDown {
 	 * Returns {@code true} if the coordinates within {@code cursorWorldCoords} are within the bounds of this artboard, {@code false} 
 	 * otherwise.
 	 * 
-	 * @param curorWorldCoords — array containing cursor world coordinates where {@code cursorWorldCoords[0]} is x and 
+	 * @param curorWorldCoords array containing cursor world coordinates where {@code cursorWorldCoords[0]} is x and 
 	 * 							 {@code cursorWorldCoords[1]} is y
 	 * @return {@code true} if the coordinates within {@code cursorWorldCoords} are within the bounds of this artboard, {@code false} 
 	 * 		   otherwise.
@@ -378,7 +400,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Returns the x and y coordinates in the image texture of the pixel located at {@code cursorWorldCoords}.
 	 * 
-	 * @param worldCoords — cursor world coords
+	 * @param worldCoords cursor world coords
 	 * @return Array whose contents are indices into the image texture of the pixel the cursor is hovering.
 	 */
 	public int[] worldToPixelIndices(float[] worldCoords) {
@@ -393,8 +415,8 @@ public class Artboard implements ShutDown {
 	/**
 	 * Converts the given values as world coordinates to indices of this artboard.
 	 * 
-	 * @param xWorldCoord — an x coordinate in world space
-	 * @param yWorldCoord — a y coordinate in world space
+	 * @param xWorldCoord an x coordinate in world space
+	 * @param yWorldCoord a y coordinate in world space
 	 * @return Array containing converted x and y coordinates.
 	 */
 	public int[] worldToPixelIndices(float xWorldCoord , float yWorldCoord) {
@@ -408,9 +430,9 @@ public class Artboard implements ShutDown {
 	/**
 	 * Converst the given world coordinates to indices of this artboard, storing the results in {@code destination}.
 	 * 
-	 * @param worldX — x world coordinate 
-	 * @param worldY — y world coordinate
-	 * @param destination — destination for values
+	 * @param worldX x world coordinate 
+	 * @param worldY y world coordinate
+	 * @param destination destination for values
 	 */
 	public int[] worldToPixelIndices(float worldX , float worldY , int[] destination) {
 		
@@ -421,8 +443,8 @@ public class Artboard implements ShutDown {
 	}
 	
 	/**
-	 * Converts the given X artboard coordinate to world space, returning the result. The resulting value is the world space coordinate of the pixel
-	 * column indexed by {@code artboardX}.
+	 * Converts the given X artboard coordinate to world space, returning the result. The resulting value is the world space coordinate of
+	 * the pixel column indexed by {@code artboardX}.
 	 * 
 	 * @param artboardX X artboard coordinate
 	 * @return World space coordinate of {@code artboardX}.
@@ -434,8 +456,8 @@ public class Artboard implements ShutDown {
 	}
 
 	/**
-	 * Converts the given Y artboard coordinate to world space, returning the result. The resulting value is the world space coordinate of the pixel
-	 * row indexed by {@code artboardY}.
+	 * Converts the given Y artboard coordinate to world space, returning the result. The resulting value is the world space coordinate of
+	 * the pixel row indexed by {@code artboardY}.
 	 * 
 	 * @param artboardX Y artboard coordinate
 	 * @return World space coordinate of {@code artboardY}.
@@ -449,8 +471,8 @@ public class Artboard implements ShutDown {
 	/**
 	 * Converts the given values as world coordinates to indices of this artboard.
 	 * 
-	 * @param xWorldCoord — an x coordinate in world space
-	 * @param yWorldCoord — a y coordinate in world space
+	 * @param xWorldCoord an x coordinate in world space
+	 * @param yWorldCoord a y coordinate in world space
 	 * @return Array containing converted x and y coordinates.
 	 */
 	public int[] worldToPixelIndices(int xWorldCoord , int yWorldCoord) {
@@ -465,12 +487,180 @@ public class Artboard implements ShutDown {
 	 * Places the color given by the channel values in {@code pixel} into the next position in the palette texture and returns the indices
 	 * to which it is stored, or, if {@code pixels} is already present in the palette, returns its indices.
 	 * 
-	 * @param values — pixel values for a color to put in the palette.
+	 * @param values pixel values for a color to put in the palette.
 	 * @return Array of indices into the palette where {@code values} is located.
 	 */
 	@RenderThreadOnly public LookupPixel putInPalette(ColorPixel pixel) {
 
 		return activeLayer().palette.putOrGetColors(pixel);
+		
+	}
+	
+	private ColorPixel blend4Channel(ColorPixel source , ColorPixel dest) {
+		
+		float sourceA = source.ua() / 255f , 
+				destA = dest.ua() / 255f , 
+			  resultA = (sourceA + destA) * (1.0f - sourceA);
+		
+		//shortcut if the resulting pixel would be basically transparent.
+		if(!(resultA > 0.001f)) return new ChannelBuffer((byte)0 , (byte)0 , (byte)0 , (byte)0);
+		
+		float sourceR = source.ur() / 255f , 
+			  sourceG = source.ug() / 255f , 
+			  sourceB = source.ub() / 255f ; 
+			  
+		float sourcePMR = sourceR * sourceA , 
+			  sourcePMG = sourceG * sourceA , 
+			  sourcePMB = sourceB * sourceA ;
+		
+		float destR = dest.ur() / 255f , 
+			  destG = dest.ug() / 255f , 
+			  destB = dest.ub() / 255f ; 
+			  
+		float destPMR = destR * destA , 
+			  destPMG = destG * destA , 
+			  destPMB = destB * destA ;
+		
+		float resultPMR = (sourcePMR + destPMR) * (1.0f - sourceA) ,
+			  resultPMG = (sourcePMG + destPMG) * (1.0f - sourceA) ,
+			  resultPMB = (sourcePMB + destPMB) * (1.0f - sourceA) ;
+		
+		short resultR = (short)Math.round((resultPMR / resultA) * 255f) , 
+			  resultG = (short)Math.round((resultPMG / resultA) * 255f) , 
+			  resultB = (short)Math.round((resultPMB / resultA) * 255f) ;
+	
+		resultR = (short)Math.min(255, Math.max(0, resultR));
+		resultG = (short)Math.min(255, Math.max(0, resultG));
+		resultB = (short)Math.min(255, Math.max(0, resultB));
+		short finalAlpha = (short)Math.min(255, Math.max(0, Math.round(resultA * 255)));
+		
+		return new ChannelBuffer().set(resultR , resultG , resultB , finalAlpha);
+	
+	}
+
+	private ColorPixel blend2Channel(ColorPixel source , ColorPixel dest) {
+		
+		float sourceA = source.ug() / 255f , 
+				destA = dest.ug() / 255f , 
+			  resultA = (sourceA + destA) * (1.0f - sourceA);
+		
+		//shortcut if the resulting pixel would be basically transparent.
+		if(!(resultA > 0.001f)) return new ChannelBuffer((byte)0 , (byte)0 , (byte)0 , (byte)0);
+		
+		float sourceGray = source.ur() / 255f; 
+			   
+		float sourcePMGray = sourceGray * sourceA;
+		
+		float destGray = dest.ur() / 255f; 
+			  
+		float destPMGray = destGray * destA;
+		
+		float resultPMGray = (sourcePMGray + destPMGray) * (1.0f - sourceA);
+		
+		short resultGray = (short)Math.round((resultPMGray / resultA) * 255f);
+	
+		resultGray = (short)Math.min(255, Math.max(0, resultGray));
+		short finalAlpha = (short)Math.min(255, Math.max(0, Math.round(resultA * 255)));
+		
+		return new ChannelBuffer().set(resultGray , finalAlpha , (short) 0 , (short)0);
+	
+	}
+	
+	private void putColorInImage3Internal(int x , int y , ColorPixel color) {
+
+		ArtboardPalette palette = activeLayersPalette();
+		int channels = palette.channelsPerPixel;
+		
+		//we first build a list of pixels that need to be included in the blend, starting from highest rank to lowest rank
+		ListIterator<VisualLayer> iter = visualLayers.listIterator(visualLayers.size());
+		List<ColorPixel> blendThese = new ArrayList<>(visualLayers.size());
+		//builds a list of pixels to blend
+		while(iter.hasPrevious()) {
+			
+			VisualLayer layer = iter.previous();
+			if(!layer.isModifying(x, y)) continue;
+			
+			LayerPixel mod = layer.get(x, y);
+			ColorPixel modsColor = palette.get(mod);
+			short modsAlpha = getAlphaForChannels(channels, modsColor);
+			
+			if(modsAlpha < 255) blendThese.add(modsColor);				
+			//no need to blend, so return
+			else return;			
+			
+		}
+		
+		Iterator<ColorPixel> blendListIter = blendThese.iterator();
+		ColorPixel result;
+		
+		if(blendListIter.hasNext()) result = blendListIter.next();
+		else return;
+		
+		if(activeLayerChannelsPerPixel() == 2) while(blendListIter.hasNext()) {
+			
+			ColorPixel source = blendListIter.next();
+			result = blend2Channel(result , source);
+			
+		} else while(blendListIter.hasNext()) {
+			
+			ColorPixel source = blendListIter.next();
+			result = blend4Channel(result , source);
+			
+		}	
+		
+		LookupPixel blendedLookup = putInPalette(result);
+		indexTexture.putSubImage(x, y, 1, 1, blendedLookup);
+		
+	}
+
+	/**
+	 * Puts a given color at a region within this artboard, blending colors if needed.
+	 * 
+	 * @param leftX the left x coordinate of the pixel region to modify
+	 * @param bottomY the bottom y coordinate of the pixel region to modify
+	 * @param width the width of the region to modify
+	 * @param height the height of the region to modify
+	 * @param value the pixel value to store
+	 * @throws NullPointerException if {@code value} is <code>null</code>
+	 */
+	@RenderThreadOnly public void putColorInImage3(int leftX , int bottomY , int width , int height , Pixel value) {
+
+		Layer active = activeLayer();
+		if(active.hiding() || active.locked()) return;
+		
+		//if we are not in a visual layer or the active visual layer does not have an alpha component. 
+		if(!isActiveLayerVisual() || activeLayerChannelsPerPixel() % 2 != 0) putColorInImage2(leftX , bottomY , width , height , value);
+		else if(value instanceof LookupPixel asLookup) putColorInImage(leftX , bottomY , width , height , asLookup);
+		else if(value instanceof ColorPixel asColor) {
+
+			VisualLayer activeVisual = (VisualLayer)activeLayer();
+			LookupPixel paletteLookup = putInPalette(asColor);		
+			LayerPixel layerPixel = new LayerPixel(leftX , bottomY , paletteLookup.lookupX() , paletteLookup.lookupY());
+			activeVisual.put(layerPixel);
+			
+			int activeLayerIndex = visualLayers.indexOf(activeVisual);
+			
+			//canBulkWrite will be true if there is no layer above the current one modifying any of the pixels of the region.
+			boolean canBulkWrite = !bulkIsUpperRankLayerModifying(activeLayerIndex , leftX , bottomY , width , height);
+			
+			if(canBulkWrite) indexTexture.putSubImage(leftX , bottomY , width , height , paletteLookup);
+			else Artboards.region(leftX, bottomY, width, height).forEachRemaining(i -> putColorInImage3Internal(i.col(), i.row(), asColor));
+			
+		}
+		
+	}
+		
+	/**
+	 * Places the color described by {@code value} in this artboard at every pixel in the region described by {@code position}.
+	 * 
+	 * @param position region descriptor whose coordinates will be used for the region to be modified in this artboard
+	 * @param value the value to be stored in this artboard at the region described by {@code position}
+	 * @throws NullPointerException if either of {@code position, value} is <code>null</code>.
+	 */
+	@RenderThreadOnly public void putColorInImage3(CorrectedResult position , Pixel value) {
+		
+		alive(position, value);
+		putColorInImage3(position.leftX() , position.bottomY() , position.width() , position.height(), value);
 		
 	}
 	
@@ -485,11 +675,11 @@ public class Artboard implements ShutDown {
 	 * 	</ol>
 	 * </p>
 	 * 
-	 * @param x — x coordinate of the bottom left corner of the region
-	 * @param y — y coordinate of the bottom left corner of the region
-	 * @param width — the width of the region
-	 * @param height — the height of the region
-	 * @param value — pixel instance
+	 * @param x x coordinate of the bottom left corner of the region
+	 * @param y y coordinate of the bottom left corner of the region
+	 * @param width the width of the region
+	 * @param height the height of the region
+	 * @param value pixel instance
 	 */
 	@RenderThreadOnly public void putColorInImage2(int x , int y , int width , int height , Pixel value) {
 		
@@ -500,6 +690,13 @@ public class Artboard implements ShutDown {
 	
 	/**
 	 * Puts a single color at a region of the artboard. This method does logic for layers as well.
+	 * <p>
+	 * 	A pixel is only updated if 
+	 * 	<ol>
+	 * 		<li> the current layer is the layer of the highest priority, or </li>
+	 * 		<li> no layers of a higher priority than the current one also modify the given pixel. </li>
+	 * 	</ol>
+	 * </p>
 	 * 
 	 * @param corrected corrected indices for this artboard
 	 * @param value pixel value to put
@@ -527,11 +724,11 @@ public class Artboard implements ShutDown {
 	 * 	</li>
 	 * </ol>
 	 * 
-	 * @param xIndex — x index of the bottom left corner of the region to put the color
-	 * @param yIndex — y index of the bottom left corner of the region to put the color
-	 * @param width — number of pixels to extend rightward from {@code xIndex} to put the color in
-	 * @param height — number of pixels to extend upward from {@code yIndex} to put the color in
-	 * @param values — channel values to put in each pixel of the region.
+	 * @param xIndex x index of the bottom left corner of the region to put the color
+	 * @param yIndex y index of the bottom left corner of the region to put the color
+	 * @param width number of pixels to extend rightward from {@code xIndex} to put the color in
+	 * @param height number of pixels to extend upward from {@code yIndex} to put the color in
+	 * @param values channel values to put in each pixel of the region.
 	 */
 	@RenderThreadOnly public void putColorInImage(int xIndex , int yIndex , int width , int height , ColorPixel values) {
 
@@ -567,11 +764,11 @@ public class Artboard implements ShutDown {
 	 * 	<li> no layers of a higher priority than the current one also modify the given pixel. </li>
 	 * </ol>
 	 * 
-	 * @param xIndex — x index of the bottom left corner of the region to put the color
-	 * @param yIndex — y index of the bottom left corner of the region to put the color
-	 * @param width — number of pixels to extend rightward from {@code xIndex} to put the color in
-	 * @param height — number of pixels to extend upward from {@code yIndex} to put the color in
-	 * @param values — index pixel whose values provide a lookup into the palette
+	 * @param xIndex x index of the bottom left corner of the region to put the color
+	 * @param yIndex y index of the bottom left corner of the region to put the color
+	 * @param width number of pixels to extend rightward from {@code xIndex} to put the color in
+	 * @param height number of pixels to extend upward from {@code yIndex} to put the color in
+	 * @param values index pixel whose values provide a lookup into the palette
 	 */
 	@RenderThreadOnly public void putColorInImage(int xIndex , int yIndex , int width , int height , LookupPixel values) {
 
@@ -590,7 +787,13 @@ public class Artboard implements ShutDown {
 			else for(int row = 0 ; row < height ; row++) for(int col = 0 ; col < width ; col++) {
 				
 				boolean isUpperLayerModifying = isUpperRankLayerModifying(activeLayerIndex , xIndex + col , yIndex + row);
-				if(!isUpperLayerModifying) indexTexture.putSubImage(xIndex + col , yIndex + row , 1 , 1 , values);
+				if(!isUpperLayerModifying) { 
+					
+					//determine if upper layers 
+					
+					indexTexture.putSubImage(xIndex + col , yIndex + row , 1 , 1 , values);
+					
+				}
 				
 			}
 			
@@ -601,16 +804,16 @@ public class Artboard implements ShutDown {
 	/**
 	 * Puts a 2D array of values into this artboard.
 	 * 
-	 * @param leftX — left x coordinate 
-	 * @param bottomY — bottom y coordinate
-	 * @param width — width of the region
-	 * @param height — height of the region
-	 * @param values — 2D array of pixel values
+	 * @param leftX left x coordinate 
+	 * @param bottomY bottom y coordinate
+	 * @param width width of the region
+	 * @param height height of the region
+	 * @param values 2D array of pixel values
 	 */
 	@RenderThreadOnly public void putColorsInImage(int leftX , int bottomY , int width , int height , LookupPixel[][] values) {
 		
-		specify(leftX >= 0 && leftX < width() , leftX + " is an invalid x index");
-		specify(bottomY >= 0 && bottomY < height() , bottomY + " is an invalid y index");
+		assert leftX >= 0 && leftX < width() : leftX + " is an invalid x index";
+		assert bottomY >= 0 && bottomY < height() : bottomY + " is an invalid y index";
 
 		if(activeLayer().hiding() || activeLayer().locked()) return;
 		
@@ -689,8 +892,8 @@ public class Artboard implements ShutDown {
 	}
 	
 	/**
-	 * Extended version of {@link #putColorInImage2(int, int, int, int, Pixel)} in which contents of the specified region prior to this call are 
-	 * removed and {@code pixel} is filled in. If {@code pixel} is <code>null</code>, the specified region is removed.
+	 * Extended version of {@link #putColorInImage2(int, int, int, int, Pixel)} in which contents of the specified region prior to this 
+	 * call are removed and {@code pixel} is filled in. If {@code pixel} is <code>null</code>, the specified region is removed.
 	 * 
 	 * @param leftX left x coordinate of the region to modify in this artboard
 	 * @param bottomY bottom y coordinate of the region to modify in this artboard
@@ -698,8 +901,8 @@ public class Artboard implements ShutDown {
 	 * @param height height of the region to modify
 	 * @param pixel a pixel to fill in the region
 	 * @throws IllegalArgumentException if {@code width} or {@code height} is not positive.
-	 * @throws IndexOutOfBoundsException if {@code leftX} or {@code bottomY} or {@code leftX + width} or {@code bottomY + height} is out of bounds
-	 * 									 as an index for this artboard.
+	 * @throws IndexOutOfBoundsException if {@code leftX} or {@code bottomY} or {@code leftX + width} or {@code bottomY + height} is out of
+	 * 									 bounds as an index for this artboard.
 	 */
 	public void replace(int leftX , int bottomY , int width , int height , Pixel pixel) {
 
@@ -717,15 +920,15 @@ public class Artboard implements ShutDown {
 			
 		}
 
-		putColorInImage2(leftX , bottomY , width , height , pixel);
+		putColorInImage3(leftX , bottomY , width , height , pixel);
 		
 	}
 	
 	/**
-	 * Extended version of {@link #putColorsInImage(int, int, int, int, LookupPixel[][])} in which {@code pixels} is placed in this artboard at
-	 * the specified positions. This method has the additional quality that any position in {@code pixels} that is <code>null</code> is removed from
-	 * this artboard automatically. Therefore, there is no need for {@link #removePixels(int, int, int, int)} to precede this method. This method
-	 * also modifies layers.
+	 * Extended version of {@link #putColorsInImage(int, int, int, int, LookupPixel[][])} in which {@code pixels} is placed in this artboard
+	 * at the specified positions. This method has the additional quality that any position in {@code pixels} that is <code>null</code> is 
+	 * removed from this artboard automatically. Therefore, there is no need for {@link #removePixels(int, int, int, int)} to precede this 
+	 * method. This method also modifies layers.
 	 * 
 	 * @param leftX left x coordinate of the region to modify in this artboard
 	 * @param bottomY bottom y coordinate of the region to modify in this artboard
@@ -734,8 +937,8 @@ public class Artboard implements ShutDown {
 	 * @param pixels 2D array of pixels to replace this artboard's current contents with at the given positions
 	 * @throws NullPointerException if {@code pixels} is <code>null</code>.
 	 * @throws IllegalArgumentException if {@code width} or {@code height} is not positive.
-	 * @throws IndexOutOfBoundsException if {@code leftX} or {@code bottomY} or {@code leftX + width} or {@code bottomY + height} is out of bounds
-	 * 									 as an index for this artboard.
+	 * @throws IndexOutOfBoundsException if {@code leftX} or {@code bottomY} or {@code leftX + width} or {@code bottomY + height} is out of
+	 * 									 bounds as an index for this artboard.
 	 */
 	public void replace(int leftX , int bottomY , int width , int height , LookupPixel[][] pixels) {
 		
@@ -807,12 +1010,12 @@ public class Artboard implements ShutDown {
 	 * Writes an index pixel to a region of the artboard texture. This method uses the given palette for this operation. This is meant for 
 	 * internal write operations and isn't public.
 	 * 
-	 * @param xIndex — x index of the bottom left corner of the region to put the color
-	 * @param yIndex — y index of the bottom left corner of the region to put the color
-	 * @param width — number of pixels to extend rightward from {@code xIndex} to put the color in
-	 * @param height — number of pixels to extend upward from {@code yIndex} to put the color in
-	 * @param palette — a palette of the user's choosing
-	 * @param pixel — A {@code PalettePixel} containing the pixel values the index texture's pixel will point to
+	 * @param xIndex x index of the bottom left corner of the region to put the color
+	 * @param yIndex y index of the bottom left corner of the region to put the color
+	 * @param width number of pixels to extend rightward from {@code xIndex} to put the color in
+	 * @param height number of pixels to extend upward from {@code yIndex} to put the color in
+	 * @param palette a palette of the user's choosing
+	 * @param pixel A {@code PalettePixel} containing the pixel values the index texture's pixel will point to
 	 */
 	@RenderThreadOnly void writeToIndexTexture(
 		int xIndex , 
@@ -850,11 +1053,11 @@ public class Artboard implements ShutDown {
 	 * this does no logic regarding layers. It simply writes to the texture. That method does layer-related logic and only writes to the 
 	 * index texture when it can.
 	 * 
-	 * @param xIndex — x index of the bottom left corner of the region to put the color
-	 * @param yIndex — y index of the bottom left corner of the region to put the color
-	 * @param width — number of pixels to extend rightward from {@code xIndex} to put the color in
-	 * @param height — number of pixels to extend upward from {@code yIndex} to put the color in
-	 * @param pixel — A {@code PalettePixel} containing the pixel values the index texture's pixel will point to
+	 * @param xIndex x index of the bottom left corner of the region to put the color
+	 * @param yIndex y index of the bottom left corner of the region to put the color
+	 * @param width number of pixels to extend rightward from {@code xIndex} to put the color in
+	 * @param height number of pixels to extend upward from {@code yIndex} to put the color in
+	 * @param pixel A {@code PalettePixel} containing the pixel values the index texture's pixel will point to
 	 */
 	@RenderThreadOnly public void writeToIndexTexture(int xIndex , int yIndex , int width , int height , ColorPixel pixel) {
 
@@ -868,11 +1071,11 @@ public class Artboard implements ShutDown {
 	 * this does no logic regarding layers. It simply writes to the texture. That method does layer-related logic and only writes to the 
 	 * index texture when it can.
 	 * 
-	 * @param xIndex — x index of the bottom left corner of the region to put the color
-	 * @param yIndex — y index of the bottom left corner of the region to put the color
-	 * @param width — number of pixels to extend rightward from {@code xIndex} to put the color in
-	 * @param height — number of pixels to extend upward from {@code yIndex} to put the color in
-	 * @param pixel — A {@code LayerPixel} containing the pixel values the index texture's pixel will point to
+	 * @param xIndex x index of the bottom left corner of the region to put the color
+	 * @param yIndex y index of the bottom left corner of the region to put the color
+	 * @param width number of pixels to extend rightward from {@code xIndex} to put the color in
+	 * @param height number of pixels to extend upward from {@code yIndex} to put the color in
+	 * @param pixel A {@code LayerPixel} containing the pixel values the index texture's pixel will point to
 	 */
 	@RenderThreadOnly public void writeToIndexTexture(int xIndex , int yIndex , int width , int height , LookupPixel pixel) {
 		
@@ -883,11 +1086,11 @@ public class Artboard implements ShutDown {
 	/**
 	 * Writes a region of lookup pixels into the texture of this artboard, disregarding all logic for layers.
 	 * 
-	 * @param xIndex — left x coordinate of the region
-	 * @param yIndex — bottom y coordinate of the region
-	 * @param width — width of the region
-	 * @param height — height of the region
-	 * @param pixels — 2D array of pixels representing a region of pixels
+	 * @param xIndex left x coordinate of the region
+	 * @param yIndex bottom y coordinate of the region
+	 * @param width width of the region
+	 * @param height height of the region
+	 * @param pixels 2D array of pixels representing a region of pixels
 	 */
 	@RenderThreadOnly public void writeToIndexTexture(int xIndex , int yIndex , int width , int height , LookupPixel[][] pixels) {
 		
@@ -908,8 +1111,8 @@ public class Artboard implements ShutDown {
 	/**
 	 * Writes a region of lookup pixels into the texture of this artboard, disregarding all logic for layers.
 	 * 
-	 * @param region — correct specifier for a region of this artboard.
-	 * @param pixels — 2D array of pixel values
+	 * @param region correct specifier for a region of this artboard.
+	 * @param pixels 2D array of pixel values
 	 */
 	@RenderThreadOnly public void writeToIndexTexture(CorrectedResult region , LookupPixel[][] pixels) {
 		
@@ -919,8 +1122,8 @@ public class Artboard implements ShutDown {
 	
 	/**
 	 * Writes directly to the index texture of this artboard <em>only if</em> no layer of a greater rank than the current one modifies that 
-	 * position. If a write is performed, the active layer is <em>not</em> modified. If the active layer is nonvisual, a write is performed without
-	 * modification to the active layer.
+	 * position. If a write is performed, the active layer is <em>not</em> modified. If the active layer is nonvisual, a write is performed 
+	 * without modification to the active layer.
 	 * 
 	 * @param leftX left x coordinate of the region to modify
 	 * @param bottomY bottom y coordinate of the region to modify 
@@ -928,7 +1131,8 @@ public class Artboard implements ShutDown {
 	 * @param height height of the region to modify 
 	 * @param value pixel to write to the index texture where applicable
 	 * @throws NullPointerException if {@code value} is <code>null</code>.
-	 * @throws IndexOutOfBoundsException if {@code leftX}, {@code bottomY}, {@code width}, or {@code height} are out of bounds for this artboard.
+	 * @throws IndexOutOfBoundsException if {@code leftX}, {@code bottomY}, {@code width}, or {@code height} are out of bounds for this 
+	 * 									 artboard.
 	 */
 	@RenderThreadOnly public void writeToTextureIfLayersAllow(int leftX , int bottomY , int width , int height , Pixel value) {
 		
@@ -1023,8 +1227,8 @@ public class Artboard implements ShutDown {
 	/**
 	 * Gets an index pixel directly from the index texture using the given {@code xIndex} and {@code yIndex}.
 	 * 
-	 * @param xIndex — x index into texture of the pixel to get
-	 * @param yIndex — y index into texture of the pixel to get
+	 * @param xIndex x index into texture of the pixel to get
+	 * @param yIndex y index into texture of the pixel to get
 	 * @return Pixel located at the given coordinates.
 	 */
 	public LookupPixel getIndexPixelAtIndices(int xIndex , int yIndex) {
@@ -1038,10 +1242,10 @@ public class Artboard implements ShutDown {
 	 * {@code yIndex} are the coordinates of the bottom left pixel of the region, and the region extends {@code width} and {@code height}
 	 * pixels from the given coordinates. 
 	 * 
-	 * @param xIndex — index texture x index of the bottom left corner of the region 
- 	 * @param yIndex — index texture y index of the bottom left corner of the region
-	 * @param width — number of pixels to extend from {@code xIndex}
-	 * @param height — number of pixels to extend from {@code yIndex}
+	 * @param xIndex index texture x index of the bottom left corner of the region 
+ 	 * @param yIndex index texture y index of the bottom left corner of the region
+	 * @param width number of pixels to extend from {@code xIndex}
+	 * @param height number of pixels to extend from {@code yIndex}
 	 * @return 2D array containing all the pixels of the region specified.
 	 */
 	@RenderThreadOnly public IndexPixel[][] getRegionOfIndexPixels(int xIndex , int yIndex , int width , int height) {
@@ -1056,7 +1260,7 @@ public class Artboard implements ShutDown {
 	 * {@link cs.csss.utils.ByteBufferUtils.CorrectedParameters region}.
 	 * @see {@link Artboard#getRegionOfIndexPixels(int, int, int, int) getRegionOfIndexPixels(int, int, int, int)}.
 	 * 
-	 * @param region — correct indices and dimensions for this artboard
+	 * @param region correct indices and dimensions for this artboard
 	 * @return 2D array containing all the pixels of the region specified.
 	 */
 	@RenderThreadOnly public IndexPixel[][] getRegionOfIndexPixels(CorrectedResult region) {
@@ -1082,17 +1286,29 @@ public class Artboard implements ShutDown {
 				VisualLayer highestRanking = getHighestRankLayerModifying(artboardPosition.col(), artboardPosition.row());
 				if(highestRanking != null) {
 					
-					region[resultPosition.row()][resultPosition.col()] = highestRanking.get(artboardPosition.col(), artboardPosition.row());	
+					region[resultPosition.row()][resultPosition.col()] = 
+						highestRanking.get(artboardPosition.col(), artboardPosition.row());	
 
-				} else region[resultPosition.row()][resultPosition.col()] = getBackgroundColorIndices(artboardPosition.col(), artboardPosition.row());
+				} else { 
+					
+					region[resultPosition.row()][resultPosition.col()] = 
+						getBackgroundColorIndices(artboardPosition.col(), artboardPosition.row());
+					
+				}
 				
 			} else {
 				
 				if(activeLayer.containsModificationTo(artboardPosition.col(), artboardPosition.row())) {
 					
-					region[resultPosition.row()][resultPosition.col()] = activeLayer.get(artboardPosition.col(), artboardPosition.row());
+					region[resultPosition.row()][resultPosition.col()] =
+						activeLayer.get(artboardPosition.col(), artboardPosition.row());
 					
-				} else region[resultPosition.row()][resultPosition.col()] = getBackgroundColorIndices(artboardPosition.col(), artboardPosition.row());
+				} else { 
+					
+					region[resultPosition.row()][resultPosition.col()] = 
+						getBackgroundColorIndices(artboardPosition.col(), artboardPosition.row());
+					
+				}
 				
 			}
 			
@@ -1111,10 +1327,10 @@ public class Artboard implements ShutDown {
 	 * 	If {@link Artboard#getRegionOfIndexPixels(int, int, int, int) getRegionOfIndexPixels} is not working correctly, try this one.
 	 * </p>
 	 * 
-	 * @param xIndex — index texture x index of the bottom left corner of the region 
- 	 * @param yIndex — index texture y index of the bottom left corner of the region
-	 * @param width — number of pixels to extend from {@code xIndex}
-	 * @param height — number of pixels to extend from {@code yIndex}
+	 * @param xIndex index texture x index of the bottom left corner of the region 
+ 	 * @param yIndex index texture y index of the bottom left corner of the region
+	 * @param width number of pixels to extend from {@code xIndex}
+	 * @param height number of pixels to extend from {@code yIndex}
 	 * @return 2D array containing all the pixels of the region specified.
 	 */
 	@RenderThreadOnly public IndexPixel[][] getRegionOfIndexPixelsAlternate(int xIndex , int yIndex , int width , int height){
@@ -1130,7 +1346,7 @@ public class Artboard implements ShutDown {
 	 * {@link cs.csss.utils.ByteBufferUtils.CorrectedParameters region}.
 	 * @see {@link Artboard#getRegionOfIndexPixelsAlternate(int, int, int, int) getRegionOfIndexPixelsAlternate(int, int, int, int)}.
 	 * 
-	 * @param region — correct indices and dimensions for this artboard
+	 * @param region correct indices and dimensions for this artboard
 	 * @return 2D array containing all the pixels of the region specified.
 	 */
 	@RenderThreadOnly public IndexPixel[][] getRegionOfIndexPixelsAlternate(CorrectedResult region) {
@@ -1152,8 +1368,8 @@ public class Artboard implements ShutDown {
 	 * Gets a palette pixel at a given set of indices within the palette. The given index values are to be indices into the palette 
 	 * directly. They are <b>not</b> indices of the image texture.
 	 * 
-	 * @param paletteXIndex — x index into the palette to retrieve a color
-	 * @param paletteYIndex — y index into the palette to retrieve a color
+	 * @param paletteXIndex x index into the palette to retrieve a color
+	 * @param paletteYIndex y index into the palette to retrieve a color
 	 * @return {@code PalettePixel} containing channel values for the pixel at the given indices.
 	 */
 	@RenderThreadOnly public PalettePixel getColorFromIndicesOfPalette(int paletteXIndex , int paletteYIndex) {
@@ -1169,9 +1385,9 @@ public class Artboard implements ShutDown {
 	 * Gets a palette pixel at a given set of indices within the palette. The given index values are to be indices into the palette 
 	 * directly. They are <b>not</b> indices of the image texture.
 	 * 
-	 * @param texelData — previously gotten texel buffer
-	 * @param paletteXIndex — x index into the palette to retrieve a color
-	 * @param paletteYIndex — y index into the palette to retrieve a color
+	 * @param texelData previously gotten texel buffer
+	 * @param paletteXIndex x index into the palette to retrieve a color
+	 * @param paletteYIndex y index into the palette to retrieve a color
 	 * @return Array of numbers containing channel values for the pixel at the given indices.
 	 */
 	@RenderThreadOnly public PalettePixel getColorFromIndicesOfPalette(ByteBuffer texelData , int paletteXIndex , int paletteYIndex) {
@@ -1186,7 +1402,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Gets a color in the palette from the values of {@code pixel}.
 	 * 
-	 * @param pixel — an index pixel from the index texture
+	 * @param pixel an index pixel from the index texture
 	 * @return Color value stored at the indices of the palette referenced by {@code pixel}.
 	 */
 	@RenderThreadOnly public PalettePixel getColorPointedToBy(LookupPixel pixel) {
@@ -1199,8 +1415,8 @@ public class Artboard implements ShutDown {
 	 * Gets the index pixel located at {@code (indexImageXIndex , indexImageYIndex)}, and uses it to get the color in the color palette
 	 * pointed to by the pixel's {@code xIndex} and {@code yIndex}. 
 	 * 
-	 * @param indexImageXIndex — x index of a pixel in the index image
-	 * @param indexImageYIndex — y index of a pixel in the index image
+	 * @param indexImageXIndex x index of a pixel in the index image
+	 * @param indexImageYIndex y index of a pixel in the index image
 	 * @return Color in the palette who the index pixel at {@code (indexImageXIndex , indexImageYIndex)} points to.
 	 */
 	@RenderThreadOnly public PalettePixel getColorPointedToByIndexPixel(int indexImageXIndex , int indexImageYIndex) {
@@ -1214,10 +1430,10 @@ public class Artboard implements ShutDown {
 	 * Gets the index pixel located at {@code (indexTextureXIndex , indexTextureYIndex)}, and uses it to get the color in the color 
 	 * palette pointed to by the pixel's {@code xIndex} and {@code yIndex}.
 	 * 
-	 * @param indexTexelBuffer — container of texel data for the index texture
-	 * @param paletteTexelBuffer — container of texel data for the palette texture
-	 * @param indexTextureXIndex — x index of a pixel in the index image
-	 * @param indexTextureYIndex — y index of a pixel in the index image
+	 * @param indexTexelBuffer container of texel data for the index texture
+	 * @param paletteTexelBuffer container of texel data for the palette texture
+	 * @param indexTextureXIndex x index of a pixel in the index image
+	 * @param indexTextureYIndex y index of a pixel in the index image
 	 * @return Color in the palette who the index pixel at {@code (indexImageXIndex , indexImageYIndex)} points to.
 	 */
 	@RenderThreadOnly public PalettePixel getColorPointedToByIndexPixel(
@@ -1236,30 +1452,30 @@ public class Artboard implements ShutDown {
 	 * Constructs a {@code PalettePixel} from the settings of this artboard's palette texture, returning the result. The resulting pixel 
 	 * is <b>not</b> stored in this artboard's palette. 
 	 * 
-	 * @param channelValues — color channel values for the palette pixel
+	 * @param channelValues color channel values for the palette pixel
 	 * @return {@code PalettePixel} resulting from creating a pixel whose contents are {@code channelValues}.
 	 */
 	public PalettePixel createPalettePixel(final byte[] channelValues) {
 		
-		specify(
-			channelValues.length == activeLayer().pixelSizeBytes() , 
+		assert
+			channelValues.length == activeLayer().pixelSizeBytes() : 
 			channelValues.length + " is not a valid number of channel values. " + activeLayer().pixelSizeBytes() + " expected."
-		);
+		;
 		
 		return activeLayer().palette.new PalettePixel(channelValues);
 				
 	}
 	
 	/**
-	 * Constructs a {@code PalettePixel} from the given buffer whose contents are assumed to be pixel channel values. The given buffer's position
-	 * is updated by this method.
+	 * Constructs a {@code PalettePixel} from the given buffer whose contents are assumed to be pixel channel values. The given buffer's 
+	 * position is updated by this method.
 	 * 
-	 * @param source — a container of channel values.
+	 * @param source a container of channel values.
 	 * @return Newly created palette pixel.
 	 */
 	public PalettePixel createPalettePixel(ByteBuffer source) {
 		
-		specify(source.remaining() >= activeLayer().palette.channelsPerPixel , "Not enough data remaining for creation of color pixel.");
+		assert source.remaining() >= activeLayer().palette.channelsPerPixel : "Not enough data remaining for creation of color pixel.";
 		return activeLayer.palette.new PalettePixel(source);
 		
 	}
@@ -1280,10 +1496,10 @@ public class Artboard implements ShutDown {
 	 * Returns a read-only {@link cs.csss.annotation.FreeAfterUse @FreeAfterUse} {@code ByteBuffer} containing the texel data of the index
 	 * texture at the given offsets and of the given dimensions. The returned buffer's contents are exactly as expected.
 	 * 
-	 * @param x — left x index of the region in texel coordinates
-	 * @param y — bottom y index of the region in texel coordinates 
-	 * @param width — width of the region in texel coordinates
-	 * @param height — height of the region in texel coordinates
+	 * @param x left x index of the region in texel coordinates
+	 * @param y bottom y index of the region in texel coordinates 
+	 * @param width width of the region in texel coordinates
+	 * @param height height of the region in texel coordinates
 	 * @return Read-only {@code @FreeAfterUse ByteBuffer} containing the texel data of the index texture.
 	 */
 	@RenderThreadOnly public ByteBuffer indexTextureTexelBufferFormatted(int x , int y , int width , int height) {
@@ -1297,10 +1513,10 @@ public class Artboard implements ShutDown {
 	 * texture at the given offsets and of the given dimensions. The returned buffer is not formatted at all and its contents may not be
 	 * exactly as expected.
 	 * 
-	 * @param x — left x index of the region in texel coordinates
-	 * @param y — bottom y index of the region in texel coordinates 
-	 * @param width — width of the region in texel coordinates
-	 * @param height — height of the region in texel coordinates
+	 * @param x left x index of the region in texel coordinates
+	 * @param y bottom y index of the region in texel coordinates 
+	 * @param width width of the region in texel coordinates
+	 * @param height height of the region in texel coordinates
 	 * @return Read-only {@code @FreeAfterUse ByteBuffer} containing the texel data of the index texture.
 	 */
 	@RenderThreadOnly public ByteBuffer indexTextureTexelBufferUnformatted(int x , int y , int width , int height) {
@@ -1324,7 +1540,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Frees a texel buffer representing the memory of the index texture. 
 	 * 
-	 * @param texelBuffer — a {@code ByteBuffer} containing texel data
+	 * @param texelBuffer a {@code ByteBuffer} containing texel data
 	 */
 	public void freeIndexTextureTexelBuffer(ByteBuffer texelBuffer) {
 		
@@ -1335,9 +1551,9 @@ public class Artboard implements ShutDown {
 	/**
 	 * Puts a new value at the pixel in the palette texture located at {@code (paletteXIndex , paletteYIndex)}.
 	 * 
-	 * @param paletteXIndex — x index into the palette texture to replace
-	 * @param paletteYIndex — y index into the palette texture to replace
-	 * @param replaceWithThis — pixel containing color data to put in the palette texture
+	 * @param paletteXIndex x index into the palette texture to replace
+	 * @param paletteYIndex y index into the palette texture to replace
+	 * @param replaceWithThis pixel containing color data to put in the palette texture
 	 */
 	@RenderThreadOnly public void replacePalettePixelAtIndex(int paletteXIndex , int paletteYIndex , ColorPixel replaceWithThis) {
 		
@@ -1353,7 +1569,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Creates a visual layer for this artboard from the given prototype.
 	 * 
-	 * @param prototype — prototype layer
+	 * @param prototype prototype layer
 	 */
 	public void addVisualLayer(VisualLayer layer) {
 		
@@ -1365,7 +1581,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Adds a nonvisual layer for this artboard.
 	 * 
-	 * @param layer — nonvisual layer to add
+	 * @param layer nonvisual layer to add
 	 */
 	public void addNonVisualLayer(NonVisualLayer layer) {
 		
@@ -1377,7 +1593,7 @@ public class Artboard implements ShutDown {
 	 * Sets the active layer of this artboard to {@code layer}. This method accepts either {@linkplain NonVisualLayer} or 
 	 * {@linkplain VisualLayer}, handling logic regarding the type of the layer.
 	 * 
-	 * @param layer — the new active layer
+	 * @param layer the new active layer
 	 */
 	public void setActiveLayer(Layer layer) {
 		
@@ -1389,7 +1605,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Returns whether the given layer is the active layer.
 	 * 
-	 * @param layer — a layer
+	 * @param layer a layer
 	 * @return {@code true} if {@code layer} is this artboard's current layer.
 	 */
 	public boolean isActiveLayer(Layer layer) {
@@ -1401,7 +1617,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Invokes {@code callback} on each visual layer.
 	 * 
-	 * @param callback — code to execute on each visual layer.
+	 * @param callback code to execute on each visual layer.
 	 */
 	public void forEachVisualLayer(Consumer<VisualLayer> callback) {
 		
@@ -1412,7 +1628,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Invokes {@code callback} on each nonvisual layer.
 	 * 
-	 * @param callback — code to execute on each visual layer.
+	 * @param callback code to execute on each visual layer.
 	 */
 	public void forEachNonVisualLayer(Consumer<NonVisualLayer> callback) {
 		
@@ -1445,13 +1661,13 @@ public class Artboard implements ShutDown {
 	}
 	
 	/**
-	 * Retrieves a region of pixels of the current layer. The region starts at {@code (xIndex , yIndex)} and extends {@code width} rightward and 
-	 * {@code height} upward. 
+	 * Retrieves a region of pixels of the current layer. The region starts at {@code (xIndex , yIndex)} and extends {@code width} rightward
+	 * and {@code height} upward. 
 	 * 
-	 * @param xIndex — x index of a pixel, left coordinate of the region
-	 * @param yIndex — y index of a pixle, bottom coordinate of the region
-	 * @param width — width of the region
-	 * @param height — height of the region
+	 * @param xIndex x index of a pixel, left coordinate of the region
+	 * @param yIndex y index of a pixle, bottom coordinate of the region
+	 * @param width width of the region
+	 * @param height height of the region
 	 * @return 2D array containing the active layer's modifications to the given region.
 	 */
 	public LayerPixel[][] getRegionOfLayerPixels(int xIndex , int yIndex , int width , int height) {
@@ -1464,7 +1680,7 @@ public class Artboard implements ShutDown {
 	 * Retrieves a region of pixels from the current layer from the given 
 	 * {@link cs.csss.utils.ByteBufferUtils.CorrectedParameters CorrectedParameters}.
 	 * 
-	 * @param params — correct indices and dimensions for this artboard 
+	 * @param params correct indices and dimensions for this artboard 
 	 * @return 2D array containing the active layer's modifications to the given region.
 	 */
 	public LayerPixel[][] getRegionOfLayerPixels(CorrectedResult params) {
@@ -1476,15 +1692,15 @@ public class Artboard implements ShutDown {
 	/**
 	 * Stores the values of the given index pixel in the active layer at the given position. 
 	 * 
-	 * @param source — a pixel to copy
-	 * @param xPosition — x position of the pixel to copy
-	 * @param yPosition — y position of the pixel to copy
+	 * @param source a pixel to copy
+	 * @param xPosition x position of the pixel to copy
+	 * @param yPosition y position of the pixel to copy
 	 */
 	public void putInActiveLayer(LookupPixel source , int xPosition , int yPosition) {
 		
 		if(activeLayer() == null) return;
 		
-		LayerPixel pixel = new LayerPixel(xPosition , yPosition , source.lookupX() , source.lookupY());		
+		LayerPixel pixel = new LayerPixel(xPosition , yPosition , source.lookupX() , source.lookupY());
 		activeLayer().put(pixel);
 		
 	}
@@ -1494,27 +1710,31 @@ public class Artboard implements ShutDown {
 	 * indices of the bottom left corner of the region and the region extends {@code width} and {@code height} positions out from the 
 	 * bottom left corner.
 	 * 
-	 * @param source — a pixel to copy 
-	 * @param xPosition — x position of the bottom left corner of the region to copy to
-	 * @param yPosition — y position of the bottom left corner of the region to copy to
-	 * @param width — width of the region to copy
-	 * @param height — height of the region to copy
+	 * @param source a pixel to copy 
+	 * @param xPosition x position of the bottom left corner of the region to copy to
+	 * @param yPosition y position of the bottom left corner of the region to copy to
+	 * @param width width of the region to copy
+	 * @param height height of the region to copy
 	 */
 	public void bulkPutInActiveLayer(LookupPixel source , int xPosition , int yPosition , int width , int height) {
 		
-		for(int row = 0 ; row < height ; row++) for(int col = 0 ; col < width ; col++) putInActiveLayer(source , xPosition + col , yPosition + row);
+		for(int row = 0 ; row < height ; row++) for(int col = 0 ; col < width ; col++) { 
+			
+			putInActiveLayer(source , xPosition + col , yPosition + row);
+			
+		}
 		
 	}
 	
 	/**
-	 * Puts the given region of lookup pixels in the layer, starting at the given bottom left corner and extending {@code width} and {@code height}
-	 * pixels outward.
+	 * Puts the given region of lookup pixels in the layer, starting at the given bottom left corner and extending {@code width} and 
+	 * {@code height} pixels outward.
 	 *   
-	 * @param source — region of pixels
-	 * @param leftX — left x coordinate to begin writing to the layer
-	 * @param bottomY — bottom y coordinate to begin writing to the layer
-	 * @param width — width of the region to write 
-	 * @param height — height of the region to write
+	 * @param source region of pixels
+	 * @param leftX left x coordinate to begin writing to the layer
+	 * @param bottomY bottom y coordinate to begin writing to the layer
+	 * @param width width of the region to write 
+	 * @param height height of the region to write
 	 */
 	public void bulkPutInActiveLayer(LookupPixel[][] source , int leftX , int bottomY , int width , int height) {
 		
@@ -1527,8 +1747,9 @@ public class Artboard implements ShutDown {
 	}
 	
 	/**
-	 * Performs a bulk replace operation on the active layer. For each index of {@code source}, if the pixel is <code>null</code>, and modification the 
-	 * active layer contains at that index is removed. If the pixel at any index is nonnull, a new modification is made at that position.
+	 * Performs a bulk replace operation on the active layer. For each index of {@code source}, if the pixel is <code>null</code>, and 
+	 * modification the active layer contains at that index is removed. If the pixel at any index is nonnull, a new modification is made 
+	 * at that position.
 	 * 
 	 * @param leftX left x coordinate in artboard coordinates of the region to bulk replace
 	 * @param bottomY bottom y coordinate in artboard coordinates of the region to bulk replace
@@ -1537,7 +1758,8 @@ public class Artboard implements ShutDown {
 	 * @param source 2D array of pixels to replace to
 	 * @throws NullPointerException if {@code source} is <code>null</code>.
 	 * @throws IllegalArgumentException if either {@code width} or {@code height} is not positive.
-	 * @throws IndexOutOfBoundsException if any of {@code leftX , bottomY , leftX + width , bottomY + height} is out of bounds for this artboard.
+	 * @throws IndexOutOfBoundsException if any of {@code leftX , bottomY , leftX + width , bottomY + height} is out of bounds for this 
+	 * 									 artboard.
 	 */
 	public void bulkReplaceInActiveLayer(int leftX , int bottomY , int width , int height, LookupPixel[][] source) {
 	
@@ -1586,8 +1808,8 @@ public class Artboard implements ShutDown {
 	/**
 	 * Returns the highest ranked layer that modifies the pixel at the given indices. If no layer does so, <code>null</code> is returned.
 	 * 
-	 * @param xIndex — x index of a pixel
-	 * @param yIndex — y index of a pixel
+	 * @param xIndex x index of a pixel
+	 * @param yIndex y index of a pixel
 	 * @return The {@link VisualLayer} that modifies the pixel at {@code (xIndex , yIndex)}, or <code>null</code> if none exists.
 	 */
 	public VisualLayer getHighestRankLayerModifying(int xIndex , int yIndex) {
@@ -1600,9 +1822,9 @@ public class Artboard implements ShutDown {
 	/**
 	 * Returns whether a layer of a greater rank than that of {@code index} modifies the given pixel position.
 	 * 
-	 * @param superiorToThis — index in the visual layer list of the layer whose superior layers are being queried
-	 * @param xIndex — x index of a position of a pixel
-	 * @param yIndex — y index of a position of a pixel
+	 * @param superiorToThis index in the visual layer list of the layer whose superior layers are being queried
+	 * @param xIndex x index of a position of a pixel
+	 * @param yIndex y index of a position of a pixel
 	 * @return {@code true} if the given position is modified by any layer of a greater rank to the one located at {@code index}.
 	 */
 	public boolean isUpperRankLayerModifying(int superiorToThis , int xIndex , int yIndex) {
@@ -1612,13 +1834,12 @@ public class Artboard implements ShutDown {
 	}
 	
 	/**
-	 * 
 	 * Returns whether a layer of a greater rank than that of {@code index} modifies the given pixel position.
 	 * 
-	 * @param superiorToThis — index in the visual layer list of the layer whose superior layers are being queried
-	 * @param toRank — index of a last layer to check 
-	 * @param xIndex — x index of a position of a pixel
-	 * @param yIndex — y index of a position of a pixel
+	 * @param superiorToThis index in the visual layer list of the layer whose superior layers are being queried
+	 * @param toRank index of a last layer to check 
+	 * @param xIndex x index of a position of a pixel
+	 * @param yIndex y index of a position of a pixel
 	 * @return {@code true} if the given position is modified by any layer of a greater rank to the one located at {@code index} up to and
 	 * 		   including the layer at {@code toRank}.
 	 */
@@ -1626,8 +1847,8 @@ public class Artboard implements ShutDown {
 		
 		if(!isActiveLayerVisual) return false;
 		
-		require(superiorToThis < visualLayers.size());
-		require(toRank >= 0);
+		assert superiorToThis < visualLayers.size();
+		assert toRank >= 0;
 				
 		for(int i = toRank ; i < superiorToThis ; i++) if(visualLayers.get(i).isModifying(xIndex, yIndex)) return true;		
 		return false;
@@ -1637,9 +1858,9 @@ public class Artboard implements ShutDown {
 	/**
 	 * Returns whether a layer of a lower rank than {@code inferiorToThis} modifies the pixel at the given indices.
 	 * 
-	 * @param inferiorToThis — index of a visual layer whose inferior layers are queried
-	 * @param xIndex — x index of a layer to check
-	 * @param yIndex — y index of a layer to check
+	 * @param inferiorToThis index of a visual layer whose inferior layers are queried
+	 * @param xIndex x index of a layer to check
+	 * @param yIndex y index of a layer to check
 	 * @return {@code true} if the given position is modified by any layer of a lower rank to the one located at {@code inferiorToThis} 
 	 * 		   up to and including the end of the list.
 	 */
@@ -1653,16 +1874,16 @@ public class Artboard implements ShutDown {
 	 * Returns whether any layer of a lower rank to {@code inferiorToThis} modify the given pixel indices. This method checks all layers
 	 * between {@code inferiorToThis} exclusive and {@code toRank} inclusive.
 	 * 
-	 * @param inferiorToThis — index of a visual layer whose inferior layers are queried
-	 * @param toRank — layer of a inferior rank to {@code inferiorToThis} that will be the upper bound of this method's operation
-	 * @param xIndex — x index of a layer to check
-	 * @param yIndex — y index of a layer to check
+	 * @param inferiorToThis index of a visual layer whose inferior layers are queried
+	 * @param toRank layer of a inferior rank to {@code inferiorToThis} that will be the upper bound of this method's operation
+	 * @param xIndex x index of a layer to check
+	 * @param yIndex y index of a layer to check
 	 * @return {@code true} if the given position is modified by any layer of a lower rank to the one located at {@code inferiorToThis} 
 	 * 		   up to and including the layer at {@code inferiorToThis}.
 	 */
 	public boolean isLowerRankLayerModifying(int inferiorToThis , int toRank , int xIndex , int yIndex) {
 		
-		specify(inferiorToThis > toRank , toRank + " must be greater than " + inferiorToThis + ".");
+		assert inferiorToThis > toRank : toRank + " must be greater than " + inferiorToThis + ".";
 		
 		
 		if(!isActiveLayerVisual) return false;
@@ -1676,9 +1897,9 @@ public class Artboard implements ShutDown {
 	 * Returns the closest layer to {@code inferiorToThis} who modifies the pixel at {@code (xIndex , yIndex)}. If no such layer exists,
 	 * {@code null} is returned.
 	 * 
-	 * @param inferiorToThis — index of a visual layer whose inferior layers are queried
-	 * @param xIndex — x index of a layer to check
-	 * @param yIndex — y index of a layer to check
+	 * @param inferiorToThis index of a visual layer whose inferior layers are queried
+	 * @param xIndex x index of a layer to check
+	 * @param yIndex y index of a layer to check
 	 * @return Visual layer who modifies the given pixel indices.
 	 */
 	public VisualLayer getHighestLowerRankLayerModifying(int inferiorToThis , int xIndex , int yIndex) {
@@ -1691,19 +1912,19 @@ public class Artboard implements ShutDown {
 	 * Returns the closest layer to {@code inferiorToThis} who modifies the pixel at {@code (xIndex , yIndex)}. This method stops its 
 	 * checking at {@code stopAt} inclusive.
 	 * 
-	 * @param inferiorToThis — index of a visual layer whose inferior layers are queried
-	 * @param stopAt — index of a layer to stop at.
-	 * @param xIndex — x index of a layer to check
-	 * @param yIndex — y index of a layer to check
+	 * @param inferiorToThis index of a visual layer whose inferior layers are queried
+	 * @param stopAt index of a layer to stop at.
+	 * @param xIndex x index of a layer to check
+	 * @param yIndex y index of a layer to check
 	 * @return Visual layer closest to {@code inferiorToThis} in rank that modifies {@code (xIndex , yIndex)}.
 	 */
 	public VisualLayer getHighestLowerRankLayerModifying(int inferiorToThis , int stopAt , int xIndex , int yIndex) {
 		
 		if(!isActiveLayerVisual) return null;
 		
-		if(inferiorToThis != visualLayers.size() - 1) specify(stopAt > inferiorToThis , stopAt + " must be greater than " + inferiorToThis);
+		if(inferiorToThis != visualLayers.size() - 1) assert stopAt > inferiorToThis : stopAt + " must be greater than " + inferiorToThis;
 		
-		specify(inferiorToThis >= 0 , inferiorToThis + " is an invalid layer index.");
+		assert inferiorToThis >= 0 : inferiorToThis + " is an invalid layer index.";
 		
 		for(int i = inferiorToThis + 1 ; i <= stopAt ; i++) {
 			
@@ -1720,11 +1941,11 @@ public class Artboard implements ShutDown {
 	 * Returns whether at least one pixel of the pixels in the region specified by the parameters is modified by a layer of a greater rank
 	 * to the one at {@code index}.
 	 * 
-	 * @param index — index in the visual layer list of the layer whose superior layers are being queried
-	 * @param xIndex — x index of the bottom left corner of the region to query
-	 * @param yIndex — y index of the bottom left corner of the region to query
-	 * @param width — width of the region to query
-	 * @param height — height of the region to query
+	 * @param index index in the visual layer list of the layer whose superior layers are being queried
+	 * @param xIndex x index of the bottom left corner of the region to query
+	 * @param yIndex y index of the bottom left corner of the region to query
+	 * @param width width of the region to query
+	 * @param height height of the region to query
 	 * @return {@code true} if at least one pixel of the region is modified by a layer of a greater rank than xIndex.
 	 */
 	public boolean bulkIsUpperRankLayerModifying(int index , int xIndex , int yIndex , int width , int height) {
@@ -1742,9 +1963,9 @@ public class Artboard implements ShutDown {
 	/**
 	 * Returns whether the pixel at the given indices in the active layer is the same as {@code someColor}. 
 	 * 
-	 * @param someColor — any pixel implementation
-	 * @param xIndex — x coordinate of a pixel on this artboard
-	 * @param yIndex — y coordinate of a pixel on this artboard
+	 * @param someColor any pixel implementation
+	 * @param xIndex x coordinate of a pixel on this artboard
+	 * @param yIndex y coordinate of a pixel on this artboard
 	 * @return <code>true</code> if someColor matches the color given at the indices. 
 	 */
 	public boolean doColorsMatch(Pixel someColor , int xIndex , int yIndex) {
@@ -1766,7 +1987,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Moves the active layer to {@code newRank} rank.
 	 * 
-	 * @param newRank — new rank for the active layer
+	 * @param newRank new rank for the active layer
 	 */
 	public void moveVisualLayerRank(int newRank) {
 		
@@ -1779,13 +2000,13 @@ public class Artboard implements ShutDown {
 	/**
 	 * Moves the layer of rank {@code moveThisRank} to {@code toThisRank} rank.
 	 * 
-	 * @param moveThisRank — rank of a layer to move
-	 * @param toThisRank — new rank for the layer at {@code moveThisRank} 
+	 * @param moveThisRank rank of a layer to move
+	 * @param toThisRank new rank for the layer at {@code moveThisRank} 
 	 */ 
 	public void moveVisualLayerRank(int moveThisRank , int toThisRank) {
 		 
-		specify(moveThisRank >= 0 && moveThisRank < visualLayers.size() , moveThisRank + " is invalid as a layer rank.");
-		specify(toThisRank >= 0 && toThisRank < visualLayers.size() , toThisRank + " is invalid as a layer rank.");
+		assert moveThisRank >= 0 && moveThisRank < visualLayers.size() : moveThisRank + " is invalid as a layer rank.";
+		assert toThisRank >= 0 && toThisRank < visualLayers.size() : toThisRank + " is invalid as a layer rank.";
 		
 		VisualLayer swap = visualLayers.remove(moveThisRank);
 		visualLayers.add(toThisRank , swap);
@@ -1795,7 +2016,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Finds {@code layer} in the list of visual layers, returning its rank.
 	 * 
-	 * @param layer — a layer whose rank is being queried
+	 * @param layer a layer whose rank is being queried
 	 * @return Integer representing rank.
 	 */
 	public int getLayerRank(VisualLayer layer) {
@@ -1807,18 +2028,18 @@ public class Artboard implements ShutDown {
 	/**
 	 * Returns whether the layer at {@code layerRank} modifies the pixel at {@code (xIndex , yIndex)}.
 	 * 
-	 * @param layerRank — rank of a visual layer
-	 * @param xIndex — x index of a pixel
-	 * @param yIndex — y index of a pixel
+	 * @param layerRank rank of a visual layer
+	 * @param xIndex x index of a pixel
+	 * @param yIndex y index of a pixel
 	 * @return {@code true} if the layer of rank {@code layerRank} modifies {@code (xIndex , yIndex)}.
 	 */
 	public boolean isLayerModifying(int layerRank , int xIndex , int yIndex) {
 		
 		if(!isActiveLayerVisual) return false;
 		
-		require(layerRank <= visualLayers.size() - 1);
-		require(xIndex >= 0 && xIndex < indexTexture.width);
-		require(yIndex >= 0 && yIndex < indexTexture.height);
+		assert layerRank <= visualLayers.size() - 1;
+		assert xIndex >= 0 && xIndex < indexTexture.width;
+		assert yIndex >= 0 && yIndex < indexTexture.height;
 		
 		return visualLayers.get(layerRank).isModifying(xIndex, yIndex);
 		
@@ -1827,7 +2048,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Toggles visibility of {@code layer}.
 	 * 
-	 * @param layer — a layer whose visibility is to be toggled
+	 * @param layer a layer whose visibility is to be toggled
 	 */
 	@RenderThreadOnly public void toggleHideLayer(VisualLayer layer) {
 		
@@ -1839,7 +2060,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Gets the layer of the given rank.
 	 * 
-	 * @param rank — rank of a layer
+	 * @param rank rank of a layer
 	 * @return Visual layer at that rank.
 	 */
 	public VisualLayer getVisualLayer(int rank) {
@@ -1851,7 +2072,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Returns a nonvisual layer at the given index.
 	 * 
-	 * @param index — index of a nonvisual layer
+	 * @param index index of a nonvisual layer
 	 * @return Nonvisual layer at the given index.
 	 */
 	public NonVisualLayer getNonVisualLayer(int index) {
@@ -1863,7 +2084,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Gets the visual layer whose prototype is {@code prototype}.
 	 * 
-	 * @param prototype — prototype of a visual layer from which an instance is derived and contained within this artboard 
+	 * @param prototype prototype of a visual layer from which an instance is derived and contained within this artboard 
 	 * @return Instance of visual layer derived from {@code prototype}.
 	 */
 	public VisualLayer getVisualLayer(VisualLayerPrototype prototype) {
@@ -1876,7 +2097,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Gets the nonvisual layer whose prototype is {@code prototype}.
 	 * 
-	 * @param prototype — prototype of a nonvisual layer from which an instance is derived and contained within this artboard 
+	 * @param prototype prototype of a nonvisual layer from which an instance is derived and contained within this artboard 
 	 * @return Instance of nonvisual layer derived from {@code prototype}.
 	 */
 	public NonVisualLayer getNonVisualLayer(NonVisualLayerPrototype prototype) {
@@ -1894,7 +2115,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Removes the abstract layer {@code layer} from whatever list contains its implementation type.
 	 * 
-	 * @param layer — a layer to remove
+	 * @param layer a layer to remove
 	 */
 	@RenderThreadOnly public void removeLayer(Layer layer) {
 		
@@ -1941,8 +2162,8 @@ public class Artboard implements ShutDown {
 	 * Determines the background color to display at {@code (xIndex , yIndex)}. Will return one of the transparent background checker 
 	 * colors.
 	 * 
-	 * @param xIndex — x index of a pixel whose background is being checked
-	 * @param yIndex — y index of a pixel whose background is being checked
+	 * @param xIndex x index of a pixel whose background is being checked
+	 * @param yIndex y index of a pixel whose background is being checked
 	 * @return Palette pixel containing the values of a transparent background checker color.
 	 */
 	@RenderThreadOnly public PalettePixel getBackgroundColor(int xIndex , int yIndex) {
@@ -1972,8 +2193,8 @@ public class Artboard implements ShutDown {
 	/**
 	 * Gets the lookup pixel for the background color located at the given indices.
 	 * 
-	 * @param xIndex — x index of a background color to look up
-	 * @param yIndex — y index of a background color to look up
+	 * @param xIndex x index of a background color to look up
+	 * @param yIndex y index of a background color to look up
 	 * @return Lookup pixel containing the lookups for the background color that corresponds to the given indices.
 	 */
 	@RenderThreadOnly public LookupPixel getBackgroundColorIndices(int xIndex , int yIndex) {
@@ -1986,8 +2207,8 @@ public class Artboard implements ShutDown {
 	/**
 	 * Returns whether any layer at all (both visual and nonvisual) modifies the given pixel position.
 	 * 
-	 * @param xIndex — x index of a pixel
-	 * @param yIndex — y index of a pixel
+	 * @param xIndex x index of a pixel
+	 * @param yIndex y index of a pixel
 	 * @return {@code true} if any layer, either visual or nonvisual modifies the pixel at {@code (xIndex , yIndex)}.
 	 */
 	public boolean isAnyLayerModifying(int xIndex , int yIndex) {
@@ -2009,8 +2230,8 @@ public class Artboard implements ShutDown {
 	 * 	method returns {@code null}.
 	 * </p>
 	 * 
-	 * @param xIndex — x index of a pixel
-	 * @param yIndex — y index of a pixel
+	 * @param xIndex x index of a pixel
+	 * @param yIndex y index of a pixel
 	 * @return Color stored by the highest ranking layer that modifies the given indices, or the color stored at the given indices if the
 	 * 		   active layer is nonvisual, or null if any 
 	 */
@@ -2039,8 +2260,8 @@ public class Artboard implements ShutDown {
 	}
 	
 	/**
-	 * Returns a lookup pixel representing the highest ranked layer modification to the given pixel index. If no <em>visible</em> layer modifies 
-	 * {@code (xIndex , yIndex)}, or if a nonvisual layer is active, {@code null} is returned.
+	 * Returns a lookup pixel representing the highest ranked layer modification to the given pixel index. If no <em>visible</em> layer 
+	 * modifies {@code (xIndex , yIndex)}, or if a nonvisual layer is active, {@code null} is returned.
 	 * 
 	 * @param xIndex x index of a pixel 
 	 * @param yIndex y index of a pixel
@@ -2056,7 +2277,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Gets a visual layer by the given name.
 	 * 
-	 * @param layerName — name of a visual layer
+	 * @param layerName name of a visual layer
 	 * @return Resulting layer.
 	 */
 	public VisualLayer getVisualLayer(String layerName) {
@@ -2069,7 +2290,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Gets a nonvisual layer by the given name.
 	 * 
-	 * @param layerName — name of a nonvisual layer
+	 * @param layerName name of a nonvisual layer
 	 * @return Resulting layer.
 	 */
 	public NonVisualLayer getNonVisualLayer(String layerName) {
@@ -2082,7 +2303,7 @@ public class Artboard implements ShutDown {
 	/**
 	 * Gets a layer by the given name. The list of visual layer is searched first, then the nonvisual.
 	 * 
-	 * @param layerName — name of a layer
+	 * @param layerName name of a layer
 	 * @return Resulting layer.
 	 */
 	public Layer getLayer(String name) {
@@ -2263,8 +2484,8 @@ public class Artboard implements ShutDown {
 	 * Removes a pixel from the artboard. This method will remove the pixel at the given indices from the active layer, and if necessary, 
 	 * update the artboard image.
 	 * 
-	 * @param xIndex — x index of the pixel to remove
-	 * @param yIndex — y index of the pixel to remove
+	 * @param xIndex x index of the pixel to remove
+	 * @param yIndex y index of the pixel to remove
 	 */
 	@RenderThreadOnly public void removePixel(int xIndex , int yIndex) {
 		
@@ -2302,10 +2523,10 @@ public class Artboard implements ShutDown {
 	 * Bulk pixel remove operation. Removes all pixels starting from {@code (leftX , bottomY)} and extending {@code width} right and 
 	 * {@code height} up.
 	 * 
-	 * @param leftX — left x coordinate of the region
-	 * @param bottomY — bottom y coordinate of the region
-	 * @param width — width of the region
-	 * @param height — height of the region
+	 * @param leftX left x coordinate of the region
+	 * @param bottomY bottom y coordinate of the region
+	 * @param width width of the region
+	 * @param height height of the region
 	 */
 	@RenderThreadOnly public void removePixels(int leftX , int bottomY , int width , int height) {
 		
@@ -2321,11 +2542,12 @@ public class Artboard implements ShutDown {
 	}
 	
 	/**
-	 * Hides visibility of the pixel at the given indices. Whatever pixel is currently present will be removed from the image, but not from any 
-	 * layer. If a layer lower than the highest layer modifying the given position also modifies that position, its pixel is shown instead.
+	 * Hides visibility of the pixel at the given indices. Whatever pixel is currently present will be removed from the image, but not from
+	 * any layer. If a layer lower than the highest layer modifying the given position also modifies that position, its pixel is shown 
+	 * instead.
 	 * 
-	 * @param xIndex — x index of the pixel to hide
-	 * @param yIndex — y index of the pixel to hide
+	 * @param xIndex x index of the pixel to hide
+	 * @param yIndex y index of the pixel to hide
 	 */
 	public void hidePixel(int xIndex , int yIndex) {
 		
@@ -2345,14 +2567,14 @@ public class Artboard implements ShutDown {
 	}
 	
 	/**
-	 * Hides visibility of the pixels in the given region. Whatever pixel is currently present at each position in the region will be removed from 
-	 * the image but not its layer. If a layer lower than the highest layer modifying any given position also modifies that position, its pixel is 
-	 * shown instead.
+	 * Hides visibility of the pixels in the given region. Whatever pixel is currently present at each position in the region will be 
+	 * removed from the image but not its layer. If a layer lower than the highest layer modifying any given position also modifies that
+	 * position, its pixel is shown instead.
 	 * 
-	 * @param leftX — left x coordinate of the region to modify
-	 * @param bottomY — bottom y coordinate of the region to modify
-	 * @param width — width of the region to modify
-	 * @param height — height of the region to modify
+	 * @param leftX left x coordinate of the region to modify
+	 * @param bottomY bottom y coordinate of the region to modify
+	 * @param width width of the region to modify
+	 * @param height height of the region to modify
 	 */
 	public void hidePixels(int leftX , int bottomY , int width , int height) {
 
@@ -2371,8 +2593,8 @@ public class Artboard implements ShutDown {
 	 * Returns a lookup for the highest ranking modification to the given indices. If the current layer is nonvisual, a lookup to the pixel
 	 * modifying the given indices is returned, or a background color lookup is returned.
 	 * 
-	 * @param xIndex — x index of a pixel whose highest lookup is being queried
-	 * @param yIndex — y index of a pixel whose highest lookup is being queried
+	 * @param xIndex x index of a pixel whose highest lookup is being queried
+	 * @param yIndex y index of a pixel whose highest lookup is being queried
 	 * @return {@code LookupPixel} containing lookups for the color at the given indices. 
 	 */
 	@RenderThreadOnly public LookupPixel highestPixelForIndex(int xIndex , int yIndex) {
@@ -2792,7 +3014,8 @@ public class Artboard implements ShutDown {
 	 * @param bottomY bottom y coordinate of a region
 	 * @param width width of a region
 	 * @param height height of a region
-	 * @throws IndexOutOfBoundsException if either {@code leftX}, {@code leftX + width}, {@code bottomY}, or {@code bottomY + height} is out of bounds.
+	 * @throws IndexOutOfBoundsException if either {@code leftX}, {@code leftX + width}, {@code bottomY}, or {@code bottomY + height} is 
+	 * 									 out of bounds.
 	 * 
 	 */
 	public void checkParameters(int leftX , int bottomY , int width , int height) {
@@ -2809,8 +3032,8 @@ public class Artboard implements ShutDown {
 	}
 	
 	/**
-	 * Returns a lookup pixel representing {@code value}. If {@code value} is a lookup pixel, it is returned. If it is a color pixel, it is located
-	 * in the palette of the active layer, and the resulting lookup pixel is returned.
+	 * Returns a lookup pixel representing {@code value}. If {@code value} is a lookup pixel, it is returned. If it is a color pixel, it is
+	 * located in the palette of the active layer, and the resulting lookup pixel is returned.
 	 * 
 	 * @param value pixel to get as a lookup
 	 * @return {@link LookupPixel} form of {@code value}
@@ -2837,9 +3060,8 @@ public class Artboard implements ShutDown {
 	}
 
 	/**
-	 * Shows all lines in this artboard that are in visual layers if the active layer is visual, or shows the lines in the active layer only if it is 
-	 * 
-	 * nonvisual.
+	 * Shows all lines in this artboard that are in visual layers if the active layer is visual, or shows the lines in the active layer 
+	 * only if it is nonvisual.
 	 */
 	@RenderThreadOnly public void showAllLines() {
 	

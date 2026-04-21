@@ -1,58 +1,59 @@
 package cs.csss.ui.menus;
 
-import static cs.core.ui.CSUIConstants.*;
+import static sc.core.ui.SCUIConstants.*;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
-import cs.core.ui.CSNuklear.CSUserInterface;
-import cs.core.utils.Lambda;
+import cs.csss.engine.Engine;
+import sc.core.ui.SCElements.SCUI.SCDynamicRow;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCTextEditor;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
+
 
 /**
  * UI menu for creating an artboard or resizing an existing one.
  */
 public class ArtboardMenu extends Dialogue {
 
-	public CSUserInterface ui;
-	private final Lambda onFinish;
+	public SCUserInterface ui;
+	private final Runnable onFinish;
 	
 	private boolean isFinished = false;
 
 	private int width = -1 , height = -1;
 	
-	private final CSTextEditor widthEditor , heightEditor;
+	private final SCTextEditor widthEditor , heightEditor;
 		
 	/**
 	 * Creates a new artboard menu.
 	 *
-	 * @param currentProject — the project to add the artboard to
-	 * @param nuklear — the Nuklear factory 
+	 * @param currentProject the project to add the artboard to
+	 * @param nuklear the Nuklear factory 
 	 */
-	public ArtboardMenu(CSNuklear nuklear , String title) {
+	public ArtboardMenu(SCNuklear nuklear , String title) {
 		
-		ui = nuklear.new CSUserInterface(title , 0.5f - (0.33f / 2) , 0.5f - (0.16f / 2) , 0.33f , 0.16f);
-		ui.options |= UI_TITLED|UI_BORDERED;
+		ui = new SCUserInterface(nuklear , title , 0.5f - (0.33f / 2) , 0.5f - (0.16f / 2) , 0.33f , 0.16f);
+		ui.flags |= UI_TITLED|UI_BORDERED;
 		
 		onFinish = () -> {
 			
 			nuklear.removeUserInterface(ui);
-			ui.shutDown();
+			Engine.THE_TEMPORAL.onTrue(() -> true, ui::shutDown);
 			isFinished = true;
 			super.onFinish();
 			
 		};		
 		
-		CSDynamicRow widthRow = ui.new CSDynamicRow() , heightRow = ui.new CSDynamicRow();
+		SCDynamicRow widthRow = ui.new SCDynamicRow() , heightRow = ui.new SCDynamicRow();
 		
-		widthRow.new CSText("Artboard Width" , TEXT_MIDDLE|TEXT_CENTERED);
-		widthEditor = widthRow.new CSTextEditor(6 , CSNuklear.DECIMAL_FILTER);
+		widthRow.new SCText("Artboard Width" , TEXT_MIDDLE|TEXT_CENTERED);
+		widthEditor = widthRow.new SCTextEditor(6 , SCNuklear.DECIMAL_FILTER);
 		
-		heightRow.new CSText("Artboard Height" , TEXT_MIDDLE|TEXT_CENTERED);
-		heightEditor = heightRow.new CSTextEditor(6 , CSNuklear.DECIMAL_FILTER);
+		heightRow.new SCText("Artboard Height" , TEXT_MIDDLE|TEXT_CENTERED);
+		heightEditor = heightRow.new SCTextEditor(6 , SCNuklear.DECIMAL_FILTER);
 			
-		CSDynamicRow buttons =  ui.new CSDynamicRow();
-		buttons.new CSButton("Finish" , this::tryFinish);
-		buttons.new CSButton("Cancel" , onFinish);
+		SCDynamicRow buttons =  ui.new SCDynamicRow();
+		buttons.new SCButton("Finish" , this::tryFinish);
+		buttons.new SCButton("Cancel" , onFinish);
 		
 	}
 	
@@ -100,7 +101,7 @@ public class ArtboardMenu extends Dialogue {
 
 		if(width < 0 || height < 0) return;
 		
-		onFinish.invoke();
+		onFinish.run();
 		
 	}
 	

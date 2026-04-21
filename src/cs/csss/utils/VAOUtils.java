@@ -1,8 +1,8 @@
 package cs.csss.utils;
 
-import cs.core.graphics.CSVAO;
-import cs.core.graphics.CSVAO.VertexBufferAccess;
 import cs.csss.annotation.RenderThreadOnly;
+import sc.core.graphics.SCVAO;
+import sc.core.graphics.SCVAO.SCVertexBufferAccess;
 
 /**
  * Class providing utilities for modifying artboard positions. In Sprite Studio, artboard movement is accomplished by modifying vertices 
@@ -20,15 +20,15 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Translates the given VAO's positions by the floats {@code (x , y)}. 
 	 * 
-	 * @param vao — a vao to translate
-	 * @param x — x translation
-	 * @param y — y translation
+	 * @param vao a vao to translate
+	 * @param x x translation
+	 * @param y y translation
 	 */
-	public static void translateFloats(CSVAO vao , float x , float y) {
+	public static void translateFloats(SCVAO vao , float x , float y) {
 
 		vao.activate();
 		
-		try(VertexBufferAccess vertices = vao.new VertexBufferAccess()) {
+		try(SCVertexBufferAccess vertices = vao.mapVBO()) {
 		
 			translateFloats(vertices , x , y);
 			
@@ -41,15 +41,15 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Translates the given VAO's positions by the ints {@code (x , y)}. 
 	 * 
-	 * @param vao — a vao to translate
-	 * @param x — x translation
-	 * @param y — y translation
+	 * @param vao a vao to translate
+	 * @param x x translation
+	 * @param y y translation
 	 */
-	public static void translateInts(CSVAO vao , int x , int y) {
+	public static void translateInts(SCVAO vao , int x , int y) {
 		
 		vao.activate();
 		
-		try(VertexBufferAccess vertices = vao.new VertexBufferAccess()) {
+		try(SCVertexBufferAccess vertices = vao.mapVBO()) {
 			
 			translateInts(vertices , x , y);			
 			
@@ -62,16 +62,16 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Gets the X midpoint of the vertex buffer of {@code vao}.
 	 * 
-	 * @param vao — a vertex array object
+	 * @param vao a vertex array object
 	 * @return The X midpoint of the position attribute of the VAO.
 	 */
-	public static float midX(CSVAO vao) {
+	public static float midX(SCVAO vao) {
 
 		vao.activate();
 		
 		float mid = 0;
 		
-		try(VertexBufferAccess vertices = vao.new VertexBufferAccess()) {
+		try(SCVertexBufferAccess vertices = vao.mapVBO()) {
 			
 			mid = midX(vertices);
 			
@@ -86,16 +86,16 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Gets the Y midpoint of the vertex buffer of {@code vao}.
 	 * 
-	 * @param vao — a vertex array object
+	 * @param vao a vertex array object
 	 * @return The X midpoint of the position attribute of the VAO.
 	 */
-	public static float midY(CSVAO vao) {
+	public static float midY(SCVAO vao) {
 
 		vao.activate();
 		
 		float mid = 0;
 		
-		try(VertexBufferAccess vertices = vao.new VertexBufferAccess()) {
+		try(SCVertexBufferAccess vertices = vao.mapVBO()) {
 		
 			mid = midY(vertices);
 			
@@ -110,15 +110,15 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Moves the given VAO so its midpoint is exactly {@code (worldX , worldY)}.
 	 * 
-	 * @param vao — a vertex array object to move
-	 * @param worldX — the x position to move to
-	 * @param worldY — the y position to move to
+	 * @param vao a vertex array object to move
+	 * @param worldX the x position to move to
+	 * @param worldY the y position to move to
 	 */
-	public static void moveToFloats(CSVAO vao , float worldX , float worldY) {
+	public static void moveToFloats(SCVAO vao , float worldX , float worldY) {
 		
 		vao.activate();
 		
-		try(VertexBufferAccess vertices = vao.new VertexBufferAccess()) {
+		try(SCVertexBufferAccess vertices = vao.mapVBO()) {
 			
 			translateFloats(vertices , -midX(vertices) + worldX , -midY(vertices) + worldY);
 			
@@ -131,15 +131,15 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Moves the given VAO so its midpoint is exactly {@code (worldX , worldY)}.
 	 * 
-	 * @param vao — a vertex array object to move
-	 * @param worldX — the x position to move to
-	 * @param worldY — the y position to move to
+	 * @param vao a vertex array object to move
+	 * @param worldX the x position to move to
+	 * @param worldY the y position to move to
 	 */
-	public static void moveToInts(CSVAO vao , int worldX , int worldY) {
+	public static void moveToInts(SCVAO vao , int worldX , int worldY) {
 		
 		vao.activate();
 		
-		try(VertexBufferAccess vertices = vao.new VertexBufferAccess()) {
+		try(SCVertexBufferAccess vertices = vao.mapVBO()) {
 			
 			translateInts(vertices , (int)-midX(vertices) + worldX , (int)-midY(vertices) + worldY);
 			
@@ -152,16 +152,16 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Gets and returns the width of the given VAO.
 	 * 
-	 * @param vao — a vertex array object 
+	 * @param vao a vertex array object 
 	 * @return Width of the vertices of this vertex array object.
 	 */
-	public static float width(CSVAO vao) {
+	public static float width(SCVAO vao) {
 		
 		vao.activate();
 		
 		float width;
 		
-		try(VertexBufferAccess buffer = vao.new VertexBufferAccess()) {
+		try(SCVertexBufferAccess buffer = vao.mapVBO()) {
 			
 			width = width(buffer);
 					
@@ -176,16 +176,16 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Gets and returns the height of the given VAO.
 	 * 
-	 * @param vao — a vertex array object 
+	 * @param vao a vertex array object 
 	 * @return Height of the vertices of this vertex array object.
 	 */
-	public static float height(CSVAO vao) {
+	public static float height(SCVAO vao) {
 		
 		vao.activate();
 		
 		float height;
 		
-		try(VertexBufferAccess buffer = vao.new VertexBufferAccess()) {
+		try(SCVertexBufferAccess buffer = vao.mapVBO()) {
 			
 			height = height(buffer);
 					
@@ -200,18 +200,18 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Gets and returns the left x coordinate of the given VAO.
 	 * 
-	 * @param vao — vertex array object
+	 * @param vao vertex array object
 	 * @return Left x coordinate of this object .
 	 */
-	public static float leftX(CSVAO vao) {
+	public static float leftX(SCVAO vao) {
 
 		vao.activate();
 		
 		float leftX;
 		
-		try(VertexBufferAccess buffer = vao.new VertexBufferAccess()) {
+		try(SCVertexBufferAccess buffer = vao.mapVBO()) {
 			
-			leftX = buffer.getFloat(asFloatIndex(LX));
+			leftX = buffer.memory().getFloat(asFloatIndex(LX));
 					
 		}
 		
@@ -224,18 +224,18 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Gets and returns the right x coordinate of the given VAO.
 	 * 
-	 * @param vao — vertex array object
+	 * @param vao vertex array object
 	 * @return Right x coordinate of this object .
 	 */
-	public static float rightX(CSVAO vao) {
+	public static float rightX(SCVAO vao) {
 
 		vao.activate();
 		
 		float x;
 		
-		try(VertexBufferAccess buffer = vao.new VertexBufferAccess()) {
+		try(SCVertexBufferAccess buffer = vao.mapVBO()) {
 			
-			x = buffer.getFloat(asFloatIndex(RX));
+			x = buffer.memory().getFloat(asFloatIndex(RX));
 					
 		}
 		
@@ -248,18 +248,18 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Gets and returns the bottom y coordinate of the given VAO.
 	 * 
-	 * @param vao — vertex array object
+	 * @param vao vertex array object
 	 * @return Bottom y coordinate of this object.
 	 */
-	public static float bottomY(CSVAO vao) {
+	public static float bottomY(SCVAO vao) {
 
 		vao.activate();
 		
 		float y;
 		
-		try(VertexBufferAccess buffer = vao.new VertexBufferAccess()) {
+		try(SCVertexBufferAccess buffer = vao.mapVBO()) {
 			
-			y = buffer.getFloat(asFloatIndex(BY));
+			y = buffer.memory().getFloat(asFloatIndex(BY));
 					
 		}
 		
@@ -272,18 +272,18 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Gets and returns the top y coordinate of the given VAO.
 	 * 
-	 * @param vao — vertex array object
+	 * @param vao vertex array object
 	 * @return Top y coordinate of this object .
 	 */
-	public static float topX(CSVAO vao) {
+	public static float topX(SCVAO vao) {
 
 		vao.activate();
 		
 		float y;
 		
-		try(VertexBufferAccess buffer = vao.new VertexBufferAccess()) {
+		try(SCVertexBufferAccess buffer = vao.mapVBO()) {
 			
-			y = buffer.getFloat(asFloatIndex(TY));
+			y = buffer.memory().getFloat(asFloatIndex(TY));
 					
 		}
 		
@@ -296,16 +296,16 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Translates the vertices contained within the buffer access {@code buffer}.
 	 * 
-	 * @param buffer — buffer access created from a VAO
-	 * @param x — x translation
-	 * @param y — y translation
+	 * @param buffer buffer access created from a VAO
+	 * @param x x translation
+	 * @param y y translation
 	 */
-	public static void translateFloats(VertexBufferAccess buffer , float x , float y) {
+	public static void translateFloats(SCVertexBufferAccess buffer , float x , float y) {
 
-		buffer.putFloat(0 , buffer.getFloat(0) + x).putFloat(1 << 2 , buffer.getFloat(1 << 2) + y);
-		buffer.putFloat(4 << 2 , buffer.getFloat(4 << 2) + x).putFloat(5 << 2 , buffer.getFloat(5 << 2) + y);
-		buffer.putFloat(8 << 2 , buffer.getFloat(8 << 2) + x).putFloat(9 << 2 , buffer.getFloat(9 << 2) + y);
-		buffer.putFloat(12 << 2 , buffer.getFloat(12 << 2) + x).putFloat(13 << 2 ,buffer.getFloat(13 << 2) + y);
+		buffer.memory().putFloat(0 , buffer.memory().getFloat(0) + x).putFloat(1 << 2 , buffer.memory().getFloat(1 << 2) + y);
+		buffer.memory().putFloat(4 << 2 , buffer.memory().getFloat(4 << 2) + x).putFloat(5 << 2 , buffer.memory().getFloat(5 << 2) + y);
+		buffer.memory().putFloat(8 << 2 , buffer.memory().getFloat(8 << 2) + x).putFloat(9 << 2 , buffer.memory().getFloat(9 << 2) + y);
+		buffer.memory().putFloat(12 << 2 , buffer.memory().getFloat(12 << 2) + x).putFloat(13 << 2 ,buffer.memory().getFloat(13 << 2) + y);
 		
 	}
 
@@ -313,11 +313,11 @@ import cs.csss.annotation.RenderThreadOnly;
 	 * Translates the vertices contained within the buffer access {@code buffer}. This also ensures the vertices cannot lie on sub-pixel
 	 * boundaries.
 	 *  
-	 * @param buffer — buffer access created from a VAO
-	 * @param x — x translation
-	 * @param y — y translation
+	 * @param buffer buffer access created from a VAO
+	 * @param x x translation
+	 * @param y y translation
 	 */
-	public static void translateInts(VertexBufferAccess buffer , int x , int y) {
+	public static void translateInts(SCVertexBufferAccess buffer , int x , int y) {
 
 		translateFloats(buffer , x , y);
 
@@ -332,14 +332,14 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Gets the X midpoint of the positions contaiend within {@code buffer}.
 	 * 
-	 * @param buffer — a buffer access to get the positions from
+	 * @param buffer a buffer access to get the positions from
 	 * @return The X midpoint of the positions of the buffer.
 	 */
-	public static float midX(VertexBufferAccess buffer) {
+	public static float midX(SCVertexBufferAccess buffer) {
 		
-		float leftX = buffer.getFloat(asFloatIndex(LX));
+		float leftX = buffer.memory().getFloat(asFloatIndex(LX));
 		
-		float halfWidth = (buffer.getFloat(RX) - leftX) / 2; 
+		float halfWidth = (buffer.memory().getFloat(RX) - leftX) / 2; 
 		return leftX + halfWidth;
 		
 	}
@@ -347,14 +347,14 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Gets the Y midpoint of the positions contained within {@code buffer}.
 	 * 
-	 * @param buffer — a buffer access to get the positions from
+	 * @param buffer a buffer access to get the positions from
 	 * @return The Y midpoint of the positions of the buffer.
 	 */
-	public static float midY(VertexBufferAccess buffer) {
+	public static float midY(SCVertexBufferAccess buffer) {
 
-		float bottomY = buffer.getFloat(asFloatIndex(BY));
+		float bottomY = buffer.memory().getFloat(asFloatIndex(BY));
 		
-		float halfHeight = (buffer.getFloat(asFloatIndex(1)) - bottomY) / 2;
+		float halfHeight = (buffer.memory().getFloat(asFloatIndex(1)) - bottomY) / 2;
 		return bottomY + halfHeight;
 		
 	}
@@ -363,11 +363,11 @@ import cs.csss.annotation.RenderThreadOnly;
 	 * Performs an {@code int} move operation on the given buffer. The position of the vertices will be centered around the coordinate 
 	 * {@code (x , y)}.
 	 * 
-	 * @param buffer — a buffer to move
-	 * @param x — an x world coordinate
-	 * @param y — a y world coordinate
+	 * @param buffer a buffer to move
+	 * @param x an x world coordinate
+	 * @param y a y world coordinate
 	 */
-	public static void moveTo(VertexBufferAccess buffer , int x , int y) {
+	public static void moveTo(SCVertexBufferAccess buffer , int x , int y) {
 		
 		int midX = (int)midX(buffer);
 		int midY = (int)midY(buffer);
@@ -380,11 +380,11 @@ import cs.csss.annotation.RenderThreadOnly;
 	 * Performs a {@code float} move operation on the given buffer. The position of the vertices will be centered around the coordinate 
 	 * {@code (x , y)}.
 	 * 
-	 * @param buffer — a buffer to move
-	 * @param x — an x world coordinate
-	 * @param y — a y world coordinate
+	 * @param buffer a buffer to move
+	 * @param x an x world coordinate
+	 * @param y a y world coordinate
 	 */
-	public static void moveTo(VertexBufferAccess buffer , float x , float y) {
+	public static void moveTo(SCVertexBufferAccess buffer , float x , float y) {
 	
 		float midX = midX(buffer);
 		float midY = midY(buffer);
@@ -396,24 +396,24 @@ import cs.csss.annotation.RenderThreadOnly;
 	/**
 	 * Gets the width of the vertices contained within {@code buffer}.
 	 * 
-	 * @param buffer — a buffer acces
+	 * @param buffer a buffer acces
 	 * @return Width of the vertices contained within {@code buffer}.
 	 */ 
-	public static float width(VertexBufferAccess buffer) {
+	public static float width(SCVertexBufferAccess buffer) {
 		
-		return buffer.getFloat(asFloatIndex(RX)) - buffer.getFloat(asFloatIndex(LX));
+		return buffer.memory().getFloat(asFloatIndex(RX)) - buffer.memory().getFloat(asFloatIndex(LX));
 		
 	}
 
 	/**
 	 * Gets the height of the vertices contained within {@code buffer}.
 	 * 
-	 * @param buffer — a buffer acces
+	 * @param buffer a buffer acces
 	 * @return Height of the vertices contained within {@code buffer}.
 	 */ 
-	public static float height(VertexBufferAccess buffer) {
+	public static float height(SCVertexBufferAccess buffer) {
 		
-		return buffer.getFloat(asFloatIndex(TY)) - buffer.getFloat(asFloatIndex(BY));
+		return buffer.memory().getFloat(asFloatIndex(TY)) - buffer.memory().getFloat(asFloatIndex(BY));
 		
 	}
 	

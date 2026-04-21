@@ -8,6 +8,7 @@ import cs.csss.editor.Editor;
 import cs.csss.editor.event.CSSSEvent;
 import cs.csss.editor.event.ScaleRegionEvent;
 import cs.csss.engine.Control;
+import cs.csss.engine.Engine;
 import cs.csss.project.Artboard;
 
 /**
@@ -15,6 +16,8 @@ import cs.csss.project.Artboard;
  */
 @RenderThreadOnly public class Scale_RegionBrush extends CSSSSelectingBrush {
 
+	private final static int UPDATE_RENDER_EVENT_KEY = Engine.requestRenderEventKey(); 
+	
 	private boolean
 		wasScalingLastUpdate = false ,
 		canUse;
@@ -64,13 +67,13 @@ import cs.csss.project.Artboard;
 		
 		boolean scaling = Control.ARTBOARD_INTERACT.pressed();
 		
-		if(scaling && !wasScalingLastUpdate) editor.rendererPost(() -> {
+		if(scaling && !wasScalingLastUpdate) editor.rendererPost(UPDATE_RENDER_EVENT_KEY , () -> {
 			
 			newRender(current, editor);
 			int[] bottomLeft = current.worldToPixelIndices(selectionBounder.LX(), selectionBounder.BY());
 			current.hidePixels(bottomLeft[0], bottomLeft[1] , selectionBounder.width() , selectionBounder.height());
 						
-		}).await();
+		});
 		
 		else if (scaling && wasScalingLastUpdate) {
 			

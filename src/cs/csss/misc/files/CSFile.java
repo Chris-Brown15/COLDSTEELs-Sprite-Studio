@@ -1,7 +1,5 @@
 package cs.csss.misc.files;
 
-import static cs.core.utils.CSUtils.specify;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -15,8 +13,8 @@ public class CSFile {
 	/**
 	 * Creates a file at the given location of the given name, if none exists already, returning the result.
 	 * 
-	 * @param location — folder to create this file at
-	 * @param name — name of created file
+	 * @param location folder to create this file at
+	 * @param name name of created file
 	 * @return {@link java.io.File File} representing this file. 
 	 */
 	public static File makeFile(CSFolder location , String name) {
@@ -65,7 +63,7 @@ public class CSFile {
 
 	public CSFile(final CSFolder location , final String name) {
 
-		specify(location , "Parent directory cannot be null");
+		assert location != null : "Parent directory cannot be null";
 		name(name);
 		this.location = location;
 		makeFile(location, name);
@@ -74,7 +72,7 @@ public class CSFile {
 	
 	public void name(String newName) {
 		
-		specify(newName , "CSFiles must have a name.");		
+		assert newName != null : "CSFiles must have a name.";		
 		this.name = newName;
 		
 	}

@@ -21,11 +21,11 @@ public final class Artboards {
 	 * Invokes a callback for each pixel of the region specified by starting at {@code (x , y)} and extending {@code width} right and 
 	 * {@code height} up.
 	 * 
-	 * @param x — left coordinate of the region
-	 * @param y — bottom coordinate of the region
-	 * @param width — width in pixels of the region
-	 * @param height — height in pixels of the region
-	 * @param callback — code to invoke on each pixel of the region
+	 * @param x left coordinate of the region
+	 * @param y bottom coordinate of the region
+	 * @param width width in pixels of the region
+	 * @param height height in pixels of the region
+	 * @param callback code to invoke on each pixel of the region
 	 */	
 	public static void forRegion(int x , int y , int width , int height , Consumer<RegionPosition> callback) {
 		
@@ -37,10 +37,10 @@ public final class Artboards {
 	/**
 	 * Returns an iterator over a region for simple use cases.
 	 * 
-	 * @param x — left coordinate of the region
-	 * @param y — bottom coordinate of the region
-	 * @param width — width in pixels of the region
-	 * @param height — height in pixels of the region
+	 * @param x left coordinate of the region
+	 * @param y bottom coordinate of the region
+	 * @param width width in pixels of the region
+	 * @param height height in pixels of the region
 	 * @return {@code Iterator} over the specified region of {@code artboard}.
 	 */
 	public static RegionIterator region(int x , int y , int width , int height) {
@@ -67,11 +67,11 @@ public final class Artboards {
 	 * Receives some world coordinates and dimensions and ensures the returned container's parameters are valid for the given artboard. If 
 	 * <code>null</code> is returned, the the region cannot be corrected.
 	 * 
-	 * @param artboard — an artboard to measure against
-	 * @param leftX — left x coordinate of the region
-	 * @param bottomY — bottom y coordinate of the region
-	 * @param width — width of the region
-	 * @param height — height of the region
+	 * @param artboard an artboard to measure against
+	 * @param leftX left x coordinate of the region
+	 * @param bottomY bottom y coordinate of the region
+	 * @param width width of the region
+	 * @param height height of the region
 	 * @return Container for corrected results.
 	 */
 	public static CorrectedResult worldCoordinatesToCorrectArtboardCoordinates(
@@ -96,8 +96,8 @@ public final class Artboards {
 	 * 	allocation.
 	 * </p>
 	 * 
-	 * @param stackFrame — already-pushed stack frame
-	 * @param size — number of bytes to allocate
+	 * @param stackFrame already-pushed stack frame
+	 * @param size number of bytes to allocate
 	 * @return Container of the allocated buffer and a {@code boolean} notating whether the buffer is stack allocated. If the boolean is 
 	 * 		   {@code false}, the buffer must be freed. 
 	 */

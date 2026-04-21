@@ -22,7 +22,7 @@ import com.codedisaster.steamworks.SteamUGC.UGCQueryType;
 import com.codedisaster.steamworks.SteamUGC.UserUGCList;
 import com.codedisaster.steamworks.SteamUGC.UserUGCListSortOrder;
 
-import cs.core.utils.ShutDown;
+import sc.core.SCShutDown;
 
 import com.codedisaster.steamworks.SteamUGCCallback;
 import com.codedisaster.steamworks.SteamUGCDetails;
@@ -32,7 +32,7 @@ import com.codedisaster.steamworks.SteamUGCUpdateHandle;
 /**
  * Class for managing user-generated content.
  */
-public class UGC implements ShutDown {
+public class UGC implements SCShutDown {
 	
 	/**
 	 * <q>
@@ -77,7 +77,7 @@ public class UGC implements ShutDown {
 	/**
 	 * Creates the UGC.
 	 * 
-	 * @param callback — the callback implementation for this UGC
+	 * @param callback ï¿½ the callback implementation for this UGC
 	 */
 	UGC(SteamUGCCallback callback) {
 
@@ -214,9 +214,9 @@ public class UGC implements ShutDown {
 	 * 	) onUGCQueryCompleted} call result.
 	 * </p>
 	 * 
-	 * @param query — the UGC query handle to get the results from
-	 * @param index — the index of the item to get the details of
-	 * @param details — returns the the UGC details
+	 * @param query ï¿½ the UGC query handle to get the results from
+	 * @param index ï¿½ the index of the item to get the details of
+	 * @param details ï¿½ returns the the UGC details
 	 * @return {@code true} upon success, indicates that {@code details} has been filled out, otherwise, {@code false} if the UGC query handle is
 	 * 		   is invalid of {@code index} is out of bounds. 
 	 * @see com.codedisaster.steamworks.SteamUGC#getQueryUGCResult(
@@ -479,8 +479,8 @@ public class UGC implements ShutDown {
 	 * 	{@link UGC#sendQueryUGCRequest(SteamUGCQuery) sendQueryUGCRequest(SteamUGCQuery)}.
 	 * </p>
 	 * 
-	 * @param query — the UGC query handle to customize 
-	 * @param maxAgeSeconds — the maximum amount of time that an item can be returned without a cache invalidation
+	 * @param query ï¿½ the UGC query handle to customize 
+	 * @param maxAgeSeconds ï¿½ the maximum amount of time that an item can be returned without a cache invalidation
 	 * @return {@code true} upon success, or {@code false} if {@code query.isValid()} is {@code false}.
 	 * @see com.codedisaster.steamworks.SteamUGC#setAllowCachedResponse(com.codedisaster.steamworks.SteamUGCQuery, int)
 	 */
@@ -606,8 +606,8 @@ public class UGC implements ShutDown {
 	 * 	This must be set before you submit the UGC updat ehandle using {@link UGC#submitItemUpdate(SteamUGCUpdateHandle, String) submitItemUpdate}.
 	 * </p>
 	 * 
-	 * @param update — the workshop item handle to customize
-	 * @param title — the new title of the item
+	 * @param update ï¿½ the workshop item handle to customize
+	 * @param title ï¿½ the new title of the item
 	 * @return {@code true} upon success, {@code false} if {@code update} is invalid.
 	 * @see com.codedisaster.steamworks.SteamUGC#setItemTitle(com.codedisaster.steamworks.SteamUGCUpdateHandle, java.lang.String)
 	 */
@@ -685,8 +685,8 @@ public class UGC implements ShutDown {
 	 * 	This must be set before you submit the UGC update handle using {@link UGC#submitItemUpdate(SteamUGCUpdateHandle, String) submitItemUpdate}.
 	 * </p>
 	 * 
-	 * @param update — the workshop item update handle to customize
-	 * @param tags — the list of tags to set on this item
+	 * @param update ï¿½ the workshop item update handle to customize
+	 * @param tags ï¿½ the list of tags to set on this item
 	 * @return {@code true} upon success, {@code false} if the UGC update {@code handle} is invalid, or if one of the tags is either due to 
 	 * 		   exceeding the maximum length of because it is {@code null}.
 	 * @see com.codedisaster.steamworks.SteamUGC#setItemTags(com.codedisaster.steamworks.SteamUGCUpdateHandle, java.lang.String[])

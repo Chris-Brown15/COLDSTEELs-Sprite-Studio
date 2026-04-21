@@ -2,8 +2,6 @@ package cs.csss.project.io;
 
 import static cs.csss.misc.files.FileOperations.*;
 
-import static cs.core.utils.CSUtils.specify;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -39,8 +37,8 @@ class CTSAFile {
 	/**
 	 * Write constructor for a {@code .ctsa} file. 
 	 * 
-	 * @param animation — an animation to write
-	 * @param project — a project owning {@code animation}
+	 * @param animation ï¿½ an animation to write
+	 * @param project ï¿½ a project owning {@code animation}
 	 */
 	public CTSAFile(Animation animation , CSSSProject project) {
 		
@@ -53,7 +51,7 @@ class CTSAFile {
 	/**
 	 * Read constructor for a {@code .ctsa} file. 
 	 * 
-	 * @param filepath — filepath for reading
+	 * @param filepath ï¿½ filepath for reading
 	 */
 	public CTSAFile(String filepath) {
 		
@@ -97,8 +95,8 @@ class CTSAFile {
 	
 	void read() throws IOException {
 		
-		specify(Files.exists(Paths.get(readFilePath)) , readFilePath + " does not name a file path.");
-		specify(readFilePath.endsWith(FILE_EXTENSION) , readFilePath + " does not have the .ctsa file path.");
+		assert Files.exists(Paths.get(readFilePath)) : readFilePath + " does not name a file path.";
+		assert readFilePath.endsWith(FILE_EXTENSION) : readFilePath + " does not have the .ctsa file path.";
 		
 		try(FileInputStream reader = new FileInputStream(readFilePath)) {
 			

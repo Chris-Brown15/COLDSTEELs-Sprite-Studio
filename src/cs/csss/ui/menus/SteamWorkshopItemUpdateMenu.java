@@ -6,23 +6,25 @@ package cs.csss.ui.menus;
 import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
 import static org.lwjgl.nuklear.Nuklear.nk_selectable_text;
 
+import java.io.File;
 import java.io.IOException;
+
+import org.lwjgl.system.MemoryStack;
 
 import com.codedisaster.steamworks.SteamPublishedFileID;
 
-import static cs.core.ui.CSUIConstants.*;
+import static sc.core.ui.SCUIConstants.*;
 
 import static cs.csss.ui.utils.UIUtils.toByte;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSGroup;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
-import cs.core.utils.CSFileUtils;
 import cs.csss.engine.Engine;
 import cs.csss.misc.files.CSFolder;
 import cs.csss.steamworks.WorkshopItemData;
 import cs.ext.steamworks.Friends;
+import sc.core.ui.SCElements.SCUI.SCDynamicRow;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCGroup;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCTextEditor;
+import sc.core.ui.SCNuklear;
 
 /**
  * Menu for updating a Steam workshop item.
@@ -37,42 +39,60 @@ public class SteamWorkshopItemUpdateMenu extends EditWorkshopItemMenu {
 	
 	private WorkshopItemData item;
 		
-	private CSTextEditor changelogInput;
+	private SCTextEditor changelogInput;
 	
 	/**
 	 * 
-	 * @param nuklear — the Nuklear factory
+	 * @param nuklear the Nuklear factory
 	 */
-	public SteamWorkshopItemUpdateMenu(CSNuklear nuklear , Friends friends , Engine engine) {
+	public SteamWorkshopItemUpdateMenu(SCNuklear nuklear , Friends friends , Engine engine) {
 
 		super(nuklear , friends , width , height , false);
 		
 //		engine.getCreatedWorkshopItems();
 		
-		CSGroup selectItemGroup = ui.new CSDynamicRow(175).new CSGroup("Select a workshop item to update.");
-		selectItemGroup.ui.options |= UI_BORDERED|UI_TITLED;
-		selectItemGroup.ui.attachedLayout((context , stack) -> {
+		SCGroup selectItemGroup = ui.new SCDynamicRow(175).new SCGroup("Select a workshop item to update.");
+		selectItemGroup.ui.flags |= UI_BORDERED|UI_TITLED;
+		selectItemGroup.ui.attachedLayout((context) -> {
 			
-			CSFolder creationsFolder = CSFolder.getRoot("program").getOrCreateSubdirectory("workshop").getOrCreateSubdirectory("creations");
+			CSFolder creationsFolder = CSFolder.getRoot("program")
+				.getOrCreateSubdirectory("workshop")
+				.getOrCreateSubdirectory("creations");
+			
 			creationsFolder.subdirectories().forEachRemaining(x -> {
 				
-				nk_layout_row_dynamic(context , 20 , 1);				
-				if(nk_selectable_text(context , x.name , TEXT_LEFT|TEXT_MIDDLE , toByte(stack , item != null && x.name.equals(item.title())))) {
-					
-					try {
+				try(MemoryStack stack = MemoryStack.stackPush()) {
+
+					nk_layout_row_dynamic(context , 20 , 1);				
+					final int textFlags = TEXT_LEFT|TEXT_MIDDLE;
+					if(nk_selectable_text(context , x.name , textFlags , toByte(stack , item != null && x.name.equals(item.title())))) {
 						
-						CSFolder uploadFolder = creations.getSubdirectory(x.name).getSubdirectory("meta");						
-						item = WorkshopItemData.loadWorkshopMeta(uploadFolder.getRealPath() + CSFolder.separator + x.name + WorkshopItemData.metaFileExtension);
-						nameInput.setStringBuffer(item.title());
-						descriptionEditor.setStringBuffer(item.description());
-						previewImageFilePath = item.previewImagePath();
-						if(item.previewImagePath().equals("null")) previewImageFilePath = null;
-						else uiFileName = CSFileUtils.toExtendedName(previewImageFilePath);
-						scriptFilePath = item.sourceScriptPath();						
-						
-					} catch (IOException e) {
-						
-						e.printStackTrace();
+						try {
+							
+							CSFolder uploadFolder = creations.getSubdirectory(x.name).getSubdirectory("meta");						
+							String metaFilePath = 
+								uploadFolder.getRealPath() + 
+								CSFolder.separator + 
+								x.name + 
+								WorkshopItemData.metaFileExtension;
+							
+							item = WorkshopItemData.loadWorkshopMeta(metaFilePath);
+							nameInput.setStringBuffer(item.title());
+							descriptionEditor.setStringBuffer(item.description());
+							previewImageFilePath = item.previewImagePath();
+							if(item.previewImagePath().equals("null")) previewImageFilePath = null;
+							else { 
+								
+								uiFileName = new File(previewImageFilePath).getName();
+								
+							}
+							scriptFilePath = item.sourceScriptPath();						
+							
+						} catch (IOException e) {
+							
+							e.printStackTrace();
+							
+						}
 						
 					}
 					
@@ -88,21 +108,21 @@ public class SteamWorkshopItemUpdateMenu extends EditWorkshopItemMenu {
 		createScriptSelect();
 		createVisibilitySelection();
 
-		CSDynamicRow changelogRow = ui.new CSDynamicRow();
-		changelogRow.new CSText("Change Note:" , TEXT_LEFT|TEXT_CENTERED);
-		changelogInput = changelogRow.new CSTextEditor(99 , CSNuklear.NO_FILTER);
+		SCDynamicRow changelogRow = ui.new SCDynamicRow();
+		changelogRow.new SCText("Change Note:" , TEXT_LEFT|TEXT_CENTERED);
+		changelogInput = changelogRow.new SCTextEditor(99 , SCNuklear.NO_FILTER);
 		
 		createWorkshopLegalAgreementButton();		
 				
-	 	CSDynamicRow finishRow = ui.new CSDynamicRow();
-		finishRow.new CSButton("Update" , () -> {
+	 	SCDynamicRow finishRow = ui.new SCDynamicRow();
+		finishRow.new SCButton("Update" , () -> {
 			
 			readyToClose = finishedValidly = tryFinish();
 			if(readyToClose) onFinish();
 			
 		});
 		
-		finishRow.new CSButton("Cancel" , () -> {
+		finishRow.new SCButton("Cancel" , () -> {
 			
 			readyToClose = true;
 			super.onFinish();
@@ -112,8 +132,8 @@ public class SteamWorkshopItemUpdateMenu extends EditWorkshopItemMenu {
 	}
 	
 	/**
-	 * Returns whether this menu is ready to close, which will be the case if the Cancel button was pressed or the Update button was pressed and the
-	 * menu is in a state to return all the data needed to update the item.
+	 * Returns whether this menu is ready to close, which will be the case if the Cancel button was pressed or the Update button was 
+	 * pressed and the menu is in a state to return all the data needed to update the item.
 	 * 
 	 * @return Whether this menu is ready to close.
 	 */
@@ -157,8 +177,8 @@ public class SteamWorkshopItemUpdateMenu extends EditWorkshopItemMenu {
 	}
 	
 	/**
-	 * Gets and returns the input to the changelog field. This can also return {@code null} if no input was given, which the Steam API takes to mean
-	 * no changelog should be attached to this update.
+	 * Gets and returns the input to the changelog field. This can also return {@code null} if no input was given, which the Steam API 
+	 * takes to mean no changelog should be attached to this update.
 	 * 
 	 * @return Changelog input.
 	 */

@@ -7,12 +7,12 @@ import java.util.Objects;
 
 import org.lwjgl.nuklear.NkCursor;
 
-import cs.core.utils.ShutDown;
+import sc.core.SCShutDown;
 
 /**
  * Container for a cursor and its texture object.
  */
-public class NkCursorAndNkImageAndTexture implements ShutDown {
+public class NkCursorAndNkImageAndTexture implements SCShutDown {
 
 	private final NkCursor cursor;
 	private final NkImageAndTexture texture;

@@ -1,6 +1,6 @@
 package cs.csss.editor.ui;
 
-import static cs.core.ui.CSUIConstants.*;
+import static sc.core.ui.SCUIConstants.*;
 import static cs.csss.ui.utils.UIUtils.toolTip;
 
 import java.util.Arrays;
@@ -10,7 +10,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 import java.util.function.Function;
-
+import static org.lwjgl.nuklear.Nuklear.NK_RGB;
+import static org.lwjgl.nuklear.Nuklear.NK_RGBA;
 import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
 import static org.lwjgl.nuklear.Nuklear.nk_propertyi;
 import static org.lwjgl.nuklear.Nuklear.nk_text;
@@ -19,13 +20,6 @@ import org.joml.Vector4f;
 import org.lwjgl.nuklear.NkColor;
 import org.lwjgl.system.MemoryStack;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUI.CSLayout;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSButton;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSColorPicker;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
-import cs.core.ui.CSNuklear.CSUI.CSRow;
 import cs.csss.editor.DebugDisabledException;
 import cs.csss.editor.Editor;
 import cs.csss.editor.brush.CSSSBrush;
@@ -38,21 +32,27 @@ import cs.csss.engine.Engine;
 import cs.csss.engine.Logging;
 import cs.csss.project.Artboard;
 import cs.csss.project.CSSSProject;
-import cs.csss.ui.elements.CSSpacer;
 import cs.csss.ui.menus.DialogueInputBox;
-import cs.core.ui.CSNuklear.CSUserInterface;
-import cs.core.ui.prefabs.InputBox;
-import cs.core.utils.CSUtils;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCElements.SCUI.SCDynamicRow;
+import sc.core.ui.SCElements.SCUI.SCLayout;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCButton;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCRadio;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCSpacer;
+import sc.core.ui.SCElements.SCUI.SCRow;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCColorPicker;
+import sc.core.ui.SCNuklear;
+import sc.core.ui.prefabs.SCBasicInputBox;
 
 /**
  * Left hand side panel. This panel contains buttons and UI elements for modifying artboards.
  */
 public class LHSPanel {
 
-	private final CSUserInterface ui;
-	private final CSNuklear nuklear;
+	private final SCUserInterface ui;
+	private final SCNuklear nuklear;
 	
-	private CSColorPicker rgbaChooser , rgbChooser;
+	private SCColorPicker rgbaChooser , rgbChooser;
 	private TwoChannelColorPicker twoDColor; 
 
 	private final Editor editor;
@@ -62,37 +62,37 @@ public class LHSPanel {
 	/**
 	 * Creates a left hand side panel.
 	 * 
-	 * @param editor — the editor
-	 * @param nuklear — Nuklear factory
+	 * @param editor the editor
+	 * @param nuklear Nuklear factory
 	 */
-	public LHSPanel(Editor editor , CSNuklear nuklear) {
+	public LHSPanel(Editor editor , SCNuklear nuklear) {
 
 		this.editor = editor;
 		this.nuklear = nuklear;
-		ui = nuklear.new CSUserInterface("Editor" , 0.001f , -1f , 0.199f , .90f);
-		ui.setDimensions(ui.xPosition() , 77 , ui.interfaceWidth() , ui.interfaceHeight());
-		ui.options = UI_BORDERED|UI_TITLED|UI_ICONIFYABLE;
+		ui = new SCUserInterface(nuklear , "Editor" , 0.001f , -1f , 0.199f , .90f);
+		ui.positioner.xRatio(0.001f).topY(77);		
+		ui.flags = UI_BORDERED|UI_TITLED|UI_ICONIFYABLE;
 		
-		CSDynamicRow addProjectRow = ui.new CSDynamicRow();
-		addProjectRow.new CSButton("New Project" , editor::startNewProject);
+		SCDynamicRow addProjectRow = ui.new SCDynamicRow();
+		addProjectRow.new SCButton("New Project" , editor::startNewProject);
 		
 		addProjectRow.doLayout = () -> editor.project() == null;
 		
 		Engine.THE_TEMPORAL.onTrue(() -> editor.project() != null , () -> {
 
-			CSDynamicRow rgbaColorRow = ui.new CSDynamicRow(200);
-			CSDynamicRow rgbColorRow = ui.new CSDynamicRow(200);
-			CSDynamicRow grayColorRow = ui.new CSDynamicRow(200);
+			SCDynamicRow rgbaColorRow = ui.new SCDynamicRow(200);
+			SCDynamicRow rgbColorRow = ui.new SCDynamicRow(200);
+			SCDynamicRow grayColorRow = ui.new SCDynamicRow(200);
 			
-			rgbaChooser = rgbaColorRow.new CSColorPicker(RGBA);
-			rgbChooser = rgbColorRow.new CSColorPicker(RGB);
+			rgbaChooser = rgbaColorRow.new SCColorPicker(NK_RGBA);
+			rgbChooser = rgbColorRow.new SCColorPicker(NK_RGB);
 			twoDColor = new TwoChannelColorPicker(nuklear.context() , grayColorRow);
 			
 			rgbaColorRow.doLayout = () -> channels() == 4;
 			rgbColorRow.doLayout = () -> channels() == 3;
 			grayColorRow.doLayout = () -> channels() <= 2;
 			
-			ui.attachedLayout((context , stack) -> {
+			ui.attachedLayout((context) -> {
 				
 				int channels = channels();
 				
@@ -111,10 +111,10 @@ public class LHSPanel {
 				
 			});
 			
-			CSDynamicRow grayRow = ui.new CSDynamicRow(30) ; grayRow.doLayout = () -> channels() == 1 || channels() == 2;
-			CSDynamicRow rgbRow = ui.new CSDynamicRow(30) ; rgbRow.doLayout = () -> channels() >= 3; 
-			CSDynamicRow alphaRow1 = ui.new CSDynamicRow(30) ; alphaRow1.doLayout = () -> channels() == 4;
-			CSDynamicRow alphaRow2 = ui.new CSDynamicRow(30) ; alphaRow2.doLayout = () -> channels() == 2;
+			SCDynamicRow grayRow = ui.new SCDynamicRow(30) ; grayRow.doLayout = () -> channels() == 1 || channels() == 2;
+			SCDynamicRow rgbRow = ui.new SCDynamicRow(30) ; rgbRow.doLayout = () -> channels() >= 3; 
+			SCDynamicRow alphaRow1 = ui.new SCDynamicRow(30) ; alphaRow1.doLayout = () -> channels() == 4;
+			SCDynamicRow alphaRow2 = ui.new SCDynamicRow(30) ; alphaRow2.doLayout = () -> channels() == 2;
 			colorInput("Gray" , 0 , grayRow);			
 			colorInput("Alpha" , 1 , alphaRow2);
 			colorInput("Red" , 0 , rgbRow);
@@ -122,13 +122,13 @@ public class LHSPanel {
 			colorInput("Blue" , 2 , rgbRow);
 			colorInput("Alpha" , 3 , alphaRow1);
 			
-			CSDynamicRow wholeColorButtonRow = ui.new CSDynamicRow(30) ; wholeColorButtonRow.doLayout = () -> channels() > 1;
-			wholeColorButtonRow.new CSButton("Input Whole Color" , this::startWholeColorInput);
+			SCDynamicRow wholeColorButtonRow = ui.new SCDynamicRow(30) ; wholeColorButtonRow.doLayout = () -> channels() > 1;
+			wholeColorButtonRow.new SCButton("Input Whole Color" , this::startWholeColorInput);
 			
 			/*
 			 * Auto Palette
 			 */
-			ui.attachedLayout((context , stack) -> {
+			ui.attachedLayout((context) -> {
 				
 				List<ColorPixel> currentPalette = editor.currentPaletteColorsAsList();
 				
@@ -141,12 +141,16 @@ public class LHSPanel {
 					nk_text(context , "Recent Colors:" , TEXT_LEFT|TEXT_CENTERED);
 					
 					nk_layout_row_dynamic(context , 30 , 15);
-										
-					for(ListIterator<ColorPixel> iter = currentPalette.listIterator(0) ; iter.hasNext() ; ) {
 						
-						ColorPixel x = iter.next();
-						if(nk_button_color(context , colorForCurrentChannels(x , stack))) editor.setSelectedColor(x);
+					try(MemoryStack stack = MemoryStack.stackPush()) {
 						
+						for(ListIterator<ColorPixel> iter = currentPalette.listIterator(0) ; iter.hasNext() ; ) {
+							
+							ColorPixel x = iter.next();
+							if(nk_button_color(context , colorForCurrentChannels(x , stack))) editor.setSelectedColor(x);
+							
+						}
+					
 					}
 					
 				}
@@ -157,10 +161,12 @@ public class LHSPanel {
 			 * Color Palettes
 			 */
 	
-			ui.attachedLayout((context , stack) -> {
+			ui.attachedLayout((context) -> {
 				
 				Artboard currentArtboard = editor.currentArtboard();
 				if(currentArtboard == null) return;
+
+				MemoryStack stack = MemoryStack.stackPush();
 				
 				Iterator<ColorPalette> generators = ColorPalette.palettes();
 				while(generators.hasNext()) {
@@ -198,21 +204,23 @@ public class LHSPanel {
 					
 					nk_layout_row_dynamic(context , 30 , 15);
 					for(ColorPixel x : pixels) if(nk_button_color(context , colorForCurrentChannels(x , stack))) editor.setSelectedColor(x);
-				
+					
 				}
 				
 				nk_layout_row_dynamic(context , 30 , 2);
 				nk_text(context , "Selected Color: " , TEXT_CENTERED|TEXT_LEFT);
 				ColorPixel currentColor = (ColorPixel)editor.selectedColorValues();
 				nk_button_color(context , colorForCurrentChannels(currentColor , stack));	
-				
+
+				stack.close();
+			
 			});
 			
 			/*
 			 * Cursor Artboard Positions
 			 */
 			
-			ui.attachedLayout((context , stack) -> {
+			ui.attachedLayout((context) -> {
 				
 				CSSSProject project = editor.project(); 
 				Artboard current = project != null ? project.currentArtboard() : null;
@@ -243,22 +251,22 @@ public class LHSPanel {
 				CSSSBrush finalIter = iter;
 				
 				String uiText = radioTextFromBrushName(iter);
-				CSDynamicRow row = ui.new CSDynamicRow(25);
-				CSRadio newRadio = row.new CSRadio(uiText , () -> editor.currentBrush() == finalIter , () -> editor.setBrushTo(finalIter));	
+				SCDynamicRow row = ui.new SCDynamicRow(25);
+				SCRadio newRadio = row.new SCRadio(uiText , () -> editor.currentBrush() == finalIter , () -> editor.setBrushTo(finalIter));	
 				toolTip(newRadio , iter.toolTip);
 				
 				if(finalIter instanceof CSSSObjectBrush<?> asObjectBrush) {
 					
 					Set<String> objectNames = asObjectBrush.objectNames();
-					LinkedList<CSRadio> brushOptionsList = new LinkedList<>();
+					LinkedList<SCRadio> brushOptionsList = new LinkedList<>();
 					objectNames.forEach(string -> {
 						
-						CSRow itemRow = ui.new CSRow(30) ; itemRow.doLayout = () -> editor.currentBrush() == finalIter;
+						SCRow itemRow = ui.new SCRow(30) ; itemRow.doLayout = () -> editor.currentBrush() == finalIter;
 						itemRow.pushWidth(0.15f);
 						itemRow.pushWidth(0.77f);
-						CSSpacer spacer = new CSSpacer(itemRow , nuklear.context());
+						SCSpacer spacer = itemRow.new SCSpacer();
 						itemRow.add(spacer);
-						CSRadio option = itemRow.new CSRadio(
+						SCRadio option = itemRow.new SCRadio(
 							string , 
 							asObjectBrush.activeDescriptorName().equals(string) , 
 							() -> asObjectBrush.activeDescriptor(string)
@@ -268,45 +276,47 @@ public class LHSPanel {
 						
 					});
 					
-					CSRadio.groupAll(brushOptionsList.toArray(CSRadio[]::new));
+					SCRadio.groupAll(brushOptionsList.toArray(SCRadio[]::new));
 					
 				}
 				
 			}
 			
 			//script brushes next
-			CSDynamicRow scriptBrushRow = ui.new CSDynamicRow(30);						
-			CSRadio simpleBrushRadio = scriptBrushRow.new CSRadio(
+			SCDynamicRow scriptBrushRow = ui.new SCDynamicRow(30);						
+			SCRadio simpleBrushRadio = scriptBrushRow.new SCRadio(
 				"Script Brush" , 
 				() -> editor.currentBrush() != null && editor.currentBrush() == Editor.theScriptBrush2() , 
 				() -> editor.setBrushTo(Editor.theScriptBrush2()));
 			
-			scriptBrushRow.new CSButton("Select" , () -> editor.startSelectSimpleScriptBrush2(simpleBrushRadio));
+			scriptBrushRow.new SCButton("Select" , () -> editor.startSelectSimpleScriptBrush2(simpleBrushRadio));
 			
-			CSDynamicRow modifyingScriptBrushRow = ui.new CSDynamicRow(30);
-			CSRadio scriptModifyingBrushRadio = modifyingScriptBrushRow.new CSRadio(
+			SCDynamicRow modifyingScriptBrushRow = ui.new SCDynamicRow(30);
+			SCRadio scriptModifyingBrushRadio = modifyingScriptBrushRow.new SCRadio(
 				"Modifying Script Brush" , 
 				() -> editor.currentBrush() != null && editor.currentBrush() == Editor.theModifyingScriptBrush2() , 
 				() -> editor.setBrushTo(Editor.theModifyingScriptBrush2()));
 
-			modifyingScriptBrushRow.new CSButton("Select" , () -> editor.startSelectModifyingScriptBrush2(scriptModifyingBrushRadio));
+			modifyingScriptBrushRow.new SCButton("Select" , () -> editor.startSelectModifyingScriptBrush2(scriptModifyingBrushRadio));
 			
-			CSDynamicRow selectingBrushRow = ui.new CSDynamicRow(30);
-			CSRadio scriptSelectingBrushRadio = selectingBrushRow.new CSRadio(
+			SCDynamicRow selectingBrushRow = ui.new SCDynamicRow(30);
+			SCRadio scriptSelectingBrushRadio = selectingBrushRow.new SCRadio(
 				"Selecting Script Brush" , 
 				() -> editor.currentBrush() != null && editor.currentBrush() == Editor.theSelectingScriptBrush2() , 
 				() -> editor.setBrushTo(Editor.theSelectingScriptBrush2()));
 
-			selectingBrushRow.new CSButton("Select" , () -> editor.startSelectSelectingScriptBrush2(scriptSelectingBrushRadio));
+			selectingBrushRow.new SCButton("Select" , () -> editor.startSelectSelectingScriptBrush2(scriptSelectingBrushRadio));
 
 			//this is a slider that lets you modify the brush radius if the brush is a modifying brush
-			ui.attachedLayout((context , stack) -> {
+			ui.attachedLayout((context) -> {
 							
 				if(editor.currentBrush() instanceof CSSSModifyingBrush) {
 				
 					CSSSModifyingBrush asModifying = (CSSSModifyingBrush) editor.currentBrush();					
 					nk_layout_row_dynamic(context , 30 , 1);									
-					asModifying.radius(nk_propertyi(context , "Brush Radius" , 1 , asModifying.radius() + 1 , editor.maxBrushRadius() , 1 , 1) - 1);
+					asModifying.radius(
+						nk_propertyi(context , "Brush Radius" , 1 , asModifying.radius() + 1 , editor.maxBrushRadius() , 1 , 1) - 1
+					);
 					
 				}
 				
@@ -326,9 +336,9 @@ public class LHSPanel {
 
 		if(Engine.isDebug()) {
 			
-			CSDynamicRow debugProjectRow = ui.new CSDynamicRow();
+			SCDynamicRow debugProjectRow = ui.new SCDynamicRow();
 			
-			debugProjectRow.new CSButton("add debug proj" , () -> {
+			debugProjectRow.new SCButton("add debug proj" , () -> {
 
 				try {
 
@@ -343,7 +353,7 @@ public class LHSPanel {
 		
 			debugProjectRow.doLayout = () -> editor.project() == null;
 			
-			ui.new CSDynamicRow().new CSButton("Arrange Animations" , () -> {
+			ui.new SCDynamicRow().new SCButton("Arrange Animations" , () -> {
 				
 				CSSSProject project = editor.project();				
 				if(project != null) project.arrangeArtboards();
@@ -354,24 +364,23 @@ public class LHSPanel {
 		
 	}	
 	
-	private void colorInput(final String color , int index , CSLayout layout) {
+	private void colorInput(final String color , int index , SCLayout layout) {
 		
-		CSButton button = layout.new CSButton("Input " + color , () -> {
+		SCButton button = layout.new SCButton("Input " + color , () -> {
 			
 			boolean hexWhenStarted = editor.colorInputsAreHex();
 			
-			new InputBox(
+			SCBasicInputBox box = new SCBasicInputBox(
 				nuklear , 
 				"Input " + color + " Value" , 
-				.4f , 
-				0.4f , 
-				hexWhenStarted ? 3 : 4 , 
-				hexWhenStarted ? CSNuklear.HEX_FILTER : CSNuklear.DECIMAL_FILTER , 
+				null , 
+				"Accept" , 
+				hexWhenStarted ? SCNuklear.HEX_FILTER : SCNuklear.DECIMAL_FILTER , 
 				res -> {
 				
 				if(res.length() == 0) return;
 				
-				int value = hexWhenStarted ? CSUtils.parseHexInt(res, 0, res.length()) : Integer.parseInt(res);
+				int value = hexWhenStarted ? Integer.parseInt(res, 16) : Integer.parseInt(res);
 				
 				if(channels() < 3) { 
 					
@@ -382,11 +391,13 @@ public class LHSPanel {
 					
 					byte[] colors = colors();
 					colors[index] = (byte) value;					
-					rgbPicker().color(colors[0], colors[1], colors[2], channels() == 4 ? colors[3] : (byte)0xff);
+					rgbPicker().setColor(colors[0], colors[1], colors[2], channels() == 4 ? colors[3] : (byte)0xff);
 					
 				}				
 				
-			});
+			} , hexWhenStarted ? 3 : 4);
+			
+			box.ui.positioner.widthRatio(.2f).heightRatio(.16f).xRatio(.25f).yRatio(.25f);
 			
 		});
 		
@@ -398,14 +409,14 @@ public class LHSPanel {
 	/**
 	 * Creates and returns an array of colors.
 	 * 
-	 * @param colors — destination for color values
+	 * @param colors destination for color values
 	 * @return {@code colors} after writing.
 	 */
 	public byte[] colors(byte[] colors) {
 				
 		if(channels() > 2) {
 			
-			Vector4f colorVector = rgbPicker().color();
+			Vector4f colorVector = new Vector4f(rgbPicker().colorAsFloats());
 			for(int i = 0 ; i < colors.length ; i++) colors[i] = (byte) (colorVector.get(i) * 255);
 			return colors;
 			
@@ -434,7 +445,7 @@ public class LHSPanel {
 	/**
 	 * Sets the color of the color picker.
 	 * 
-	 * @param pixel — a new color  
+	 * @param pixel a new color  
 	 */
 	public void setColor(ColorPixel pixel) {
 		
@@ -445,7 +456,7 @@ public class LHSPanel {
 	/**
 	 * Sets the color of the color picker.
 	 * 
-	 * @param pixel — a new color  
+	 * @param pixel a new color  
 	 */
 	public void setColor(byte r , byte g, byte b, byte a) {
 		
@@ -454,7 +465,7 @@ public class LHSPanel {
 			twoDColor.gray = (short) Byte.toUnsignedInt(r);
 			if(channels() == 2) twoDColor.alpha = (short) Byte.toUnsignedInt(g);
 			
-		} else rgbPicker().color(r , g, b, a);
+		} else rgbPicker().setColor(r , g, b, a);
 		
 	}
 
@@ -465,7 +476,7 @@ public class LHSPanel {
 	 */
 	public int leftX() {
 		
-		return ui.xPosition();
+		return ui.positioner.leftX();
 		
 	}
 	
@@ -476,7 +487,7 @@ public class LHSPanel {
 	 */
 	public int topY() {
 		
-		return ui.yPosition();
+		return ui.positioner.topY();
 		
 	}
 	
@@ -487,7 +498,7 @@ public class LHSPanel {
 	 */
 	public int width() {
 		
-		return ui.interfaceWidth();
+		return ui.positioner.width();
 		
 	}
 	
@@ -498,7 +509,7 @@ public class LHSPanel {
 	 */
 	public int height() {
 		
-		return ui.interfaceHeight();
+		return ui.positioner.height();
 		
 	}
 	
@@ -524,7 +535,7 @@ public class LHSPanel {
 		
 	}
 	
-	private CSColorPicker rgbPicker() {
+	private SCColorPicker rgbPicker() {
 		
 		return channels() == 4 ? rgbaChooser : rgbChooser;
 		
@@ -577,7 +588,7 @@ public class LHSPanel {
 			.4f , 
 			.4f , 
 			totalChars + 1 , 
-			hexWhenStarted ? CSNuklear.HEX_FILTER : CSNuklear.DECIMAL_FILTER , 
+			hexWhenStarted ? SCNuklear.HEX_FILTER : SCNuklear.DECIMAL_FILTER , 
 			res -> {
 			
 				if(res.length() == 0) return;
@@ -592,7 +603,8 @@ public class LHSPanel {
 					
 				}
 				
-				Function<String , Integer> parse = hexWhenStarted ? string -> CSUtils.parseHexInt(string, 0, charsPerChannel) : Integer::parseInt;
+//				Function<String , Integer> parse = hexWhenStarted ? string -> CSUtils.parseHexInt(string, 0, charsPerChannel) : Integer::parseInt;
+				Function<String , Integer> parse = (input) -> Integer.parseInt(input , hexWhenStarted ? 16 : 10);
 				red = parse.apply(res.substring(0, charsPerChannel));
 				green = parse.apply(res.substring(charsPerChannel, 2 * charsPerChannel));
 				blue = parse.apply(res.substring(2 * charsPerChannel, 3 * charsPerChannel));
@@ -608,7 +620,7 @@ public class LHSPanel {
 						
 					}
 					
-					default -> rgbPicker().color(red / 255f, green / 255f , blue / 255f , alpha / 255f);					
+					default -> rgbPicker().setColor(red / 255f, green / 255f , blue / 255f , alpha / 255f);					
 				}
 				
 		});

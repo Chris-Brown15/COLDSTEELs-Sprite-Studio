@@ -4,17 +4,17 @@ import static org.lwjgl.nuklear.Nuklear.nk_style_push_font;
 import static org.lwjgl.nuklear.Nuklear.nk_style_pop_font;
 import org.lwjgl.nuklear.NkStyle;
 import org.lwjgl.nuklear.NkUserFont;
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUserInterface;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
 
-class SetStyleBeforeBeginUI extends CSUserInterface {
+class SetStyleBeforeBeginUI extends SCUserInterface {
 
-	private final CSNuklear nuklear;
+	private final SCNuklear nuklear;
 	private final NkStyle newStyle;
 	private NkUserFont font;
 	
 	SetStyleBeforeBeginUI(
-		CSNuklear nuklear , 
+		SCNuklear nuklear , 
 		String displayName, 
 		int xPosition, 
 		int yPosition, 
@@ -23,7 +23,7 @@ class SetStyleBeforeBeginUI extends CSUserInterface {
 		NkStyle style
 	) {
 		
-		nuklear.super(displayName, xPosition, yPosition, width, height);
+		super(nuklear , displayName, xPosition, yPosition, width, height);
 		this.nuklear = nuklear;
 		this.newStyle = style;
 		

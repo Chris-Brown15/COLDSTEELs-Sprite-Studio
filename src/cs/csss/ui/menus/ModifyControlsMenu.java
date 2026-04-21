@@ -1,18 +1,17 @@
 package cs.csss.ui.menus;
 
 import static cs.csss.ui.utils.UIUtils.textLength;
-import static cs.core.ui.CSUIConstants.*;
+import static sc.core.ui.SCUIConstants.*;
 
 import java.util.Iterator;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSText;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
-import cs.core.ui.CSNuklear.CSUI.CSRow;
-import cs.core.ui.CSNuklear.CSUserInterface;
-import cs.core.utils.Lambda;
 import cs.csss.engine.Control;
 import cs.csss.engine.Engine;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCText;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCTextEditor;
+import sc.core.ui.SCElements.SCUI.SCRow;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
 
 /**
  * UI menu for modifying the controls of Sprite Studio.
@@ -20,21 +19,20 @@ import cs.csss.engine.Engine;
 public class ModifyControlsMenu extends Dialogue {
 
 	private static final float w = 0.44f , h = .35f;
-	
-	
-	private Lambda onFinish;
+		
+	private Runnable onFinish;
 	
 	/**
 	 * Creates a modify controls menu.
 	 * 
-	 * @param nuklear — the Nuklear factory
-	 * @param engine — the engine
+	 * @param nuklear the Nuklear factory
+	 * @param engine the engine
 	 */
-	public ModifyControlsMenu(CSNuklear nuklear , Engine engine) {
+	public ModifyControlsMenu(SCNuklear nuklear , Engine engine) {
 
-		CSUserInterface ui = nuklear.new CSUserInterface("Controls" , 0.5f - (w / 2) , 0.5f - (h / 2) , w , h);
+		SCUserInterface ui = new SCUserInterface(nuklear , "Controls" , 0.5f - (w / 2) , 0.5f - (h / 2) , w , h);
 		
-		ui.options = UI_TITLED|UI_BORDERED;
+		ui.flags = UI_TITLED|UI_BORDERED;
 		
 		Iterator<Control> iterator = Control.iterator();
 		
@@ -42,19 +40,19 @@ public class ModifyControlsMenu extends Dialogue {
 			
 			Control next = iterator.next();
 			
-			CSRow row = ui.new CSRow(30);
+			SCRow row = ui.new SCRow(30);
 			row.pushWidth(.35f).pushWidth(0.25f).pushWidth(.2f).pushWidth(.15f);
 			
-			CSText controlName = row.new CSText(next.name);
+			SCText controlName = row.new SCText(next.name);
 			
-			controlName.initializeToolTip(MOUSE_PRESSED|HOVERING , MOUSE_RIGHT , 0, textLength(next.toolTip));
-			controlName.toolTip.new CSDynamicRow(20).new CSText(next.toolTip);
+			controlName.initializeToolTip(TOOLTIP_MOUSE_PRESSED|TOOLTIP_HOVERING , MOUSE_RIGHT , 0, textLength(next.toolTip));
+			controlName.toolTip.new SCDynamicRow(20).new SCText(next.toolTip);
 			
-			row.new CSText(() -> next.keyToString());
+			row.new SCText(() -> next.keyToString());
 
-			CSTextEditor newControlInput = row.new CSTextEditor(15);
+			SCTextEditor newControlInput = row.new SCTextEditor(15);
 			
-			row.new CSButton("Set" , () -> {
+			row.new SCButton("Set" , () -> {
 				
 				String result = newControlInput.toString().toUpperCase();
 				next.key(next.keyFromString(result) , !result.contains("MOUSE"));
@@ -71,7 +69,7 @@ public class ModifyControlsMenu extends Dialogue {
 			
 		};
 		
-		ui.new CSDynamicRow().new CSButton("Finish" , onFinish);
+		ui.new SCDynamicRow().new SCButton("Finish" , onFinish);
 		
 	}
 

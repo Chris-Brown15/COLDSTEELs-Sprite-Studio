@@ -103,7 +103,7 @@ public class Ellipse extends Shape {
 		byte z = (byte)0;
 		FlexableGraphic graphic = new FlexableGraphic(imageWidth , imageHeight , channelsPerPixel , new ChannelBuffer(z , z , z  , z));
 		
-		ByteBuffer image = graphic.imageData();
+		ByteBuffer image = graphic.data();
 		
 		int midpoint = (yDiameter * imageWidth * channelsPerPixel) + (xDiameter * channelsPerPixel);
 

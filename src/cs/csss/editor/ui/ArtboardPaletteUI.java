@@ -3,38 +3,39 @@
  */
 package cs.csss.editor.ui;
 
-import static cs.core.graphics.StandardRendererConstants.*;
+import static sc.core.graphics.SCRendererConstants.*;
 
-import static cs.core.ui.CSUIConstants.*;
+import static sc.core.ui.SCUIConstants.*;
 import static org.lwjgl.nuklear.Nuklear.nk_window_get_content_region;
 import static org.lwjgl.opengl.GL11C.GL_SCISSOR_TEST;
 import static org.lwjgl.opengl.GL11C.GL_UNSIGNED_BYTE;
-import static org.lwjgl.opengl.GL11C.GL_RGBA;
 import static org.lwjgl.opengl.GL11C.glDisable;
 import static org.lwjgl.opengl.GL11C.glEnable;
 import static org.lwjgl.opengl.GL11C.glScissor;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSGroup;
-import cs.core.utils.ShutDown;
 import cs.csss.annotation.RenderThreadOnly;
 import cs.csss.editor.Editor;
 import cs.csss.engine.CSSSCamera;
-import cs.csss.misc.graphcs.framebuffer.Framebuffer;
-import cs.csss.misc.graphcs.framebuffer.FramebufferTexture;
+import cs.csss.engine.Engine;
 import cs.csss.project.ArtboardPalette;
-import cs.csss.ui.elements.FullAccessCSUI;
+import sc.core.SCShutDown;
+import sc.core.graphics.SCFramebuffer;
+import sc.core.graphics.SCFramebufferTexture;
+import sc.core.ui.SCElements.SCUI.SCDynamicRow;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCGroup;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
 
 import org.lwjgl.nuklear.NkRect;
+import org.lwjgl.system.MemoryStack;
 
 /**
  * UI menu for containing the artboard palette when it is being rendered.
  */
-public class ArtboardPaletteUI implements ShutDown {
+public class ArtboardPaletteUI implements SCShutDown {
 
-	private final CSNuklear nuklear;
-	private FullAccessCSUI ui;
+	private final SCNuklear nuklear;
+	private SCUserInterface ui;
 	
 	private float[] positions = new float[2];
 	private float[] dimensions = new float[2];
@@ -43,42 +44,48 @@ public class ArtboardPaletteUI implements ShutDown {
 	
 	private CSSSCamera camera;
 	
-	private Framebuffer paletteFramebuffer = new Framebuffer();
-	private FramebufferTexture paletteFramebufferRenderTexture = new FramebufferTexture();
+	private SCFramebuffer paletteSCFramebuffer = new SCFramebuffer();
+	private SCFramebufferTexture paletteSCFramebufferRenderTexture = new SCFramebufferTexture();
 	
 	/**
 	 * Creates a new artboard palette UI.
 	 * 
-	 * @param nuklear — the nuklear factory
-	 * @param left — the left hand side panel
+	 * @param nuklear the nuklear factory
+	 * @param left the left hand side panel
 	 */
-	public ArtboardPaletteUI(CSNuklear nuklear , Editor editor , LHSPanel left) {
+	public ArtboardPaletteUI(SCNuklear nuklear , Editor editor , LHSPanel left) {
 		
-		ui = new FullAccessCSUI(this.nuklear = nuklear, "Current Palette" , 0.203f , -1f , 300 , 300);
+		ui = new SCUserInterface(this.nuklear = nuklear, "Current Palette" , 0.203f , -1f , 300 , 300);
 		nuklear.removeUserInterface(ui);
 		
 		int[] windowDims = editor.windowDimensions();
 		camera = new CSSSCamera(windowDims[0] , windowDims[1]);
 		
-		ui.setDimensions(ui.xPosition(), left.topY(), ui.interfaceWidth(), ui.interfaceHeight());
-		ui.options = UI_TITLED|UI_BORDERED|UI_MOVABLE|UI_SCALABLE|UI_UNSCROLLABLE;
-
-		CSDynamicRow groupRow = ui.new CSDynamicRow(0.75f);
-		CSGroup paletteGroup = groupRow.new CSGroup("UNSEEN");
-		paletteGroup.ui.options |= UI_BORDERED|UI_UNSCROLLABLE;
-//		paletteGroup.ui.new CSDynamicRow(1.0f).new CSUIImage(paletteFramebufferRenderTexture);
+		ui.positioner.topY(left.topY());		
+		ui.flags = UI_TITLED|UI_BORDERED|UI_MOVABLE|UI_SCALABLE|UI_UNSCROLLABLE;
+		
+		SCDynamicRow groupRow = ui.new SCDynamicRow(0.75f);
+		SCGroup paletteGroup = groupRow.new SCGroup("UNSEEN");
+		paletteGroup.ui.flags |= UI_BORDERED|UI_UNSCROLLABLE;
+//		paletteGroup.ui.new SCDynamicRow(1.0f).new CSUIImage(paletteSCFramebufferRenderTexture);
 		
 		
 		//used to resize the group the palette is rendered in when the window is changed.
-		ui.attachedLayout((context , stack) -> {
+		ui.attachedLayout((context) -> {
 
-			NkRect result = NkRect.malloc(stack);
-			nk_window_get_content_region(context , result);
-			groupRow.rowHeight = (int)(result.h() - 76);
+			try(MemoryStack stack = MemoryStack.stackPush()) {
+				
+				NkRect result = NkRect.malloc(stack);
+				nk_window_get_content_region(context , result);
+				groupRow.rowHeight((int)(result.h() - 76));
+			
+			}
 						
 		});
 		
-		paletteGroup.ui.attachedLayout((context , stack) -> {
+		paletteGroup.ui.attachedLayout((context) -> {
+			
+			MemoryStack stack = MemoryStack.stackPush();
 			
 			NkRect result = NkRect.malloc(stack);
 			nk_window_get_content_region(context , result);
@@ -87,10 +94,12 @@ public class ArtboardPaletteUI implements ShutDown {
 			dimensions[0] = result.w();
 			dimensions[1] = result.h();
 			
+			stack.pop();
+			
 		});
 		
-		CSDynamicRow buttonsRow = ui.new CSDynamicRow();
-		buttonsRow.new CSButton("Recenter" , () -> {
+		SCDynamicRow buttonsRow = ui.new SCDynamicRow();
+		buttonsRow.new SCButton("Recenter" , () -> {
 			
 			zoom = 1.0f;
 			xTransform = 0;
@@ -98,24 +107,24 @@ public class ArtboardPaletteUI implements ShutDown {
 			
 		});
 
-		buttonsRow.new CSCheckBox("Modifying Palette Directly" , editor::modifyingPaletteDirectly , editor::toggleDirectPaletteModification);
+		buttonsRow.new SCCheckBox("Modifying Palette Directly" , editor::modifyingPaletteDirectly , editor::toggleDirectPaletteModification);
 		
-		CSDynamicRow slidersRow = ui.new CSDynamicRow();
-		slidersRow.new CSFloatProperty("Horizontal" , 1.0f , 1.0f , -333f , 333f , sliderValue -> xTransform = sliderValue , () -> xTransform);
-		slidersRow.new CSFloatProperty("Vertical" , 1.0f , 1.0f , -222f , 222f , sliderValue -> yTransform = sliderValue , () -> yTransform);
+		SCDynamicRow slidersRow = ui.new SCDynamicRow();
+		slidersRow.new SCFloatProperty("Horizontal" , 1.0f , 1.0f , -333f , 333f , sliderValue -> xTransform = sliderValue , () -> xTransform);
+		slidersRow.new SCFloatProperty("Vertical" , 1.0f , 1.0f , -222f , 222f , sliderValue -> yTransform = sliderValue , () -> yTransform);
 		
 	}
 	
 	/**
 	 * Renders {@code palette} in this UI element, applying a scissor operation so the palette appears inside the UI.
 	 * 
-	 * @param palette — the palette to render
-	 * @param screenHeight — the height of the screen
-	 * @param camera — the camera
+	 * @param palette the palette to render
+	 * @param screenHeight the height of the screen
+	 * @param camera the camera
 	 */
 	@RenderThreadOnly public void renderPaletteInUI(ArtboardPalette palette , int screenHeight) {
 
-//		paletteFramebuffer.activate();
+//		paletteSCFramebuffer.activate();
 		
 		float midX = camera.XscreenCoordinateToWorldCoordinate(midX());
 		float midY = camera.YscreenCoordinateToWorldCoordinate(midY());
@@ -130,7 +139,7 @@ public class ArtboardPaletteUI implements ShutDown {
 	/**
 	 * Enables GL_SCISSOR_TEST and sets the scissor values for this UI element.
 	 * 
-	 * @param screenHeight — screen height
+	 * @param screenHeight screen height
 	 */
 	@RenderThreadOnly public void scissor(int screenHeight) {
 
@@ -176,7 +185,7 @@ public class ArtboardPaletteUI implements ShutDown {
 	 * Zooms the panel in or out based on whether {@code out} is <code>true</code>. The rate it is zoomed out is equal to the default value the 
 	 * camera will zoom in or out, {@code 0.1f * currentZoom}.  
 	 * 
-	 * @param out — whether to zoom out or in
+	 * @param out whether to zoom out or in
 	 */
 	public void zoom(boolean out) {
 		
@@ -209,8 +218,8 @@ public class ArtboardPaletteUI implements ShutDown {
 	/**
 	 * Translates the palette rendered within the menu by the given translations.
 	 * 
-	 * @param x — x translation
-	 * @param y — y translation
+	 * @param x x translation
+	 * @param y y translation
 	 */
 	public void translate(float x , float y) {
 		
@@ -244,8 +253,8 @@ public class ArtboardPaletteUI implements ShutDown {
 	/**
 	 * Returns whether the given screen space coordinates are in bounds for the group item containing the render of the palette.
 	 *  
-	 * @param x — x coordinate to check for being inside this UI
-	 * @param y — y coordinate to check for being inside this UI
+	 * @param x x coordinate to check for being inside this UI
+	 * @param y y coordinate to check for being inside this UI
 	 * @return Whether the coordinate described by {@code x, y} is within this UI. 
 	 */
 	public boolean inBounds(float x , float y) {
@@ -254,28 +263,26 @@ public class ArtboardPaletteUI implements ShutDown {
 		
 	}
 	
-	@RenderThreadOnly public void initializeFramebuffer() {
+	@RenderThreadOnly public void initializeSCFramebuffer() {
 
-		paletteFramebuffer.initialize();
+		paletteSCFramebuffer.initialize();
 		
-		paletteFramebufferRenderTexture.initialize(
+		paletteSCFramebufferRenderTexture.initialize(
 			(int)dimensions[0] , 
 			(int)dimensions[1] , 
 			4 , 
-			GL_RGBA ,
 			GL_UNSIGNED_BYTE , 
 			MIN_FILTER_NEAREST|MAG_FILTER_NEAREST
 		);
 		
-		paletteFramebuffer.addColorAttachment(paletteFramebufferRenderTexture);
+		paletteSCFramebuffer.addColorAttachment(paletteSCFramebufferRenderTexture);
 		
 	}
 	
 	public void onFramebufferResize(int newWidth , int newHeight) {
 		
 		camera.resetProjection(newWidth, newHeight);
-		
-		
+				
 	}
 	
 	public CSSSCamera camera() {
@@ -288,8 +295,9 @@ public class ArtboardPaletteUI implements ShutDown {
 
 		if(isFreed()) return;
 		
-		ui.shutDown();
-		nuklear.removeUserInterface(ui);
+		Engine.THE_TEMPORAL.onTrue(() -> true, ui::shutDown);
+		
+		if(nuklear.hasUserInterface(ui)) nuklear.removeUserInterface(ui);
 		ui = null;
 		
 	}

@@ -7,12 +7,12 @@ import java.util.Objects;
 
 import com.codedisaster.steamworks.SteamUGCQuery;
 
-import cs.core.utils.ShutDown;
+import sc.core.SCShutDown;
 
 /**
  * Container for UGC queries.
  */
-public class UGCQuery implements ShutDown {
+public class UGCQuery implements SCShutDown {
 
 	SteamUGCQuery query;
 	private final UGC ugc;
@@ -20,8 +20,8 @@ public class UGCQuery implements ShutDown {
 	/**
 	 * Creates a UGC query
 	 * 
-	 * @param ugc — source UGC API
-	 * @param query — Steamworks API query object produced from a query
+	 * @param ugc ï¿½ source UGC API
+	 * @param query ï¿½ Steamworks API query object produced from a query
 	 */
 	UGCQuery(UGC ugc , SteamUGCQuery query) {
 		
@@ -37,7 +37,7 @@ public class UGCQuery implements ShutDown {
 	 * 	{@link cs.ext.steamworks.UGC#sendQueryUGCRequest(SteamUGCQuery) sendQueryUGCRequest(SteamUGCQuery)}. 	
 	 * </p>
 	 * 
-	 * @param tag — a tag that must be attached to UGC to receive it
+	 * @param tag ï¿½ a tag that must be attached to UGC to receive it
 	 * @return {@code true} upon success, {@code false} if a failure occurs
 	 */
 	public boolean addRequiredTag(String tag) {

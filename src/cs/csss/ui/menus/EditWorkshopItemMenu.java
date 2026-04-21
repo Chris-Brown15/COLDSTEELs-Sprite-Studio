@@ -3,39 +3,35 @@
  */
 package cs.csss.ui.menus;
 
-import static cs.core.ui.CSUIConstants.EDIT_MULTILINE;
-import static cs.core.ui.CSUIConstants.TEXT_LEFT;
-import static cs.core.ui.CSUIConstants.TEXT_MIDDLE;
-import static cs.core.ui.CSUIConstants.TEXT_CENTERED;
-import static cs.core.ui.CSUIConstants.UI_BORDERED;
-import static cs.core.ui.CSUIConstants.UI_TITLED;
-import static cs.core.ui.CSUIConstants.UI_UNSCROLLABLE;
+import static sc.core.ui.SCUIConstants.*;
 import static cs.csss.ui.utils.UIUtils.toByte;
 import static org.lwjgl.nuklear.Nuklear.nk_layout_row_dynamic;
 import static org.lwjgl.nuklear.Nuklear.nk_selectable_text;
 
+import java.io.File;
 import java.util.Collection;
+
+import org.lwjgl.system.MemoryStack;
 
 import com.codedisaster.steamworks.SteamRemoteStorage;
 import com.codedisaster.steamworks.SteamFriends.OverlayToWebPageMode;
 import com.codedisaster.steamworks.SteamRemoteStorage.PublishedFileVisibility;
 
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSExtendedText;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSGroup;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSRadio;
-import cs.core.ui.CSNuklear.CSUI.CSLayout.CSTextEditor;
-import cs.core.utils.CSFileUtils;
-import cs.core.utils.files.PNG;
 import cs.csss.editor.ScriptType;
 import cs.csss.engine.Engine;
 import cs.csss.misc.files.CSFile;
 import cs.csss.misc.files.CSFolder;
-import cs.csss.ui.elements.FullAccessCSUI;
 import cs.csss.ui.utils.UIUtils;
 import cs.ext.steamworks.Friends;
 import cs.ext.steamworks.UGC;
+import sc.core.binary.SCPNG;
+import sc.core.ui.SCElements.SCUI.SCDynamicRow;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCExtendedText;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCGroup;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCRadio;
+import sc.core.ui.SCElements.SCUI.SCLayout.SCTextEditor;
+import sc.core.ui.SCElements.SCUserInterface;
+import sc.core.ui.SCNuklear;
 
 /**
  * Contains common UI elements for creating and updating a Workshop item.
@@ -44,21 +40,21 @@ abstract class EditWorkshopItemMenu extends DroppedFileAcceptingDialogue {
 	
 	protected static final int numberOfTypesOfItemsToUpload = 7 , numberOfVisibilityOptions = 3;
 	
-	protected CSTextEditor nameInput , descriptionEditor;
+	protected SCTextEditor nameInput , descriptionEditor;
 
-	protected CSRadio[] scriptTypeRadios , visibilityOptions;
+	protected SCRadio[] scriptTypeRadios , visibilityOptions;
 
 	protected String name , description , scriptFilePath , previewImageFilePath = null , uiFileName = null;
 	
-	protected CSRadio visibilityType;
+	protected SCRadio visibilityType;
 
 	protected ScriptType type = null;
 	
 	protected SteamRemoteStorage.PublishedFileVisibility visibility = SteamRemoteStorage.PublishedFileVisibility.Public;
 
-	protected final FullAccessCSUI ui;
+	protected final SCUserInterface ui;
 
-	private final CSNuklear nuklear;
+	private final SCNuklear nuklear;
 	
 	private final Friends friends;
 	
@@ -68,12 +64,12 @@ abstract class EditWorkshopItemMenu extends DroppedFileAcceptingDialogue {
 	
 	protected final boolean preventExistingNames; 
 	
-	EditWorkshopItemMenu(CSNuklear nuklear , Friends friends , float width , float height , boolean preventExistingNames) {
+	EditWorkshopItemMenu(SCNuklear nuklear , Friends friends , float width , float height , boolean preventExistingNames) {
 		
 		this.nuklear = nuklear;
 		this.friends = friends;
-		ui = new FullAccessCSUI(nuklear , "Workshop Item Upload" , .5f - (width / 2) , .5f - (height / 2) , width , height);
-		ui.options = UI_TITLED|UI_BORDERED;
+		ui = new SCUserInterface(nuklear , "Workshop Item Upload" , .5f - (width / 2) , .5f - (height / 2) , width , height);
+		ui.flags = UI_TITLED|UI_BORDERED;
 
 		CSFolder workshop = CSFolder.getRoot("program").getOrCreateSubdirectory("workshop");
 		existingNames = workshop.getOrCreateSubdirectory("creations").asFile().list();
@@ -84,14 +80,14 @@ abstract class EditWorkshopItemMenu extends DroppedFileAcceptingDialogue {
 
 	protected void createNameInput() {
 
-		CSDynamicRow nameInputRow = ui.new CSDynamicRow();
-		nameInputRow.new CSText("Workshop Item Name:" , TEXT_LEFT|TEXT_MIDDLE);
-		nameInput = nameInputRow.new CSTextEditor(UGC.PUBLISHED_DOCUMENT_TITLE_MAX , CSNuklear.NO_FILTER);
+		SCDynamicRow nameInputRow = ui.new SCDynamicRow();
+		nameInputRow.new SCText("Workshop Item Name:" , TEXT_LEFT|TEXT_MIDDLE);
+		nameInput = nameInputRow.new SCTextEditor(UGC.PUBLISHED_DOCUMENT_TITLE_MAX , SCNuklear.NO_FILTER);
 		
 		if(!preventExistingNames) return;
 		
 		//hack to ensure the nameInput does not match any existing name
-		ui.attachedLayout((context , stack) -> {
+		ui.attachedLayout((context) -> {
 			
 			name = nameInput.toString();
 			for(String x : existingNames) if(x.equals(name)) { 
@@ -105,9 +101,9 @@ abstract class EditWorkshopItemMenu extends DroppedFileAcceptingDialogue {
 			
 		});
 		
-		CSDynamicRow warning = ui.new CSDynamicRow();
+		SCDynamicRow warning = ui.new SCDynamicRow();
 		warning.doLayout = () -> inputNameMatchesExisting;
-		warning.new CSText(
+		warning.new SCText(
 			() -> name + " already names a workshop item." , 
 			TEXT_LEFT|TEXT_CENTERED , 
 			(byte)0xaa , 
@@ -120,16 +116,16 @@ abstract class EditWorkshopItemMenu extends DroppedFileAcceptingDialogue {
 	
 	protected void createDescriptionInput() {
 		
-		ui.new CSDynamicRow(20).new CSText("Workshop Item Description:" , TEXT_LEFT|TEXT_MIDDLE);
-		descriptionEditor = ui.new CSDynamicRow(175).new CSTextEditor(UGC.PUBLISHED_DOCUMENT_DESCRIPTION_MAX , CSNuklear.NO_FILTER); 
-		descriptionEditor.editorOptions |= EDIT_MULTILINE;
+		ui.new SCDynamicRow(20).new SCText("Workshop Item Description:" , TEXT_LEFT|TEXT_MIDDLE);
+		descriptionEditor = ui.new SCDynamicRow(175).new SCTextEditor(UGC.PUBLISHED_DOCUMENT_DESCRIPTION_MAX , SCNuklear.NO_FILTER); 
+		descriptionEditor.flags |= EDIT_MULTILINE;
 		
 	}
 	
 	protected void createPreviewImageMessage() {
 
-		CSDynamicRow previewImageMessageRow = ui.new CSDynamicRow(20);
-		previewImageMessageRow.new CSText(
+		SCDynamicRow previewImageMessageRow = ui.new SCDynamicRow(20);
+		previewImageMessageRow.new SCText(
 			() -> uiFileName != null ? uiFileName : "Drag a PNG into the window to set it as the preview image." , 
 			TEXT_LEFT|TEXT_MIDDLE ,
 			(byte)0x0 , 
@@ -142,24 +138,24 @@ abstract class EditWorkshopItemMenu extends DroppedFileAcceptingDialogue {
 	
 	protected void createScriptSelect() {
 
-		CSDynamicRow groupsRow = ui.new CSDynamicRow(34 + (numberOfTypesOfItemsToUpload * 26));
-		CSGroup radiosGroup = groupsRow.new CSGroup("Type of Script:");
-		radiosGroup.ui.options |= UI_TITLED|UI_UNSCROLLABLE;
+		SCDynamicRow groupsRow = ui.new SCDynamicRow(34 + (numberOfTypesOfItemsToUpload * 26));
+		SCGroup radiosGroup = groupsRow.new SCGroup("Type of Script:");
+		radiosGroup.ui.flags |= UI_TITLED|UI_UNSCROLLABLE;
 			
-		scriptTypeRadios = new CSRadio[numberOfTypesOfItemsToUpload];
-		scriptTypeRadios[0] = radiosGroup.ui.new CSDynamicRow(20).new CSRadio("Artboard Script" , false , () -> type = ScriptType.ARTBOARD);
-		scriptTypeRadios[5] = radiosGroup.ui.new CSDynamicRow(20).new CSRadio("Project Script" , false , () -> type = ScriptType.PROJECT);
-		scriptTypeRadios[1] = radiosGroup.ui.new CSDynamicRow(20).new CSRadio("Simple Brush Script" , false , () -> type = ScriptType.SIMPLE);
-		scriptTypeRadios[2] = radiosGroup.ui.new CSDynamicRow(20).new CSRadio("Modifying Brush Script" , false , () -> type = ScriptType.MODIFYING);
-		scriptTypeRadios[3] = radiosGroup.ui.new CSDynamicRow(20).new CSRadio("Selecting Brush Script" , false , () -> type = ScriptType.SELECTING);
-		scriptTypeRadios[4] = radiosGroup.ui.new CSDynamicRow(20).new CSRadio("Exporter Script" , false , () -> type = ScriptType.EXPORTER);
-		scriptTypeRadios[6] = radiosGroup.ui.new CSDynamicRow(20).new CSRadio("Palette Script" , false , () -> type = ScriptType.PALETTE);
+		scriptTypeRadios = new SCRadio[numberOfTypesOfItemsToUpload];
+		scriptTypeRadios[0] = radiosGroup.ui.new SCDynamicRow(20).new SCRadio("Artboard Script" , false , () -> type = ScriptType.ARTBOARD);
+		scriptTypeRadios[5] = radiosGroup.ui.new SCDynamicRow(20).new SCRadio("Project Script" , false , () -> type = ScriptType.PROJECT);
+		scriptTypeRadios[1] = radiosGroup.ui.new SCDynamicRow(20).new SCRadio("Simple Brush Script" , false , () -> type = ScriptType.SIMPLE);
+		scriptTypeRadios[2] = radiosGroup.ui.new SCDynamicRow(20).new SCRadio("Modifying Brush Script" , false , () -> type = ScriptType.MODIFYING);
+		scriptTypeRadios[3] = radiosGroup.ui.new SCDynamicRow(20).new SCRadio("Selecting Brush Script" , false , () -> type = ScriptType.SELECTING);
+		scriptTypeRadios[4] = radiosGroup.ui.new SCDynamicRow(20).new SCRadio("Exporter Script" , false , () -> type = ScriptType.EXPORTER);
+		scriptTypeRadios[6] = radiosGroup.ui.new SCDynamicRow(20).new SCRadio("Palette Script" , false , () -> type = ScriptType.PALETTE);
 				
-		CSRadio.groupAll(scriptTypeRadios);
+		SCRadio.groupAll(scriptTypeRadios);
 		
-		CSGroup selectScriptGroup = groupsRow.new CSGroup("Uploadable Scripts");
-		selectScriptGroup.ui.options |= UI_TITLED;
-		selectScriptGroup.ui.attachedLayout((context , stack) -> {
+		SCGroup selectScriptGroup = groupsRow.new SCGroup("Uploadable Scripts");
+		selectScriptGroup.ui.flags |= UI_TITLED;
+		selectScriptGroup.ui.attachedLayout((context) -> {
 
 			if(type == null) return;
 			CSFolder containingFolder = CSFolder.getRoot("program").getSubdirectory("scripts").getOrCreateSubdirectory(type.associatedFolderName);
@@ -169,19 +165,23 @@ abstract class EditWorkshopItemMenu extends DroppedFileAcceptingDialogue {
 				//TODO: also filter out elements that the user is subscribed to, i.e., things they didnt create 
 				.forEach(file -> {
 				
-					nk_layout_row_dynamic(context , 20 , 1);
-					if(nk_selectable_text(
-						context , 
-						file.name() , 
-						TEXT_LEFT|TEXT_MIDDLE , 
-						toByte(stack , scriptFilePath != null && scriptFilePath.equals(file.getRealPath())))
-					) { 
+					try(MemoryStack stack = MemoryStack.stackPush()) {
 						
+						nk_layout_row_dynamic(context , 20 , 1);
+						if(nk_selectable_text(
+							context , 
+							file.name() , 
+							TEXT_LEFT|TEXT_MIDDLE , 
+							toByte(stack , scriptFilePath != null && scriptFilePath.equals(file.getRealPath())))
+						) { 
+							
 						if(scriptFilePath == null) scriptFilePath = file.getRealPath();
 						//deselects
 						else scriptFilePath = null;
-						
+							
 					}
+					
+				}
 					
 			});
 			
@@ -191,13 +191,13 @@ abstract class EditWorkshopItemMenu extends DroppedFileAcceptingDialogue {
 	
 	protected void createVisibilitySelection() {
 
-		ui.new CSDynamicRow(20).new CSText("Visibility:" , TEXT_LEFT|TEXT_MIDDLE);
-		visibilityOptions = new CSRadio[numberOfVisibilityOptions];		
-		visibilityOptions[0] = ui.new CSDynamicRow(20).new CSRadio("Public" , true , () -> visibility = PublishedFileVisibility.Public);		
-		visibilityOptions[1] = ui.new CSDynamicRow(20).new CSRadio("Friends" , false , () -> visibility = PublishedFileVisibility.FriendsOnly);		
-		visibilityOptions[2] = ui.new CSDynamicRow(20).new CSRadio("Private" , false , () -> visibility = PublishedFileVisibility.Private);
+		ui.new SCDynamicRow(20).new SCText("Visibility:" , TEXT_LEFT|TEXT_MIDDLE);
+		visibilityOptions = new SCRadio[numberOfVisibilityOptions];		
+		visibilityOptions[0] = ui.new SCDynamicRow(20).new SCRadio("Public" , true , () -> visibility = PublishedFileVisibility.Public);		
+		visibilityOptions[1] = ui.new SCDynamicRow(20).new SCRadio("Friends" , false , () -> visibility = PublishedFileVisibility.FriendsOnly);		
+		visibilityOptions[2] = ui.new SCDynamicRow(20).new SCRadio("Private" , false , () -> visibility = PublishedFileVisibility.Private);
 		
-		CSRadio.groupAll(visibilityOptions);
+		SCRadio.groupAll(visibilityOptions);
 
 		//visibility tooltips
 		UIUtils.toolTip(visibilityOptions[0], "This item is \"visible to everyone.\"");
@@ -208,13 +208,13 @@ abstract class EditWorkshopItemMenu extends DroppedFileAcceptingDialogue {
 	
 	protected void createWorkshopLegalAgreementButton() {
 
-		CSDynamicRow workshopLegalAgreementAcceptRow = ui.new CSDynamicRow(20);
-		CSExtendedText agreeText = workshopLegalAgreementAcceptRow.new CSExtendedText(
+		SCDynamicRow workshopLegalAgreementAcceptRow = ui.new SCDynamicRow(20);
+		SCExtendedText agreeText = workshopLegalAgreementAcceptRow.new SCExtendedText(
 			"By submitting this item, you agree to the [WLA]."
 		);
 		
 		agreeText.colorLast("[WLA].", 0x5555ffff);
-		agreeText.makeLastClickable("[WLA].", () -> {
+		agreeText.changeLastButtonStatus("[WLA]." , () -> {
 
 			friends.activateGameOverlayToWebPage("https://steamcommunity.com/sharedfiles/workshoplegalagreement", OverlayToWebPageMode.Default);
 						
@@ -234,7 +234,7 @@ abstract class EditWorkshopItemMenu extends DroppedFileAcceptingDialogue {
 		if(type == null) return false;
 				
 		visibilityType = null;
-		for(CSRadio x : visibilityOptions) if(x.checked()) visibilityType = x;
+		for(SCRadio x : visibilityOptions) if(x.checked()) visibilityType = x;
 		if(visibilityType == null) return false;
 		
 		if(scriptFilePath == null) return false;
@@ -339,7 +339,7 @@ abstract class EditWorkshopItemMenu extends DroppedFileAcceptingDialogue {
 		if(!path.endsWith("png")) return;
 		try {
 			
-			PNG loadedPNG = new PNG(path);
+			SCPNG loadedPNG = new SCPNG(path);
 			loadedPNG.shutDown();
 			
 		} catch(Exception e ) {
@@ -348,9 +348,9 @@ abstract class EditWorkshopItemMenu extends DroppedFileAcceptingDialogue {
 			return;
 		}
 		
-		previewImageFilePath = path;
-		uiFileName = CSFileUtils.toExtendedName(path);
-		
+		previewImageFilePath = path;		
+		uiFileName = new File(path).getName();
+				
 	}
 
 }

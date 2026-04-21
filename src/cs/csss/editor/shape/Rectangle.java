@@ -77,7 +77,7 @@ public class Rectangle extends Shape {
 		byte z = (byte)0;
 		FlexableGraphic graphic = new FlexableGraphic(textureWidth, textureHeight , channels() , new ChannelBuffer(z , z , z , z));
 		
-		ByteBuffer image = graphic.imageData();
+		ByteBuffer image = graphic.data();
 		
 		//vertical lines
 		for(int row = 0 ; row < textureHeight ; row++) {

@@ -19,7 +19,7 @@ public class Logging {
 	public static final String OBJECT_STRING_SEPARATOR = ", ";
 	private static final String DEBUG_PRINT_PREFIX = "[DEBUG] " , LOG_FILE_TYPE = ".txt";
 	private static final PrintStream stdOut = System.out , stdErr = System.err;
-	private static PrintStream fileOut , fileErr;
+	static PrintStream fileOut , fileErr;
 	
 	static void initialize(boolean printToFile) throws IOException {
 		
@@ -41,7 +41,7 @@ public class Logging {
 	/**
 	 * Prints the given objects followed by a line feed.
 	 * 
-	 * @param x — objects to print
+	 * @param x objects to print
 	 */
 	public static void sysoutln(Object... x) {
 		
@@ -63,7 +63,7 @@ public class Logging {
 	/**
 	 * Prints the given objects in the error output followed by a line feed.
 	 * 
-	 * @param x — objects to print
+	 * @param x objects to print
 	 */
 	public static void syserrln(Object... x) {
 
@@ -85,7 +85,7 @@ public class Logging {
 	/**
 	 * If {@link Engine#isDebug() Engine.isDebug()}, the given objects are printed as error with a line feed at the end. Otherwise, nothing happens.
 	 * 
-	 * @param x — objects to print
+	 * @param x objects to print
 	 */
 	public static void sysDebugln(Object... x) {
 		
@@ -97,7 +97,7 @@ public class Logging {
 	 * If {@link Engine#isDebug() Engine.isDebug()}, the given objects are printed as error without a line feed at the end. Otherwise, nothing 
 	 * happens.
 	 * 
-	 * @param x — objects to print
+	 * @param x objects to print
 	 */
 	public static void sysDebug(Object...x) {
 		

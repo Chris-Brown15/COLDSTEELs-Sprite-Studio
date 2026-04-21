@@ -1,11 +1,11 @@
 package cs.csss.ui.menus;
 
 import java.io.File;
-import cs.core.ui.CSNuklear;
-import cs.core.ui.CSNuklear.CSUI.CSDynamicRow;
-import cs.core.utils.files.PNG;
 import cs.csss.engine.Logging;
 import cs.ext.steamworks.Friends;
+import sc.core.binary.SCPNG;
+import sc.core.ui.SCElements.SCUI.SCDynamicRow;
+import sc.core.ui.SCNuklear;
 
 /**
  * UI menu for uploading a script to the Steam workshop.
@@ -41,17 +41,17 @@ public class SteamWorkshopItemUploadMenu extends EditWorkshopItemMenu{
 	/**
 	 * Creates a new Steam workshop Item upload menu. 
 	 * 
-	 * @param nuklear — the nuklear factory
-	 * @param friends — the Steam Friends API
+	 * @param nuklear the nuklear factory
+	 * @param friends the Steam Friends API
 	 */
-	public SteamWorkshopItemUploadMenu(CSNuklear nuklear , Friends friends) {
+	public SteamWorkshopItemUploadMenu(SCNuklear nuklear , Friends friends) {
 	
 		super(nuklear , friends , width , height , true);
 		
 		menuOpen = true;
 	
 		//hack to detect invalid state
-		ui.attachedLayout((context , stack) -> {
+		ui.attachedLayout((context) -> {
 			
 			if(!menuOpen) { 
 				
@@ -69,15 +69,15 @@ public class SteamWorkshopItemUploadMenu extends EditWorkshopItemMenu{
 		createVisibilitySelection();
 		createWorkshopLegalAgreementButton();
 		
-		CSDynamicRow finishRow = ui.new CSDynamicRow();
-		finishRow.new CSButton("Upload" , () -> {
+		SCDynamicRow finishRow = ui.new SCDynamicRow();
+		finishRow.new SCButton("Upload" , () -> {
 			
 			finishedValidly = canFinish = tryFinish();			
 			if(finishedValidly) onFinish();
 			
 		});		
 		
-		finishRow.new CSButton("Cancel" , this::onFinish);
+		finishRow.new SCButton("Cancel" , this::onFinish);
 		
 	}
 
@@ -118,7 +118,7 @@ public class SteamWorkshopItemUploadMenu extends EditWorkshopItemMenu{
 		
 		try {
 
-			PNG image = new PNG(path);
+			SCPNG image = new SCPNG(path);
 			uiFileName = "Preview Image: " + path.substring(path.lastIndexOf(File.separator) + 1 , path.length());
 			image.shutDown();
 			

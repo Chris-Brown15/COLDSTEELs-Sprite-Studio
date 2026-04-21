@@ -1,13 +1,13 @@
 package cs.csss.editor.event;
 
-import cs.core.utils.ShutDown;
+import sc.core.SCShutDown;
 
 /**
  * Used to shut down events that are instances of {@link CSSSMemoryEvent}.
  */
 public class ShutDownEventEvent extends CSSSEvent {
 
-	private final ShutDown shutDownThis;
+	private final SCShutDown shutDownThis;
 	
 	/**
 	 * Creates an shut down event event.

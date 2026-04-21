@@ -3,27 +3,25 @@
  */
 package cs.csss.project.io;
 
-import static cs.core.utils.CSUtils.specify;
-
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import cs.core.utils.ShutDown;
-import cs.core.utils.files.CSGraphic;
-import cs.core.utils.files.PNG;
 import cs.csss.engine.LookupPixel;
 import cs.csss.project.Artboard;
 import cs.csss.project.utils.Artboards;
 import cs.csss.project.utils.RegionIterator;
 import cs.csss.project.utils.RegionPosition;
+import sc.core.SCShutDown;
+import sc.core.binary.SCGraphic;
+import sc.core.binary.SCPNG;
 
 /**
  * Class responsible for importing PNGs, JPEGs, and BMPs and converting them into Artboards.
  */
-public class ImageImporter implements ShutDown {
+public class ImageImporter implements SCShutDown {
 
 	static final List<String> imports = new ArrayList<>();
 
@@ -39,7 +37,7 @@ public class ImageImporter implements ShutDown {
 	/**
 	 * Sets a list of strings to be file paths of images to export.
 	 * 
-	 * @param filepaths — array of file paths to images to import
+	 * @param filepaths array of file paths to images to import
 	 */
 	public static void registerNewImportFilePaths(String... filepaths) {
 		
@@ -50,7 +48,7 @@ public class ImageImporter implements ShutDown {
 	/**
 	 * Invokes {@code callback} for each selected file path.
 	 * 
-	 * @param callback — code to invoke for each selected file path
+	 * @param callback code to invoke for each selected file path
 	 */
 	public static void forEachImportPath(Consumer<String> callback) {
 		
@@ -58,34 +56,34 @@ public class ImageImporter implements ShutDown {
 		
 	}
 	
-	private CSGraphic source;
+	private SCGraphic source;
 	
 	/**
 	 * Loads the image at the given file path.
 	 * 
-	 * @param filepath — file path to an image
-	 * @param channels — channels of the project
+	 * @param filepath file path to an image
+	 * @param channels channels of the project
 	 */
 	public ImageImporter(String filepath , int channels) {
 	
 		if(filepath.endsWith(".bmp")) source = new BMP(filepath , channels);
 		else if (filepath.endsWith(".jpg")) source = new JPG(filepath , channels);
-		else if (filepath.endsWith(".png")) source = new PNG(filepath , channels);
+		else if (filepath.endsWith(".png")) source = new SCPNG(filepath , channels);
 	
-		Objects.requireNonNull(source.imageData());
+		Objects.requireNonNull(source.data());
 		
 	}
 	
 	/**
 	 * Copies the contents of the image which was loaded by this class to the given artboard.
 	 * 
-	 * @param artboard — an artboard to copy the image to.
+	 * @param artboard an artboard to copy the image to.
 	 */
 	public void copyToArtboard(Artboard artboard) {
 		
-		specify(artboard.width() >= source.width() && artboard.height() >= source.height() , "Artboard cannot be smaller than image.");
+		assert artboard.width() >= source.width() && artboard.height() >= source.height() : "Artboard cannot be smaller than image.";
 		
-		ByteBuffer image = source.imageData();
+		ByteBuffer image = source.data();
 		LookupPixel[][] imageColors = new LookupPixel[artboard.height()][artboard.width()];
 				
 		RegionPosition position;					
